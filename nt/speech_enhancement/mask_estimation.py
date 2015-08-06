@@ -1,7 +1,7 @@
 import numpy as np
 
-def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
 
+def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
     SplitBin = 200
     TransitionWidth = 99
     FastTransitionWidth = 5
@@ -22,7 +22,7 @@ def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
 
     # High Edge
     voiced[TransitionVoicedStart - 1: (
-    TransitionVoicedStart + TransitionWidth - 1)] = Transition
+        TransitionVoicedStart + TransitionWidth - 1)] = Transition
     voiced[TransitionVoicedStart - 1 + TransitionWidth: len(voiced)] = 0
 
     # Low Edge
@@ -32,7 +32,7 @@ def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
     # Low Edge
     unvoiced = np.ones(numberOfFreqFrames)
     unvoiced[TransitionVoicedStart - 1: (
-    TransitionVoicedStart + TransitionWidth - 1)] = 1 - Transition
+        TransitionVoicedStart + TransitionWidth - 1)] = 1 - Transition
     unvoiced[0: (TransitionVoicedStart)] = 0
 
     # High Edge
@@ -49,22 +49,21 @@ def idealBinaryMask(X, N,
                     thresholdVoicedNoise=-10,
                     lowCut=5,
                     highCut=500):
-    ''' Estimate an ideal binary mask given the speech and noise spectrum.
+    """Estimate an ideal binary mask given the speech and noise spectrum.
 
-        :param X: speech signal in STFT domain
-        :param N: noise signal in STFT domain
-        :param thresholdUnvoicedSpeech:
-        :param thresholdVoicedSpeech:
-        :param thresholdUnvoicedNoise:
-        :param thresholdVoicedNoise:
-        :param lowCut: all values with frequency<lowCut are set to 0 in the
-            speechMask ans set to 1 in the noiseMask
-        :param highCut: all values with frequency>highCut are set to 0 in the
-            speechMask ans set to 1 in the noiseMask
-        :return: (speechMask, noiseMask): tuple containing the two arrays,
-            which are the masks for X and N
-    '''
-
+    :param X: speech signal in STFT domain with shape (Frames, Frequency-Bins)
+    :param N: noise signal in STFT domain with shape (Frames, Frequency-Bins)
+    :param thresholdUnvoicedSpeech:
+    :param thresholdVoicedSpeech:
+    :param thresholdUnvoicedNoise:
+    :param thresholdVoicedNoise:
+    :param lowCut: all values with frequency<lowCut are set to 0 in the
+        speechMask ans set to 1 in the noiseMask
+    :param highCut: all values with frequency>highCut are set to 0 in the
+        speechMask ans set to 1 in the noiseMask
+    :return: (speechMask, noiseMask): tuple containing the two arrays,
+        which are the masks for X and N
+    """
     (voiced, unvoiced) = _voicedUnvoicedSplitCharacteristic(X.shape[1])
 
     # calculate the thresholds
@@ -91,7 +90,7 @@ def idealBinaryMask(X, N,
 
     noiseMask = (xPSD_threshold_new < nPSD)
 
-    noiseMask = np.logical_or(noiseMask, (xPSD_threshold_new < 0.005));
+    noiseMask = np.logical_or(noiseMask, (xPSD_threshold_new < 0.005))
     noiseMask[:, 0: lowCut - 1] = 1
     noiseMask[:, highCut: len(noiseMask[0])] = 1
 
