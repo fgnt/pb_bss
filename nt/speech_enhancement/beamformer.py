@@ -1,68 +1,156 @@
 from scipy.linalg import eig
 import numpy as np
+from scipy.linalg import eigh
+from numpy.linalg import solve
 
 
-def gev_beamformer(Y, gamma_n, gamma_x=None, enable_postfilter=False):
-    """ A generalized eigenvalue beamformer.
+def _vector_H_vector(x, y):
+    return np.einsum('...a,...a->...', x.conj(), y)
 
-    If `gamma_x` is not specified (e.g. None), it is assumed to be the inverse of `gamma_n`:
 
-    $$\gamma_{x} = \text{min}(\text{max}(1 - \gamma_{n}, 10^{-6}), 1)$$
+def get_power_spectral_density_matrix(observation, mask=None):
+    """
+    Calculates the weighted power spectral density matrix.
 
-    :param Y: The mix signal in the format [Time, Microphone, Frequence]
-    :param gamma_n: The mask for the noise
-    :type gamma_n: numpy.ndarray
-    :param gamma_x: The mask for the desired signal
-    :type gamma_x: numpy.ndarray
-    :return: Complex beamformed signal
+    This does not yet work with more than one target mask.
+
+    :param observation: Complex observations with shape (bins, sensors, frames)
+    :param mask: Masks with shape (bins, frames) or (bins, 1, frames)
+    :return: PSD matrix with shape (bins, sensors, sensors)
+    """
+    bins, sensors, frames = observation.shape
+
+    if mask is None:
+        mask = np.ones((bins, frames))
+    if mask.ndim == 2:
+        mask = mask[:, np.newaxis, :]
+    assert mask.shape[1] == 1, 'Only one target mask allowed.'
+
+    normalization = np.sum(mask, axis=2)
+
+    psd = np.einsum('...dt,...et->...de', mask*observation, observation.conj())
+    psd /= normalization[:, :, np.newaxis]
+    return psd
+
+
+def get_pca_vector(target_psd_matrix):
+    """
+    Returns the beamforming vector of a PCA beamformer.
+    :param target_psd_matrix: Target PSD matrix
+        with shape (bins, sensors, sensors)
+    :return: Set of beamforming vectors with shape (bins, sensors)
+    """
+    bins, sensors, _ = target_psd_matrix.shape
+    beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
+    for f in range(bins):
+        eigenvals, eigenvecs = eigh(target_psd_matrix[f, :, :])
+        beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
+    return beamforming_vector
+
+
+def get_mvdr_vector(atf_vector, noise_psd_matrix):
+    """
+    Returns the MVDR beamforming vector.
+
+    Todo: Possible test case: Assert W^H * H = 1.
+
+    :param atf_vector: Acoustic transfer function vector
+        with shape (bins, sensors)
+    :param noise_psd_matrix: Noise PSD matrix
+        with shape (bins, sensors, sensors)
+    :return: Set of beamforming vectors with shape (bins, sensors)
     """
 
-    Y = Y.T
-    gamma_n = gamma_n.T
+    if atf_vector.ndim == 1:
+        atf_vector = atf_vector[np.newaxis, :]
+    if noise_psd_matrix.ndim == 2:
+        noise_psd_matrix = noise_psd_matrix[np.newaxis, :, :]
 
-    if gamma_x is None:
-        gamma_x = np.clip(1 - gamma_n, 1e-6, 1)
-    else:
-        gamma_x = gamma_x.T
+    bins, sensors = atf_vector.shape
+    beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
+    for f in range(bins):
+        numerator = solve(noise_psd_matrix[f, :, :], atf_vector[f, :])
+        denominator = np.dot(atf_vector[f, :].conj(), numerator)
+        beamforming_vector[f, :] = numerator / denominator
+    return beamforming_vector
 
-    # Dimensions
-    F = Y.shape[0]  # Frequency
-    M = Y.shape[1]  # Microphones
-    T = Y.shape[2]  # Time
 
-    def calc_phi(Y, mask):
-        if mask.ndim == 2:
-            mask = mask[:, None, :]
-        phi = np.zeros((F, M, M), dtype=np.complex)
-        gamma_y = mask * Y
-        for f in np.arange(F):
-            phi[f, :, :] = np.dot(gamma_y[f, :, :], Y[f, :, :].T.conj())
-            phi[f, :, :] = (phi[f, :, :] + phi[f, :, :].T.conj()) / 2
-        phi /= np.sum(mask, axis=-1)[:, :, None]
-        return phi
+def get_gev_vector(target_psd_matrix, noise_psd_matrix):
+    """
+    Returns the GEV beamforming vector.
+    :param target_psd_matrix: Target PSD matrix
+        with shape (bins, sensors, sensors)
+    :param noise_psd_matrix: Noise PSD matrix
+        with shape (bins, sensors, sensors)
+    :return: Set of beamforming vectors with shape (bins, sensors)
+    """
+    bins, sensors, _ = target_psd_matrix.shape
+    beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
+    for f in range(bins):
+        eigenvals, eigenvecs = eigh(target_psd_matrix[f, :, :],
+                                    noise_psd_matrix[f, :, :])
+        beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
+    return beamforming_vector
 
-    # Covariance matrices
-    phi_xx = calc_phi(Y, gamma_x)
-    phi_nn = calc_phi(Y, gamma_n)
+
+def normalize_vector_to_unit_length(vector):
+    """
+    Normalized each vector to unit length. This is useful, if all other
+    normalization techniques are not reliable.
+
+    :param vector: Assumes a beamforming vector with shape (bins, sensors)
+    :return: Set of beamforming vectors with shape (bins, sensors)
+    """
+    normalization = np.sqrt(np.abs(_vector_H_vector(vector, vector)))
+    return vector / normalization[:, np.newaxis]
+
+
+def blind_analytic_normalization(vector, noise_psd_matrix):
+    bins, sensors = vector.shape
+    normalization = np.zeros(bins)
+    for f in range(bins):
+        normalization[f] = np.abs(np.sqrt(np.dot(
+            np.dot(np.dot(vector[f, :].T.conj(), noise_psd_matrix[f]),
+                   noise_psd_matrix[f]), vector[f, :])))
+        normalization[f] /= np.abs(np.dot(
+            np.dot(vector[f, :].T.conj(), noise_psd_matrix[f]), vector[f, :]))
+
+    return vector * normalization[:, np.newaxis]
+
+
+def apply_beamforming_vector(vector, mix):
+    return np.einsum('...a,...at->...t', vector.conj(), mix)
+
+
+def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
+                         normalization=False):
+    if noise_mask is None and target_mask is None:
+        raise ValueError('At least one mask needs to be present.')
+
+    mix = mix.T
+    if noise_mask is not None:
+        noise_mask = noise_mask.T
+    if noise_mask is not None:
+        target_mask = target_mask.T
+
+    if target_mask is None:
+        target_mask = np.clip(1 - noise_mask, 1e-6, 1)
+    if noise_mask is None:
+        noise_mask = np.clip(1 - target_mask, 1e-6, 1)
+
+    bins, sensors, frames = mix.shape
+
+    target_psd_matrix = get_power_spectral_density_matrix(mix, target_mask)
+    noise_psd_matrix = get_power_spectral_density_matrix(mix, noise_mask)
 
     # Beamforming vector
-    W_gev = np.zeros((F, M), dtype=np.complex)
-    for f in range(F):
-        eigenvals, eigenvecs = eig(phi_xx[f, :, :], phi_nn[f, :, :])
-        W_gev[f, :] = eigenvecs[:, np.argmax(eigenvals)]
+    W_gev = get_gev_vector(target_psd_matrix, noise_psd_matrix)
 
-    #Postfilter
-    if enable_postfilter:
-        w_ban = np.zeros(F)
-        for f in range(F):
-            w_ban[f] = np.sqrt(np.dot(np.dot(np.dot(W_gev[f, :].T.conj(), phi_nn[f]), phi_nn[f]),W_gev[f, :])) / (
-                np.dot(np.dot(W_gev[f, :].T.conj(), phi_nn[f]),W_gev[f, :])
-            )
-        W_gev *= w_ban[:, None]
+    if normalization:
+        W_gev = blind_analytic_normalization(W_gev, noise_psd_matrix)
 
-    # Beamforming signal
-    z = np.zeros((F, T), dtype=np.complex)
-    for f in range(F):
-        z[f, :] = np.dot(W_gev[f].conj(), Y[f, :, :])
+    output = apply_beamforming_vector(W_gev, mix)
 
-    return z.T
+    return output.T
+
+
