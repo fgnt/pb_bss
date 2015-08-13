@@ -42,7 +42,7 @@ def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
     return (voiced, unvoiced)
 
 
-def idealBinaryMask(X, N,
+def estimate_IBM(X, N,
                     thresholdUnvoicedSpeech=5,  # default values
                     thresholdVoicedSpeech=0,
                     thresholdUnvoicedNoise=-10,
