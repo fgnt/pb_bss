@@ -11,12 +11,12 @@ from nt.speech_enhancement.beamformer import normalize_vector_to_unit_length
 
 from os import environ
 matlab = unittest.skipUnless(environ.get('TEST_MATLAB'),'matlab-test')
-from os.path import join
+from os import path
 
 class TestBeamformerMethods(unittest.TestCase):
     @classmethod
     def setUpClass(self):
-        datafile = join(environ.get('HOME'), 'python_toolbox', 'tests', 'speech_enhancement_test', 'data.npz')
+        datafile = path.join(path.dirname(path.realpath(__file__)), 'data.npz')
         with np.load(datafile) as data:
             X = data['X']
             Y= data['Y']
