@@ -41,6 +41,61 @@ def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
 
     return (voiced, unvoiced)
 
+def simple_ideal_soft_mask(*input, featureDim = -2, sourceDim = -1):
+    """
+    :param input: list of array_like or array_like
+        These are the arrays like X, N or X_all.
+        The arrays X and N will concanated on the last dim, if they have the same shape.
+    :param featureDim: The sum diemension
+    :param sourceDim: The dimension, where the sum is one. ToDo: Implement for sourceDim != -1, that the output shape is correct.
+    :return: ideal_soft_mask
+        The last diemension is the sourceDim. If necessary: ToDo: use sourceDim and transpose for correct output shape.
+    Examples:
+    >>> F, T, D, K = 51, 31, 6, 2
+    >>> X_all = np.random.rand(F, T, D, K)
+    >>> X, N = (X_all[:, :, :, 0], X_all[:, :, :, 1])
+    >>> simple_ideal_soft_mask(X_all).shape
+    (51, 31, 2)
+    >>> simple_ideal_soft_mask(X, N).shape
+    (51, 31, 2)
+    >>> simple_ideal_soft_mask(X_all, N).shape
+    (51, 31, 3)
+    >>> simple_ideal_soft_mask(X, N, featureDim=-3).shape
+    (51, 6, 2)
+    """
+
+    assert featureDim != sourceDim
+
+    if len(input) != 1:
+        numDimsMax = 0
+        numDimsMin = 10000
+        for i in input:
+            numDimsMax = max(numDimsMax, np.ndim(i))
+            numDimsMin = min(numDimsMin, np.ndim(i))
+        if numDimsMax != numDimsMin:
+            assert numDimsMax == numDimsMin+1
+            input = list(input)
+            for idx in range(len(input)):
+                if np.ndim(input[idx]) == numDimsMin:
+                    input[idx] = np.expand_dims(input[idx], sourceDim)
+        else:
+            input = [np.expand_dims(i, numDimsMin+1) for i in input]
+
+        X = np.concatenate(input, axis=sourceDim)
+    else:
+        X = input[0]
+
+    if featureDim != -2 or sourceDim != -1:
+        r = list(range(np.ndim(X)))
+        r[featureDim], r[-2] = r[-2], r[featureDim]
+        r[sourceDim], r[-1] = r[-1], r[sourceDim]
+        X = np.transpose(X, axes=r)
+
+    power = np.einsum('...dk,...dk->...k', X.conjugate(), X)
+    mask = power / np.sum(power, axis=power.ndim-1, keepdims=True)
+
+    return mask
+
 
 def estimate_IBM(X, N,
                     thresholdUnvoicedSpeech=5,  # default values
@@ -95,3 +150,45 @@ def estimate_IBM(X, N,
     noiseMask[:, highCut: len(noiseMask[0])] = 1
 
     return (speechMask, noiseMask)
+
+
+if __name__ == '__main__':
+    import nt.testing as tc
+
+    '''
+    ToDo:
+        Move this to nt.tests
+    Test for simple_ideal_soft_mask
+    '''
+
+    F, T, D, K = 51, 31, 6, 2
+    X_all = np.random.rand(F, T, D, K)
+    X, N = (X_all[:, :, :, 0], X_all[:, :, :, 1])
+
+    def test1():
+        M1 = simple_ideal_soft_mask(X_all)
+        tc.assert_equal(M1.shape, (51, 31, 2))
+        tc.assert_almost_equal(np.sum(M1, axis=2), 1)
+        return M1
+
+    def test2():
+        M2 = simple_ideal_soft_mask(X, N)
+        tc.assert_equal(M2.shape, (51, 31, 2))
+        tc.assert_almost_equal(np.sum(M2, axis=2), 1)
+        return M2
+
+    tc.assert_equal(test1(), test2())
+
+    def test3():
+        M3 = simple_ideal_soft_mask(X_all, N)
+        tc.assert_equal(M3.shape, (51, 31, 3))
+        tc.assert_almost_equal(np.sum(M3, axis=2), 1)
+    test3()
+
+    def test4():
+        M4 = simple_ideal_soft_mask(X, N, featureDim=-3)
+        tc.assert_equal(M4.shape, (51, 6, 2))
+        tc.assert_almost_equal(np.sum(M4, axis=2), 1)
+    test4()
+
+
