@@ -87,8 +87,12 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix):
     bins, sensors, _ = target_psd_matrix.shape
     beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
     for f in range(bins):
-        eigenvals, eigenvecs = eigh(target_psd_matrix[f, :, :],
-                                    noise_psd_matrix[f, :, :])
+        try:
+            eigenvals, eigenvecs = eigh(target_psd_matrix[f, :, :],
+                                        noise_psd_matrix[f, :, :])
+        except np.linalg.LinAlgError:
+            eigenvals, eigenvecs = eig(target_psd_matrix[f, :, :],
+                                        noise_psd_matrix[f, :, :])
         beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
     return beamforming_vector
 
