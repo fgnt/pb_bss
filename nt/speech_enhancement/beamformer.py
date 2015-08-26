@@ -97,6 +97,16 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix):
     return beamforming_vector
 
 
+def get_lcmv_vector(set_of_atf_vectors, response_vector, noise_psd_matrix):
+    """
+
+    :param set_of_atf_vectors:
+    :param response_vector:
+    :param noise_psd_matrix:
+    :return:
+    """
+
+
 def normalize_vector_to_unit_length(vector):
     """
     Normalized each vector to unit length. This is useful, if all other
