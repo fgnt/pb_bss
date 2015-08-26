@@ -97,14 +97,32 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix):
     return beamforming_vector
 
 
-def get_lcmv_vector(set_of_atf_vectors, response_vector, noise_psd_matrix):
+def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     """
 
-    :param set_of_atf_vectors:
-    :param response_vector:
-    :param noise_psd_matrix:
-    :return:
+    :param atf_vectors: Acoustic transfer function vectors for
+        each source with shape (bins, targets, sensors)
+    :param response_vector: Defines, which sources you are interested in.
+        Set it to [1, 0, ..., 0], if you are interested in the first speaker.
+        It has the shape (targets,)
+    :param noise_psd_matrix: Noise PSD matrix
+        with shape (bins, sensors, sensors)
+    :return: Set of beamforming vectors with shape (bins, sensors)
     """
+    if atf_vectors.ndim == 2:
+        atf_vectors = atf_vectors[np.newaxis, :, :]
+    if noise_psd_matrix.ndim == 2:
+        noise_psd_matrix = noise_psd_matrix[np.newaxis, :, :]
+
+    bins, targets, sensors = atf_vectors.shape
+    beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
+    for f in range(bins):
+        Phi_inverse_times_H = solve(noise_psd_matrix[f, :, :], atf_vectors[f, :, :])
+        H_times_Phi_inverse_times_H = np.dot(atf_vectors[f, :, :].conj(), Phi_inverse_times_H)
+        beamforming_vector[f, :] = np.dot(Phi_inverse_times_H,
+                                          solve(H_times_Phi_inverse_times_H, response_vector))
+
+    return beamforming_vector
 
 
 def normalize_vector_to_unit_length(vector):
