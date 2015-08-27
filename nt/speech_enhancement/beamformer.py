@@ -4,10 +4,6 @@ from scipy.linalg import eigh
 from numpy.linalg import solve
 
 
-def _vector_H_vector(x, y):
-    return np.einsum('...a,...a->...', x.conj(), y)
-
-
 def get_power_spectral_density_matrix(observation, mask=None):
     """
     Calculates the weighted power spectral density matrix.
@@ -105,18 +101,6 @@ def get_lcmv_vector(set_of_atf_vectors, response_vector, noise_psd_matrix):
     :param noise_psd_matrix:
     :return:
     """
-
-
-def normalize_vector_to_unit_length(vector):
-    """
-    Normalized each vector to unit length. This is useful, if all other
-    normalization techniques are not reliable.
-
-    :param vector: Assumes a beamforming vector with shape (bins, sensors)
-    :return: Set of beamforming vectors with shape (bins, sensors)
-    """
-    normalization = np.sqrt(np.abs(_vector_H_vector(vector, vector)))
-    return vector / normalization[:, np.newaxis]
 
 
 def blind_analytic_normalization(vector, noise_psd_matrix):
