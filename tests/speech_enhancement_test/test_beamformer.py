@@ -44,7 +44,7 @@ class TestBeamformerMethods(unittest.TestCase):
         self.W_gev = get_gev_vector(self.Phi_XX, self.Phi_NN)
         self.mlab = Mlab()
 
-    #@matlab
+    @matlab
     def test_compare_PSD_without_mask(self):
         mlab = self.mlab.process
         mlab.set_variable('Y', self.Y_bf)
@@ -53,7 +53,7 @@ class TestBeamformerMethods(unittest.TestCase):
         Phi = get_power_spectral_density_matrix(self.Y_bf)
         tc.assert_allclose(Phi, Phi_matlab, atol=1e-4)
 
-    #@matlab
+    @matlab
     def test_compare_PSD_with_mask(self):
         mlab = self.mlab.process
         mlab.set_variable('Y', self.Y_bf)
@@ -63,7 +63,7 @@ class TestBeamformerMethods(unittest.TestCase):
         Phi = get_power_spectral_density_matrix(self.Y_bf, self.ibm_N_bf)
         tc.assert_allclose(Phi, Phi_matlab, atol=1e-4)
 
-    #@matlab
+    @matlab
     def test_compare_PCA_beamformer(self):
         mlab = self.mlab.process
         mlab.set_variable('Phi_XX', self.Phi_XX)
@@ -75,7 +75,7 @@ class TestBeamformerMethods(unittest.TestCase):
     def test_mvdr_beamformer(self):
         tc.assert_allclose(math.vector_H_vector(self.W_pca, self.W_mvdr), 1)
 
-    #@matlab
+    @matlab
     def test_compare_mvdr_beamformer(self):
         mlab = self.mlab.process
         mlab.set_variable('Phi_NN', self.Phi_NN)
@@ -84,7 +84,7 @@ class TestBeamformerMethods(unittest.TestCase):
         W_matlab = mlab.get_variable('W')
         tc.assert_cosine_similarity(W_matlab, self.W_mvdr)
 
-    #@matlab
+    @matlab
     def test_compar_gev_beamformer(self):
         mlab = self.mlab.process
         mlab.set_variable('Phi_XX', self.Phi_XX)
