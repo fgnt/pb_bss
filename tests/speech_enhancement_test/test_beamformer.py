@@ -3,25 +3,12 @@ import nt.testing as tc
 import numpy as np
 from nt.speech_enhancement.mask_estimation import estimate_IBM as ideal_binary_mask
 from nt.speech_enhancement.beamformer import get_power_spectral_density_matrix
-from pymatbridge import Matlab
 from nt.speech_enhancement.beamformer import get_pca_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_gev_vector
 from os import path
-from os import environ
-from cached_property import cached_property
 from nt.utils import math
-
-class Mlab():
-    @cached_property
-    def process(self):
-        mlab_process = Matlab('nice -n 3 /net/ssd/software/MATLAB/R2015a/bin/matlab -nodisplay -nosplash')
-        mlab_process.start()
-        _ = mlab_process.run_code('run /net/home/ldrude/Projects/2015_python_matlab/matlab/startup.m')
-        return mlab_process
-
-# define decorator to skip matlab_tests
-matlab = unittest.skipUnless(environ.get('TEST_MATLAB'),'matlab-test')
+from nt.utils.matlab import Mlab, matlab_test
 
 class TestBeamformerMethods(unittest.TestCase):
     @classmethod
@@ -44,7 +31,7 @@ class TestBeamformerMethods(unittest.TestCase):
         self.W_gev = get_gev_vector(self.Phi_XX, self.Phi_NN)
         self.mlab = Mlab()
 
-    @matlab
+    @matlab_test
     def test_compare_PSD_without_mask(self):
         mlab = self.mlab.process
         mlab.set_variable('Y', self.Y_bf)
@@ -53,7 +40,7 @@ class TestBeamformerMethods(unittest.TestCase):
         Phi = get_power_spectral_density_matrix(self.Y_bf)
         tc.assert_allclose(Phi, Phi_matlab, atol=1e-4)
 
-    @matlab
+    @matlab_test
     def test_compare_PSD_with_mask(self):
         mlab = self.mlab.process
         mlab.set_variable('Y', self.Y_bf)
@@ -63,19 +50,18 @@ class TestBeamformerMethods(unittest.TestCase):
         Phi = get_power_spectral_density_matrix(self.Y_bf, self.ibm_N_bf)
         tc.assert_allclose(Phi, Phi_matlab, atol=1e-4)
 
-    @matlab
+    @matlab_test
     def test_compare_PCA_beamformer(self):
         mlab = self.mlab.process
         mlab.set_variable('Phi_XX', self.Phi_XX)
         mlab.run_code("W = bss.beamformer.pca('cleanObservationMatrix', Phi_XX);")
         W_matlab = mlab.get_variable('W')
-        distance = 1 - np.abs(math.vector_H_vector(self.W_pca, W_matlab))**2
-        tc.assert_array_less(distance, 1e-6)
+        tc.assert_cosine_similarity(W_matlab, self.W_pca)
 
     def test_mvdr_beamformer(self):
         tc.assert_allclose(math.vector_H_vector(self.W_pca, self.W_mvdr), 1)
 
-    @matlab
+    @matlab_test
     def test_compare_mvdr_beamformer(self):
         mlab = self.mlab.process
         mlab.set_variable('Phi_NN', self.Phi_NN)
@@ -84,12 +70,11 @@ class TestBeamformerMethods(unittest.TestCase):
         W_matlab = mlab.get_variable('W')
         tc.assert_cosine_similarity(W_matlab, self.W_mvdr)
 
-    @matlab
-    def test_compar_gev_beamformer(self):
+    @matlab_test
+    def test_compare_gev_beamformer(self):
         mlab = self.mlab.process
         mlab.set_variable('Phi_XX', self.Phi_XX)
         mlab.set_variable('Phi_NN', self.Phi_NN)
         mlab.run_code("W = bss.beamformer.gev('cleanObservationMatrix', Phi_XX, 'noiseMatrix', Phi_NN);")
         W_matlab = mlab.get_variable('W')
-        distance = 1 - np.abs(math.vector_H_vector(self.W_gev, W_matlab))**2
-        tc.assert_array_less(distance, 1e-6)
+        tc.assert_cosine_similarity(W_matlab, self.W_gev)
