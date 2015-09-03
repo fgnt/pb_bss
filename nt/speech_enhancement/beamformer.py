@@ -20,9 +20,8 @@ def get_power_spectral_density_matrix(observation, mask=None):
         mask = np.ones((bins, frames))
     if mask.ndim == 2:
         mask = mask[:, np.newaxis, :]
-    assert mask.shape[1] == 1, 'Only one target mask allowed.'
 
-    normalization = np.sum(mask, axis=2)
+    normalization = np.maximum(np.sum(mask, axis=2), 1e-6)
 
     psd = np.einsum('...dt,...et->...de', mask*observation, observation.conj())
     psd /= normalization[:, :, np.newaxis]
@@ -44,11 +43,12 @@ def get_pca_vector(target_psd_matrix):
     return beamforming_vector
 
 
+#TODO: Possible test case: Assert W^H * H = 1.
+#TODO: Make function more stable for badly conditioned noise matrices.
+#Write tests for these cases.
 def get_mvdr_vector(atf_vector, noise_psd_matrix):
     """
     Returns the MVDR beamforming vector.
-
-    Todo: Possible test case: Assert W^H * H = 1.
 
     :param atf_vector: Acoustic transfer function vector
         with shape (bins, sensors)
@@ -61,6 +61,10 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
         atf_vector = atf_vector[np.newaxis, :]
     if noise_psd_matrix.ndim == 2:
         noise_psd_matrix = noise_psd_matrix[np.newaxis, :, :]
+
+    #Make sure matrix is hermitian
+    noise_psd_matrix = 1/2 * (
+        noise_psd_matrix + noise_psd_matrix.transpose(0, 2, 1).conj())
 
     bins, sensors = atf_vector.shape
     beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
@@ -150,5 +154,3 @@ def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
     output = apply_beamforming_vector(W_gev, mix)
 
     return output.T
-
-
