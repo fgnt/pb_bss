@@ -4,10 +4,6 @@ from scipy.linalg import eigh
 from numpy.linalg import solve
 
 
-def _vector_H_vector(x, y):
-    return np.einsum('...a,...a->...', x.conj(), y)
-
-
 def get_power_spectral_density_matrix(observation, mask=None):
     """
     Calculates the weighted power spectral density matrix.
@@ -24,9 +20,8 @@ def get_power_spectral_density_matrix(observation, mask=None):
         mask = np.ones((bins, frames))
     if mask.ndim == 2:
         mask = mask[:, np.newaxis, :]
-    assert mask.shape[1] == 1, 'Only one target mask allowed.'
 
-    normalization = np.sum(mask, axis=2)
+    normalization = np.maximum(np.sum(mask, axis=2), 1e-6)
 
     psd = np.einsum('...dt,...et->...de', mask*observation, observation.conj())
     psd /= normalization[:, :, np.newaxis]
@@ -48,11 +43,12 @@ def get_pca_vector(target_psd_matrix):
     return beamforming_vector
 
 
+#TODO: Possible test case: Assert W^H * H = 1.
+#TODO: Make function more stable for badly conditioned noise matrices.
+#Write tests for these cases.
 def get_mvdr_vector(atf_vector, noise_psd_matrix):
     """
     Returns the MVDR beamforming vector.
-
-    Todo: Possible test case: Assert W^H * H = 1.
 
     :param atf_vector: Acoustic transfer function vector
         with shape (bins, sensors)
@@ -65,6 +61,10 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
         atf_vector = atf_vector[np.newaxis, :]
     if noise_psd_matrix.ndim == 2:
         noise_psd_matrix = noise_psd_matrix[np.newaxis, :, :]
+
+    #Make sure matrix is hermitian
+    noise_psd_matrix = 1/2 * (
+        noise_psd_matrix + noise_psd_matrix.transpose(0, 2, 1).conj())
 
     bins, sensors = atf_vector.shape
     beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
@@ -125,18 +125,6 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     return beamforming_vector
 
 
-def normalize_vector_to_unit_length(vector):
-    """
-    Normalized each vector to unit length. This is useful, if all other
-    normalization techniques are not reliable.
-
-    :param vector: Assumes a beamforming vector with shape (bins, sensors)
-    :return: Set of beamforming vectors with shape (bins, sensors)
-    """
-    normalization = np.sqrt(np.abs(_vector_H_vector(vector, vector)))
-    return vector / normalization[:, np.newaxis]
-
-
 def blind_analytic_normalization(vector, noise_psd_matrix):
     bins, sensors = vector.shape
     normalization = np.zeros(bins)
@@ -184,5 +172,3 @@ def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
     output = apply_beamforming_vector(W_gev, mix)
 
     return output.T
-
-
