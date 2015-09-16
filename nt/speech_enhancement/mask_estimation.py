@@ -97,6 +97,24 @@ def simple_ideal_soft_mask(*input, featureDim = -2, sourceDim = -1):
     return mask
 
 
+def quantile_mask(observations, quantile_fraction=0.98, quantile_weight=0.999):
+    """ Calculate softened mask according to lorenz function criterion.
+
+    :param observation: STFT of the the observed signal
+    :param quantile_fraction: Fraction of observations which are rated down
+    :param quantile_weight: Governs the influence of the mask
+    :return: quantile_mask
+
+    """
+    power = (observations * observations.conj())
+    sorted_power = np.sort(power, axis=None)[::-1]
+    lorenz_function = np.cumsum(sorted_power)/np.sum(sorted_power)
+    threshold = np.min(sorted_power[lorenz_function<quantile_fraction])
+    mask = power > threshold
+    mask = 0.5 + quantile_weight * (mask - 0.5)
+    return mask
+
+
 def estimate_IBM(X, N,
                     thresholdUnvoicedSpeech=5,  # default values
                     thresholdVoicedSpeech=0,
@@ -190,5 +208,3 @@ if __name__ == '__main__':
         tc.assert_equal(M4.shape, (51, 6, 2))
         tc.assert_almost_equal(np.sum(M4, axis=2), 1)
     test4()
-
-
