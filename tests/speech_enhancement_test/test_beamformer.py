@@ -7,7 +7,7 @@ from nt.speech_enhancement.beamformer import get_pca_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_gev_vector
 from os import path
-from nt.utils import math
+from nt.utils import nt_math
 from nt.utils.matlab import Mlab, matlab_test
 
 class TestBeamformerMethods(unittest.TestCase):
