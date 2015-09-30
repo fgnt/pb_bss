@@ -7,7 +7,7 @@ from nt.speech_enhancement.beamformer import get_pca_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_gev_vector
 from os import path
-from nt.utils import nt_math
+from nt.utils.math_ops import vector_H_vector
 from nt.utils.matlab import Mlab, matlab_test
 
 class TestBeamformerMethods(unittest.TestCase):
@@ -60,7 +60,7 @@ class TestBeamformerMethods(unittest.TestCase):
         tc.assert_cosine_similarity(W_matlab, self.W_pca)
 
     def test_mvdr_beamformer(self):
-        tc.assert_allclose(math.vector_H_vector(self.W_pca, self.W_mvdr), 1)
+        tc.assert_allclose(vector_H_vector(self.W_pca, self.W_mvdr), 1)
 
     @matlab_test
     def test_compare_mvdr_beamformer(self):
