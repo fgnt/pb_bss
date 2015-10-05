@@ -41,7 +41,7 @@ def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
 
     return (voiced, unvoiced)
 
-def simple_ideal_soft_mask(*input, featureDim = -2, sourceDim = -1):
+def simple_ideal_soft_mask(*input, feature_dim = -2, source_dim = -1):
     """
     :param input: list of array_like or array_like
         These are the arrays like X, N or X_all.
@@ -60,39 +60,34 @@ def simple_ideal_soft_mask(*input, featureDim = -2, sourceDim = -1):
     (51, 31, 2)
     >>> simple_ideal_soft_mask(X_all, N).shape
     (51, 31, 3)
-    >>> simple_ideal_soft_mask(X, N, featureDim=-3).shape
+    >>> simple_ideal_soft_mask(X, N, feature_dim=-3).shape
     (51, 6, 2)
     """
 
-    assert featureDim != sourceDim
+    assert feature_dim != source_dim
 
     if len(input) != 1:
-        numDimsMax = 0
-        numDimsMin = 10000
-        for i in input:
-            numDimsMax = max(numDimsMax, np.ndim(i))
-            numDimsMin = min(numDimsMin, np.ndim(i))
-        if numDimsMax != numDimsMin:
-            assert numDimsMax == numDimsMin+1
-            input = list(input)
-            for idx in range(len(input)):
-                if np.ndim(input[idx]) == numDimsMin:
-                    input[idx] = np.expand_dims(input[idx], sourceDim)
+        num_dims_max = np.max([i.ndim for i in input])
+        num_dims_min = np.min([i.ndim for i in input])
+        if num_dims_max != num_dims_min:
+            assert num_dims_max == num_dims_min+1
+            # Expand dims, if necessary
+            input = [np.expand_dims(i, source_dim) if i.ndim == num_dims_min else i for i in input]
         else:
-            input = [np.expand_dims(i, numDimsMin+1) for i in input]
-
-        X = np.concatenate(input, axis=sourceDim)
+            input = [np.expand_dims(i, num_dims_min+1) for i in input]
+        X = np.concatenate(input, axis=source_dim)
     else:
         X = input[0]
 
-    if featureDim != -2 or sourceDim != -1:
+    # Permute if nessesary
+    if feature_dim != -2 or source_dim != -1:
         r = list(range(np.ndim(X)))
-        r[featureDim], r[-2] = r[-2], r[featureDim]
-        r[sourceDim], r[-1] = r[-1], r[sourceDim]
+        r[feature_dim], r[-2] = r[-2], r[feature_dim]
+        r[source_dim], r[-1] = r[-1], r[source_dim]
         X = np.transpose(X, axes=r)
 
     power = np.einsum('...dk,...dk->...k', X.conjugate(), X)
-    mask = power / np.sum(power, axis=power.ndim-1, keepdims=True)
+    mask = (power / np.sum(power, axis=power.ndim-1, keepdims=True)).real
 
     return mask
 
@@ -162,7 +157,7 @@ if __name__ == '__main__':
     '''
 
     F, T, D, K = 51, 31, 6, 2
-    X_all = np.random.rand(F, T, D, K)
+    X_all = np.random.rand(F, T, D, K) + 1j * np.random.rand(F, T, D, K)
     X, N = (X_all[:, :, :, 0], X_all[:, :, :, 1])
 
     def test1():
@@ -179,6 +174,8 @@ if __name__ == '__main__':
 
     tc.assert_equal(test1(), test2())
 
+    print(test1().dtype)
+
     def test3():
         M3 = simple_ideal_soft_mask(X_all, N)
         tc.assert_equal(M3.shape, (51, 31, 3))
@@ -186,9 +183,17 @@ if __name__ == '__main__':
     test3()
 
     def test4():
-        M4 = simple_ideal_soft_mask(X, N, featureDim=-3)
+        M4 = simple_ideal_soft_mask(X, N, feature_dim=-3)
         tc.assert_equal(M4.shape, (51, 6, 2))
         tc.assert_almost_equal(np.sum(M4, axis=2), 1)
     test4()
 
+
+    def verify(number):
+        if number < 10:
+            return True
+        else:
+            return False
+
+    a = list(range(20))
 
