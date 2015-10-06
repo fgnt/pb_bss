@@ -41,15 +41,17 @@ def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
 
     return (voiced, unvoiced)
 
-def simple_ideal_soft_mask(*input, featureDim = -2, sourceDim = -1):
+
+def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1, tuple_output=False):
     """
     :param input: list of array_like or array_like
         These are the arrays like X, N or X_all.
         The arrays X and N will concanated on the last dim, if they have the same shape.
     :param featureDim: The sum diemension
-    :param sourceDim: The dimension, where the sum is one. ToDo: Implement for sourceDim != -1, that the output shape is correct.
+    :param sourceDim: The dimension, where the sum is one.
+    :param tuple_output:
     :return: ideal_soft_mask
-        The last diemension is the sourceDim. If necessary: ToDo: use sourceDim and transpose for correct output shape.
+
     Examples:
     >>> F, T, D, K = 51, 31, 6, 2
     >>> X_all = np.random.rand(F, T, D, K)
@@ -62,6 +64,12 @@ def simple_ideal_soft_mask(*input, featureDim = -2, sourceDim = -1):
     (51, 31, 3)
     >>> simple_ideal_soft_mask(X, N, feature_dim=-3).shape
     (51, 6, 2)
+    >>> simple_ideal_soft_mask(X_all, feature_dim=-3, source_dim=1).shape
+    (51, 6, 2)
+    >>> simple_ideal_soft_mask(X_all, N, feature_dim=-2, source_dim=3, tuple_output=True)[0].shape
+    (51, 31, 2)
+    >>> simple_ideal_soft_mask(X_all, N, feature_dim=-2, source_dim=3, tuple_output=True)[1].shape
+    (51, 31)
     """
 
     assert feature_dim != source_dim
@@ -80,16 +88,32 @@ def simple_ideal_soft_mask(*input, featureDim = -2, sourceDim = -1):
         X = input[0]
 
     # Permute if nessesary
-    if feature_dim != -2 or source_dim != -1:
-        r = list(range(np.ndim(X)))
-        r[feature_dim], r[-2] = r[-2], r[feature_dim]
-        r[source_dim], r[-1] = r[-1], r[source_dim]
-        X = np.transpose(X, axes=r)
+    # if feature_dim != -2 or source_dim != -1:
+    #     r = list(range(np.ndim(X)))
+    #     r[feature_dim], r[-2] = r[-2], r[feature_dim]
+    #     r[source_dim], r[-1] = r[-1], r[source_dim]
+    #     X = np.transpose(X, axes=r)
 
-    power = np.einsum('...dk,...dk->...k', X.conjugate(), X)
-    mask = (power / np.sum(power, axis=power.ndim-1, keepdims=True)).real
 
-    return mask
+    power = np.sum(X.conjugate() * X, axis=feature_dim, keepdims=True)
+    #power = np.einsum('...dk,...dk->...k', X.conjugate(), X)
+    mask = (power / np.sum(power, axis=source_dim, keepdims=True)).real
+
+    if not tuple_output:
+        return np.squeeze(mask, axis=feature_dim)
+    else:
+        sizes = np.cumsum([o.shape[source_dim] for o in input])
+        output = np.split(mask, sizes[:-1], axis=source_dim)
+
+        for i in range(len(output)):
+            if output[i].shape[source_dim] is 1:
+                output[i] = np.squeeze(output[i])
+                # ToDo: Determine, why the commented code is not working
+                # output[i] = np.squeeze(output[i], axis=(source_dim,feature_dim))
+            else:
+                output[i] = np.squeeze(output[i], axis=feature_dim)
+
+        return output
 
 
 def quantile_mask(observations, quantile_fraction=0.98, quantile_weight=0.999):
@@ -175,7 +199,7 @@ if __name__ == '__main__':
     '''
 
     F, T, D, K = 51, 31, 6, 2
-    X_all = np.random.rand(F, T, D, K)
+    X_all = np.random.rand(F, T, D, K) + 1j * np.random.rand(F, T, D, K)
     X, N = (X_all[:, :, :, 0], X_all[:, :, :, 1])
 
     def test1():
@@ -199,7 +223,7 @@ if __name__ == '__main__':
     test3()
 
     def test4():
-        M4 = simple_ideal_soft_mask(X, N, featureDim=-3)
+        M4 = simple_ideal_soft_mask(X, N, feature_dim=-3)
         tc.assert_equal(M4.shape, (51, 6, 2))
         tc.assert_almost_equal(np.sum(M4, axis=2), 1)
     test4()
