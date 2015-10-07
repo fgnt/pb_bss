@@ -95,6 +95,13 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True):
     :return SNR: #Sources times 1 vector of Signal to Noise Ratios
    """
 
+    # assume, that the maximum number of speakers is smaler than 10
+
+    assert(image_contribution.shape[1] < 10)
+    assert(image_contribution.shape[2] < 10)
+
+    assert(noise_contribution.shape[1] < 10)
+
     K_source = image_contribution.shape[1]
     K_target = image_contribution.shape[2]  # Number of target speaker
 
