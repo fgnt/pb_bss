@@ -21,35 +21,38 @@ def get_power_spectral_density_matrix_old(observation, mask=None):
     if mask.ndim == 2:
         mask = mask[:, np.newaxis, :]
 
-    mask = mask / np.maximum(np.sum(mask, axis=-1, keepdims=True), 1e-6)
+    mask /= np.maximum(np.sum(mask, axis=-1, keepdims=True), 1e-6)
 
     psd = np.einsum('...ft,...dt,...et->...de', mask, observation, observation.conj())
     # psd /= normalization[:, np.newaxis, np.newaxis]
     return psd
 
-def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, source_dim=1, time_dim=-1):
+
+def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, source_dim=-2, time_dim=-1):
     """
     Calculates the weighted power spectral density matrix.
+    It's also called covariance matrix.
 
-    This does not yet work with more than one target mask.
+    With the *_dim parameters you can change the sort of the dims of the observation and mask.
+    But not every combination is allowed.
 
-    :param observation: Complex observations with shape (bins, sensors, frames)
-    :param mask: Masks with shape (bins, frames) or (bins, sources, frames)
+    :param observation: Complex observations with shape (..., sensors, frames)
+    :param mask: Masks with shape (bins, frames) or (..., sources, frames)
     :param sensor_dim: change sensor diemension index (Default: -2)
-    :param source_dim: change source diemension index (Default: 1)
-    :param time_dim:  change time diemension index (Default: -1)
-    :return: PSD matrix with shape (bins, sensors, sensors) or (bins, sources, sensors, sensors)
+    :param source_dim: change source diemension index (Default: -2)
+    :param time_dim:  change time diemension index (Default: -1), this index must match for mask and observation
+    :return: PSD matrix with shape (..., sensors, sensors) or (..., sources, sensors, sensors)
 
     Examples:
     >>> F, T, D, K = 51, 31, 6, 2
     >>> X = np.random.randn(F, D, T) + 1j * np.random.randn(F, D, T)
     >>> mask = np.random.randn(F, K, T)
     >>> mask = mask / np.sum(mask, axis=0, keepdims=True)
-    >>> get_power_spectral_density_matrix_new(X, mask=mask).shape
+    >>> get_power_spectral_density_matrix(X, mask=mask).shape
     (51, 2, 6, 6)
     >>> mask = np.random.randn(F, T)
     >>> mask = mask / np.sum(mask, axis=0, keepdims=True)
-    >>> get_power_spectral_density_matrix_new(X, mask=mask).shape
+    >>> get_power_spectral_density_matrix(X, mask=mask).shape
     (51, 6, 6)
     """
 
@@ -57,37 +60,66 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
     #   normalize mask is mask is not None
     #   calc psd with einsum
     if mask is None:
-        if time_dim in (-1,2) and sensor_dim in (1, -2):
-            psd = np.einsum('fdt,fet->fde', observation, observation.conj())
-            psd /= observation.shape[2]
+        if time_dim == -1 and sensor_dim == -2:
+            psd = np.einsum('...dt,...et->...de', observation, observation.conj())
+            psd /= observation.shape[-1]
+        elif time_dim == -2 and sensor_dim == -1:
+            psd = np.einsum('...td,...te->...de', observation, observation.conj())
+            psd /= observation.shape[-2]
         else:
-            raise NameError('ToDo: Implement!')
+            print('time_dim: ', time_dim)
+            print('sensor_dim: ', sensor_dim)
+            print('observation.shape: ', observation.shape)
+            raise NotImplementedError()
     else:
-        mask = mask / np.maximum(np.sum(mask, axis=time_dim, keepdims=True), 1e-10)
-        if mask.ndim == 2:
-            if time_dim in (-1,2) and sensor_dim in (1, -2):
-                psd = np.einsum('ft,fdt,fet->fde', mask, observation, observation.conj())
-            elif sensor_dim in (-1,2) and time_dim in (1, -2):
-                psd = np.einsum('ft,ftd,fte->fde', mask, observation, observation.conj())
-            else:
-                raise NameError('ToDo: Implement!')
+        mask /= np.maximum(np.sum(mask, axis=time_dim, keepdims=True), 1e-10)
+
+        if mask.ndim + 1 == observation.ndim:
+            mask = np.expand_dims(mask, sensor_dim)
+            source_dim = None
         else:
-            if time_dim in (-1,2) and sensor_dim in (1, -2):
-                if source_dim in (1, -2):
-                    psd = np.einsum('fkt,fdt,fet->fkde', mask, observation, observation.conj())
-                elif source_dim in (0, -3):
-                    psd = np.einsum('kft,fdt,fet->kfde', mask, observation, observation.conj())
-                else:
-                    raise NameError('ToDo: Implement!')
-            elif sensor_dim in (-1,2) and time_dim in (1, -2):
-                if source_dim in (1, -2):
-                    psd = np.einsum('fkt,ftd,fte->fkde', mask, observation, observation.conj())
-                elif source_dim in (0, -3):
-                    psd = np.einsum('kft,ftd,fte->kfde', mask, observation, observation.conj())
-                else:
-                    raise NameError('ToDo: Implement!')
-            else:
-                raise NameError('ToDo: Implement!')
+            mask = np.rollaxis(mask, source_dim, sensor_dim)
+
+        if time_dim == -1 and sensor_dim == -2:
+            psd = np.einsum('...kt,...dt,...et->...kde', mask, observation, observation.conj())
+            if source_dim is None:
+                psd = np.squeeze(psd, axis=-3)
+        elif time_dim == -2 and sensor_dim == -1:
+            psd = np.einsum('...tk,...td,...te->...kde', mask, observation, observation.conj())
+            if source_dim is None:
+                psd = np.squeeze(psd, axis=-3)
+        else:
+            raise NotImplementedError()
+
+            # if mask.ndim == 2:
+            #     if time_dim in (-1,2) and sensor_dim in (1, -2):
+            #         psd = np.einsum('kt,dt,et->kde', mask, observation, observation.conj())
+            #     elif sensor_dim in (-1,2) and time_dim in (1, -2):
+            #         psd = np.einsum('tk,td,te->kde', mask, observation, observation.conj())
+            #     else:
+            #         raise NotImplementedError()
+            #     if source_dim == None:
+            #         psd = np.squeeze(psd, axis=0)
+            #
+            # elif mask.ndim == 3:
+            #     if time_dim in (-1,2) and sensor_dim in (1, -2):
+            #         if source_dim in (1, -2):
+            #             psd = np.einsum('fkt,fdt,fet->fkde', mask, observation, observation.conj())
+            #         elif source_dim in (0, -3):
+            #             psd = np.einsum('kft,fdt,fet->kfde', mask, observation, observation.conj())
+            #         else:
+            #             raise NotImplementedError()
+            #     elif sensor_dim in (-1,2) and time_dim in (1, -2):
+            #         if source_dim in (1, -2):
+            #             psd = np.einsum('fkt,ftd,fte->fkde', mask, observation, observation.conj())
+            #         elif source_dim in (0, -3):
+            #             psd = np.einsum('kft,ftd,fte->kfde', mask, observation, observation.conj())
+            #         else:
+            #             raise NotImplementedError()
+            #     else:
+            #         raise NotImplementedError()
+            # else:
+            #     raise NotImplementedError()
 
     return psd
 
@@ -106,6 +138,7 @@ def get_pca_vector_old(target_psd_matrix):
         beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
     return beamforming_vector
 
+
 def get_pca_vector(target_psd_matrix):
     """
     Returns the beamforming vector of a PCA beamformer.
@@ -117,7 +150,7 @@ def get_pca_vector(target_psd_matrix):
     shape = target_psd_matrix.shape
 
     # Reduce independent dims to 1 independent dim
-    target_psd_matrix = np.reshape(target_psd_matrix, (-1,)+shape[-2:])
+    target_psd_matrix = np.reshape(target_psd_matrix, (-1,) + shape[-2:])
 
     # Calculate eigenvals/vecs
     eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
@@ -131,9 +164,9 @@ def get_pca_vector(target_psd_matrix):
     return beamforming_vector
 
 
-#TODO: Possible test case: Assert W^H * H = 1.
-#TODO: Make function more stable for badly conditioned noise matrices.
-#Write tests for these cases.
+# TODO: Possible test case: Assert W^H * H = 1.
+# TODO: Make function more stable for badly conditioned noise matrices.
+# Write tests for these cases.
 def get_mvdr_vector(atf_vector, noise_psd_matrix):
     """
     Returns the MVDR beamforming vector.
@@ -148,7 +181,7 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
     while atf_vector.ndim > noise_psd_matrix.ndim - 1:
         noise_psd_matrix = np.expand_dims(noise_psd_matrix, axis=0)
 
-    #Make sure matrix is hermitian
+    # Make sure matrix is hermitian
     noise_psd_matrix = 0.5 * (noise_psd_matrix + np.conj(noise_psd_matrix.swapaxes(-1, -2)))
 
     numerator = solve(noise_psd_matrix, atf_vector)
@@ -156,6 +189,7 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
     beamforming_vector = numerator / np.expand_dims(denominator, axis=-1)
 
     return beamforming_vector
+
 
 def get_mvdr_vector_old(atf_vector, noise_psd_matrix):
     """
@@ -173,8 +207,8 @@ def get_mvdr_vector_old(atf_vector, noise_psd_matrix):
     if noise_psd_matrix.ndim == 2:
         noise_psd_matrix = noise_psd_matrix[np.newaxis, :, :]
 
-    #Make sure matrix is hermitian
-    noise_psd_matrix = 1/2 * (
+    # Make sure matrix is hermitian
+    noise_psd_matrix = 1 / 2 * (
         noise_psd_matrix + noise_psd_matrix.transpose(0, 2, 1).conj())
 
     bins, sensors = atf_vector.shape
@@ -203,7 +237,7 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix):
                                         noise_psd_matrix[f, :, :])
         except np.linalg.LinAlgError:
             eigenvals, eigenvecs = eig(target_psd_matrix[f, :, :],
-                                        noise_psd_matrix[f, :, :])
+                                       noise_psd_matrix[f, :, :])
         beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
     return beamforming_vector
 
@@ -221,7 +255,7 @@ def get_lcmv_vector_old(atf_vectors, response_vector, noise_psd_matrix):
     :return: Set of beamforming vectors with shape (bins, sensors)
     """
 
-    from  scipy.linalg import solve as sci_solve
+    from scipy.linalg import solve as sci_solve
 
     if atf_vectors.ndim == 2:
         atf_vectors = atf_vectors[np.newaxis, :, :]
@@ -237,6 +271,7 @@ def get_lcmv_vector_old(atf_vectors, response_vector, noise_psd_matrix):
                                           solve(H_times_Phi_inverse_times_H, response_vector))
 
     return beamforming_vector
+
 
 def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     """
@@ -257,6 +292,7 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     beamforming_vector = np.einsum('k...d,...k->...d', Phi_inverse_times_H, temp)
 
     return beamforming_vector
+
 
 def blind_analytic_normalization(vector, noise_psd_matrix):
     bins, sensors = vector.shape
