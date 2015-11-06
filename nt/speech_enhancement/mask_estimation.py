@@ -53,6 +53,7 @@ def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1, tuple_output=F
     :return: ideal_soft_mask
 
     Examples:
+
     >>> F, T, D, K = 51, 31, 6, 2
     >>> X_all = np.random.rand(F, T, D, K)
     >>> X, N = (X_all[:, :, :, 0], X_all[:, :, :, 1])
