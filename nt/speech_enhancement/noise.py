@@ -14,7 +14,7 @@ def get_snr(X, N):
     energy_N = np.abs(np.sum(N * N.conj()))
     return 10 * np.log10(energy_X / energy_N)
 
-def set_snr(X, N, snr):
+def set_snr(X, N, snr, current_snr=None):
     """
     Set the SNR of two input images by rescaling the noise signal.
 
@@ -31,6 +31,7 @@ def set_snr(X, N, snr):
     :return: Rescaled copies of both images.
     """
 
-    current_snr = get_snr(X, N)
+    if current_snr is None:
+        current_snr = get_snr(X, N)
 
     return np.copy(X), N * 10 ** (-(snr - current_snr) / 20)
