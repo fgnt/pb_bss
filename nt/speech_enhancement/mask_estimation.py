@@ -157,7 +157,7 @@ def estimate_IBM(X, N,
     :return: (speechMask, noiseMask): tuple containing the two arrays,
         which are the masks for X and N
     """
-    (voiced, unvoiced) = _voicedUnvoicedSplitCharacteristic(X.shape[1])
+    (voiced, unvoiced) = _voicedUnvoicedSplitCharacteristic(X.shape[-1])
 
     # calculate the thresholds
     threshold = thresholdVoicedSpeech * voiced + \
@@ -169,23 +169,23 @@ def estimate_IBM(X, N,
 
     # each frequency is multiplied with another threshold
     c = np.power(10, (threshold / 10))
-    xPSD_threshold = np.divide(xPSD, c)
+    xPSD_threshold = xPSD / c
     c_new = np.power(10, (threshold_new / 10))
-    xPSD_threshold_new = np.divide(xPSD, c_new)
+    xPSD_threshold_new = xPSD / c_new
 
     nPSD = N * N.conjugate()
 
     speechMask = (xPSD_threshold > nPSD)
 
     speechMask = np.logical_and(speechMask, (xPSD_threshold > 0.005))
-    speechMask[:, 0:lowCut - 1] = 0
-    speechMask[:, highCut:len(speechMask[0])] = 0
+    speechMask[..., 0:lowCut - 1] = 0
+    speechMask[..., highCut:len(speechMask[0])] = 0
 
     noiseMask = (xPSD_threshold_new < nPSD)
 
     noiseMask = np.logical_or(noiseMask, (xPSD_threshold_new < 0.005))
-    noiseMask[:, 0: lowCut - 1] = 1
-    noiseMask[:, highCut: len(noiseMask[0])] = 1
+    noiseMask[..., 0: lowCut - 1] = 1
+    noiseMask[..., highCut: len(noiseMask[0])] = 1
 
     return (speechMask, noiseMask)
 
