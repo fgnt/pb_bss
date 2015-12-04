@@ -66,6 +66,9 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
         elif time_dim == -2 and sensor_dim == -1:
             psd = np.einsum('...td,...te->...de', observation, observation.conj())
             psd /= observation.shape[-2]
+        elif time_dim == 0 and sensor_dim == 1:
+            psd = np.einsum('td...,te...->de...', observation, observation.conj())
+            psd /= observation.shape[0]
         else:
             print('time_dim: ', time_dim)
             print('sensor_dim: ', sensor_dim)
