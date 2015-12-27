@@ -38,9 +38,9 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
 
     :param observation: Complex observations with shape (..., sensors, frames)
     :param mask: Masks with shape (bins, frames) or (..., sources, frames)
-    :param sensor_dim: change sensor diemension index (Default: -2)
-    :param source_dim: change source diemension index (Default: -2)
-    :param time_dim:  change time diemension index (Default: -1), this index must match for mask and observation
+    :param sensor_dim: change sensor dimension index (Default: -2)
+    :param source_dim: change source dimension index (Default: -2)
+    :param time_dim:  change time dimension index (Default: -1), this index must match for mask and observation
     :return: PSD matrix with shape (..., sensors, sensors) or (..., sources, sensors, sensors)
 
     Examples:
@@ -56,9 +56,6 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
     (51, 6, 6)
     """
 
-    # Select the case you have specified
-    #   normalize mask is mask is not None
-    #   calc psd with einsum
     if mask is None:
         if time_dim == -1 and sensor_dim == -2:
             psd = np.einsum('...dt,...et->...de', observation, observation.conj())
@@ -93,36 +90,6 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
                 psd = np.squeeze(psd, axis=-3)
         else:
             raise NotImplementedError()
-
-            # if mask.ndim == 2:
-            #     if time_dim in (-1,2) and sensor_dim in (1, -2):
-            #         psd = np.einsum('kt,dt,et->kde', mask, observation, observation.conj())
-            #     elif sensor_dim in (-1,2) and time_dim in (1, -2):
-            #         psd = np.einsum('tk,td,te->kde', mask, observation, observation.conj())
-            #     else:
-            #         raise NotImplementedError()
-            #     if source_dim == None:
-            #         psd = np.squeeze(psd, axis=0)
-            #
-            # elif mask.ndim == 3:
-            #     if time_dim in (-1,2) and sensor_dim in (1, -2):
-            #         if source_dim in (1, -2):
-            #             psd = np.einsum('fkt,fdt,fet->fkde', mask, observation, observation.conj())
-            #         elif source_dim in (0, -3):
-            #             psd = np.einsum('kft,fdt,fet->kfde', mask, observation, observation.conj())
-            #         else:
-            #             raise NotImplementedError()
-            #     elif sensor_dim in (-1,2) and time_dim in (1, -2):
-            #         if source_dim in (1, -2):
-            #             psd = np.einsum('fkt,ftd,fte->fkde', mask, observation, observation.conj())
-            #         elif source_dim in (0, -3):
-            #             psd = np.einsum('kft,ftd,fte->kfde', mask, observation, observation.conj())
-            #         else:
-            #             raise NotImplementedError()
-            #     else:
-            #         raise NotImplementedError()
-            # else:
-            #     raise NotImplementedError()
 
     return psd
 
@@ -311,6 +278,12 @@ def blind_analytic_normalization(vector, noise_psd_matrix):
 
 
 def apply_beamforming_vector(vector, mix):
+    """Applies a beamforming vector such that the sensor dimension disappears.
+
+    :param vector: Beamforming vector with dimensions ..., sensors
+    :param mix: Observed signal with dimensions ..., sensors, time-frames
+    :return: A beamformed signal with dimensions ..., time-frames
+    """
     return np.einsum('...a,...at->...t', vector.conj(), mix)
 
 
