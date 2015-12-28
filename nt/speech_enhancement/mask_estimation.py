@@ -1,48 +1,50 @@
 import numpy as np
 
 
-def _voicedUnvoicedSplitCharacteristic(numberOfFreqFrames):
-    SplitBin = 200
-    TransitionWidth = 99
-    FastTransitionWidth = 5
-    LowBin = 4
-    HighBin = 500
+def _voiced_unvoiced_split_characteristic(number_of_frequency_bins):
+    split_bin = 200
+    transition_width = 99
+    fast_transition_width = 5
+    low_bin = 4
+    high_bin = 500
 
-    a = np.arange(0, TransitionWidth)  # Hilfsvariable
-    a = np.pi / (TransitionWidth - 1) * a
-    Transition = 0.5 * (1 + np.cos(a))
+    a = np.arange(0, transition_width)
+    a = np.pi / (transition_width - 1) * a
+    transition = 0.5 * (1 + np.cos(a))
 
-    b = np.arange(0, FastTransitionWidth)
-    b = np.pi / (FastTransitionWidth - 1) * b
-    FastTransition = (np.cos(b) + 1) / 2
+    b = np.arange(0, fast_transition_width)
+    b = np.pi / (fast_transition_width - 1) * b
+    fast_transition = (np.cos(b) + 1) / 2
 
-    # TransitionVoicedStart = round(SplitBin-TransitionWidth/2);
-    TransitionVoicedStart = int(SplitBin - TransitionWidth / 2)
-    voiced = np.ones(numberOfFreqFrames)  # gibt Array von Einsen der Laenge F
-
-    # High Edge
-    voiced[TransitionVoicedStart - 1: (
-        TransitionVoicedStart + TransitionWidth - 1)] = Transition
-    voiced[TransitionVoicedStart - 1 + TransitionWidth: len(voiced)] = 0
-
-    # Low Edge
-    voiced[0: LowBin] = 0
-    voiced[LowBin - 1: (LowBin + FastTransitionWidth - 1)] = 1 - FastTransition
-
-    # Low Edge
-    unvoiced = np.ones(numberOfFreqFrames)
-    unvoiced[TransitionVoicedStart - 1: (
-        TransitionVoicedStart + TransitionWidth - 1)] = 1 - Transition
-    unvoiced[0: (TransitionVoicedStart)] = 0
+    transition_voiced_start = int(split_bin - transition_width / 2)
+    voiced = np.ones(number_of_frequency_bins)
 
     # High Edge
-    unvoiced[HighBin - 1: (len(unvoiced))] = 0
-    unvoiced[HighBin - 1: (HighBin + FastTransitionWidth - 1)] = FastTransition
+    voiced[transition_voiced_start - 1: (
+        transition_voiced_start + transition_width - 1)] = transition
+    voiced[transition_voiced_start - 1 + transition_width: len(voiced)] = 0
+
+    # Low Edge
+    voiced[0: low_bin] = 0
+    voiced[low_bin - 1: (low_bin + fast_transition_width - 1)] = \
+        1 - fast_transition
+
+    # Low Edge
+    unvoiced = np.ones(number_of_frequency_bins)
+    unvoiced[transition_voiced_start - 1: (
+        transition_voiced_start + transition_width - 1)] = 1 - transition
+    unvoiced[0: (transition_voiced_start)] = 0
+
+    # High Edge
+    unvoiced[high_bin - 1: (len(unvoiced))] = 0
+    unvoiced[
+    high_bin - 1: (high_bin + fast_transition_width - 1)] = fast_transition
 
     return (voiced, unvoiced)
 
 
-def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1, tuple_output=False):
+def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1,
+                           tuple_output=False):
     """
     :param input: list of array_like or array_like
         These are the arrays like X, N or X_all.
@@ -79,25 +81,18 @@ def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1, tuple_output=F
         num_dims_max = np.max([i.ndim for i in input])
         num_dims_min = np.min([i.ndim for i in input])
         if num_dims_max != num_dims_min:
-            assert num_dims_max == num_dims_min+1
+            assert num_dims_max == num_dims_min + 1
             # Expand dims, if necessary
-            input = [np.expand_dims(i, source_dim) if i.ndim == num_dims_min else i for i in input]
+            input = [
+                np.expand_dims(i, source_dim) if i.ndim == num_dims_min else i
+                for i in input]
         else:
-            input = [np.expand_dims(i, num_dims_min+1) for i in input]
+            input = [np.expand_dims(i, num_dims_min + 1) for i in input]
         X = np.concatenate(input, axis=source_dim)
     else:
         X = input[0]
 
-    # Permute if nessesary
-    # if feature_dim != -2 or source_dim != -1:
-    #     r = list(range(np.ndim(X)))
-    #     r[feature_dim], r[-2] = r[-2], r[feature_dim]
-    #     r[source_dim], r[-1] = r[-1], r[source_dim]
-    #     X = np.transpose(X, axes=r)
-
-
     power = np.sum(X.conjugate() * X, axis=feature_dim, keepdims=True)
-    #power = np.einsum('...dk,...dk->...k', X.conjugate(), X)
     mask = (power / np.sum(power, axis=source_dim, keepdims=True)).real
 
     if not tuple_output:
@@ -128,42 +123,42 @@ def quantile_mask(observations, quantile_fraction=0.98, quantile_weight=0.999):
     """
     power = (observations * observations.conj())
     sorted_power = np.sort(power, axis=None)[::-1]
-    lorenz_function = np.cumsum(sorted_power)/np.sum(sorted_power)
-    threshold = np.min(sorted_power[lorenz_function<quantile_fraction])
+    lorenz_function = np.cumsum(sorted_power) / np.sum(sorted_power)
+    threshold = np.min(sorted_power[lorenz_function < quantile_fraction])
     mask = power > threshold
     mask = 0.5 + quantile_weight * (mask - 0.5)
     return mask
 
 
 def estimate_IBM(X, N,
-                    thresholdUnvoicedSpeech=5,  # default values
-                    thresholdVoicedSpeech=0,
-                    thresholdUnvoicedNoise=-10,
-                    thresholdVoicedNoise=-10,
-                    lowCut=5,
-                    highCut=500):
+                 threshold_unvoiced_speech=5,
+                 threshold_voiced_speech=0,
+                 threshold_unvoiced_noise=-10,
+                 threshold_voiced_noise=-10,
+                 low_cut=5,
+                 high_cut=500):
     """Estimate an ideal binary mask given the speech and noise spectrum.
 
-    :param X: speech signal in STFT domain with shape (Frames, Frequency-Bins)
-    :param N: noise signal in STFT domain with shape (Frames, Frequency-Bins)
-    :param thresholdUnvoicedSpeech:
-    :param thresholdVoicedSpeech:
-    :param thresholdUnvoicedNoise:
-    :param thresholdVoicedNoise:
-    :param lowCut: all values with frequency<lowCut are set to 0 in the
-        speechMask ans set to 1 in the noiseMask
-    :param highCut: all values with frequency>highCut are set to 0 in the
-        speechMask ans set to 1 in the noiseMask
-    :return: (speechMask, noiseMask): tuple containing the two arrays,
+    :param X: speech signal in STFT domain with shape (frames, frequency-bins)
+    :param N: noise signal in STFT domain with shape (frames, frequency-bins)
+    :param threshold_unvoiced_speech:
+    :param threshold_voiced_speech:
+    :param threshold_unvoiced_noise:
+    :param threshold_voiced_noise:
+    :param low_cut: all values with frequency<low_cut are set to 0 in the
+        speech mask ans set to 1 in the noise mask
+    :param high_cut: all values with frequency>high_cut are set to 0 in the
+        speech mask ans set to 1 in the noise mask
+    :return: (speech mask, noise mask): tuple containing the two arrays,
         which are the masks for X and N
     """
-    (voiced, unvoiced) = _voicedUnvoicedSplitCharacteristic(X.shape[-1])
+    (voiced, unvoiced) = _voiced_unvoiced_split_characteristic(X.shape[-1])
 
     # calculate the thresholds
-    threshold = thresholdVoicedSpeech * voiced + \
-                thresholdUnvoicedSpeech * unvoiced
-    threshold_new = thresholdUnvoicedNoise * voiced + \
-                    thresholdVoicedNoise * unvoiced
+    threshold = threshold_voiced_speech * voiced + \
+                threshold_unvoiced_speech * unvoiced
+    threshold_new = threshold_unvoiced_noise * voiced + \
+                    threshold_voiced_noise * unvoiced
 
     xPSD = X * X.conjugate()  # |X|^2 = Power-Spectral-Density
 
@@ -178,55 +173,13 @@ def estimate_IBM(X, N,
     speechMask = (xPSD_threshold > nPSD)
 
     speechMask = np.logical_and(speechMask, (xPSD_threshold > 0.005))
-    speechMask[..., 0:lowCut - 1] = 0
-    speechMask[..., highCut:len(speechMask[0])] = 0
+    speechMask[..., 0:low_cut - 1] = 0
+    speechMask[..., high_cut:len(speechMask[0])] = 0
 
     noiseMask = (xPSD_threshold_new < nPSD)
 
     noiseMask = np.logical_or(noiseMask, (xPSD_threshold_new < 0.005))
-    noiseMask[..., 0: lowCut - 1] = 1
-    noiseMask[..., highCut: len(noiseMask[0])] = 1
+    noiseMask[..., 0: low_cut - 1] = 1
+    noiseMask[..., high_cut: len(noiseMask[0])] = 1
 
     return (speechMask, noiseMask)
-
-
-if __name__ == '__main__':
-    import nt.testing as tc
-
-    '''
-    ToDo:
-        Move this to nt.tests
-    Test for simple_ideal_soft_mask
-    '''
-
-    F, T, D, K = 51, 31, 6, 2
-    X_all = np.random.rand(F, T, D, K) + 1j * np.random.rand(F, T, D, K)
-    X, N = (X_all[:, :, :, 0], X_all[:, :, :, 1])
-
-    def test1():
-        M1 = simple_ideal_soft_mask(X_all)
-        tc.assert_equal(M1.shape, (51, 31, 2))
-        tc.assert_almost_equal(np.sum(M1, axis=2), 1)
-        return M1
-
-    def test2():
-        M2 = simple_ideal_soft_mask(X, N)
-        tc.assert_equal(M2.shape, (51, 31, 2))
-        tc.assert_almost_equal(np.sum(M2, axis=2), 1)
-        return M2
-
-    tc.assert_equal(test1(), test2())
-
-    def test3():
-        M3 = simple_ideal_soft_mask(X_all, N)
-        tc.assert_equal(M3.shape, (51, 31, 3))
-        tc.assert_almost_equal(np.sum(M3, axis=2), 1)
-    test3()
-
-    def test4():
-        M4 = simple_ideal_soft_mask(X, N, feature_dim=-3)
-        tc.assert_equal(M4.shape, (51, 6, 2))
-        tc.assert_almost_equal(np.sum(M4, axis=2), 1)
-    test4()
-
-
