@@ -295,7 +295,7 @@ def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
     mix = mix.T
     if noise_mask is not None:
         noise_mask = noise_mask.T
-    if noise_mask is not None:
+    if target_mask is not None:
         target_mask = target_mask.T
 
     if target_mask is None:
@@ -317,3 +317,64 @@ def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
     output = apply_beamforming_vector(W_gev, mix)
 
     return output.T
+
+
+def pca_wrapper_on_masks(mix, noise_mask=None, target_mask=None):
+    if noise_mask is None and target_mask is None:
+        raise ValueError('At least one mask needs to be present.')
+
+    mix = mix.T
+    if noise_mask is not None:
+        noise_mask = noise_mask.T
+    if target_mask is not None:
+        target_mask = target_mask.T
+
+    if target_mask is None:
+        target_mask = np.clip(1 - noise_mask, 1e-6, 1)
+
+    bins, sensors, frames = mix.shape
+
+    target_psd_matrix = get_power_spectral_density_matrix(mix, target_mask)
+
+    # Beamforming vector
+    W_pca = get_pca_vector(target_psd_matrix)
+
+    output = apply_beamforming_vector(W_pca, mix)
+
+    return output.T
+
+
+def pca_mvdr_wrapper_on_masks(mix, noise_mask=None, target_mask=None, regularization=None):
+    if noise_mask is None and target_mask is None:
+        raise ValueError('At least one mask needs to be present.')
+
+    mix = mix.T
+    if noise_mask is not None:
+        noise_mask = noise_mask.T
+    if target_mask is not None:
+        target_mask = target_mask.T
+
+    if target_mask is None:
+        target_mask = np.clip(1 - noise_mask, 1e-6, 1)
+    if noise_mask is None:
+        noise_mask = np.clip(1 - target_mask, 1e-6, 1)
+
+    bins, sensors, frames = mix.shape
+
+    target_psd_matrix = get_power_spectral_density_matrix(mix, target_mask)
+    noise_psd_matrix = get_power_spectral_density_matrix(mix, noise_mask)
+
+    if regularization is not None:
+        noise_psd_matrix += np.tile(
+            regularization * np.eye(noise_psd_matrix.shape[1]),
+            (noise_psd_matrix.shape[0], 1, 1)
+        )
+
+    # Beamforming vector
+    W_pca = get_pca_vector(target_psd_matrix)
+    W_mvdr = get_mvdr_vector(W_pca, noise_psd_matrix)
+
+    output = apply_beamforming_vector(W_pca, mix)
+
+    return output.T
+
