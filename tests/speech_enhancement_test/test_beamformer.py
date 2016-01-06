@@ -4,15 +4,15 @@ from os import path
 import numpy as np
 
 import nt.testing as tc
-from nt.speech_enhancement.mask_estimation import estimate_IBM as ideal_binary_mask
-from nt.speech_enhancement.beamformer import get_power_spectral_density_matrix
-from nt.speech_enhancement.beamformer import get_pca_vector
-from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_gev_vector
 from nt.speech_enhancement.beamformer import get_lcmv_vector
+from nt.speech_enhancement.beamformer import get_mvdr_vector
+from nt.speech_enhancement.beamformer import get_pca_vector
+from nt.speech_enhancement.beamformer import get_power_spectral_density_matrix
+from nt.speech_enhancement.mask_estimation import estimate_IBM as ideal_binary_mask
+from nt.speech_enhancement.mask_estimation import simple_ideal_soft_mask
 from nt.utils.math_ops import vector_H_vector
 from nt.utils.matlab import Mlab, matlab_test
-from nt.speech_enhancement.mask_estimation import simple_ideal_soft_mask
 
 
 # uncomment, if you want to test matlab functions
@@ -38,6 +38,13 @@ def rand(*shape, data_type):
 class TestBeamformerMethods(unittest.TestCase):
     @classmethod
     def setUpClass(self):
+        """
+        F : bins, number of frequencies
+        T : time
+        D : sensors, number of microphones
+        K : sources, number of speakers
+        :return:
+        """
         datafile = path.join(path.dirname(path.realpath(__file__)), 'data.npz')
         datafile_multi_speaker = path.join(path.dirname(path.realpath(__file__)), 'data_multi_speaker.npz')
 
@@ -70,17 +77,16 @@ class TestBeamformerMethods(unittest.TestCase):
             self.data_multi_speaker = {'X': data['X'], 'Y': data['Y'], 'N': data['N']}
 
         X_mask, N_mask = simple_ideal_soft_mask(X, N, source_dim=0, feature_dim=-2, tuple_output=True)
+        # (K, F, T), (F, T)
 
-        Phi_XX = get_power_spectral_density_matrix(Y, X_mask, source_dim=0)  # K F D D
-        Phi_NN = get_power_spectral_density_matrix(Y, N_mask)  # F D D
+        Phi_XX = get_power_spectral_density_matrix(Y, X_mask, source_dim=0)  # (K F D D)
+        Phi_NN = get_power_spectral_density_matrix(Y, N_mask)  # (F D D)
 
-        W_pca = get_pca_vector(Phi_XX)
-        W_mvdr = get_mvdr_vector(W_pca, Phi_NN)
+        W_pca = get_pca_vector(Phi_XX)  # (K, F, D)
+        W_mvdr = get_mvdr_vector(W_pca, Phi_NN)  # (K, F, D)
         W_gev = np.zeros_like(W_mvdr)
-        print(Phi_XX.shape)
-        print(W_gev.shape)
-        W_gev[0, :, :] = get_gev_vector(Phi_XX[0, :, :, :], Phi_NN)
-        W_gev[1, :, :] = get_gev_vector(Phi_XX[1, :, :, :], Phi_NN)
+        W_gev[0, ...] = get_gev_vector(Phi_XX[0, ...], Phi_NN)
+        W_gev[1, ...] = get_gev_vector(Phi_XX[1, ...], Phi_NN)
 
         W_lcmv = get_lcmv_vector(W_pca, [1, 0], Phi_NN)
 
