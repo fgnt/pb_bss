@@ -39,9 +39,10 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
     :param observation: Complex observations with shape (..., sensors, frames)
     :param mask: Masks with shape (bins, frames) or (..., sources, frames)
     :param sensor_dim: change sensor dimension index (Default: -2)
-    :param source_dim: change source dimension index (Default: -2)
+    :param source_dim: change source dimension index (Default: -2), source_dim = 0 means mask shape (sources, ..., frames)
     :param time_dim:  change time dimension index (Default: -1), this index must match for mask and observation
-    :return: PSD matrix with shape (..., sensors, sensors) or (..., sources, sensors, sensors)
+    :return: PSD matrix with shape (..., sensors, sensors) or (..., sources, sensors, sensors) or
+        (sources, ..., sensors, sensors) if source_dim % observation.ndim < -2 respectively mask shape (sources, ..., frames)
 
     Examples:
     >>> F, T, D, K = 51, 31, 6, 2
@@ -56,40 +57,41 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
     (51, 6, 6)
     """
 
+    # ensure negative dim indexes
+    sensor_dim, source_dim, time_dim = (d % observation.ndim - observation.ndim for d in
+                                        (sensor_dim, source_dim, time_dim))
+
+    # ensure observation shape (..., sensors, frames)
+    obs_transpose = [i for i in range(-observation.ndim, 0) if i not in [sensor_dim, time_dim]] + [sensor_dim, time_dim]
+    observation = observation.transpose(obs_transpose)
+
     if mask is None:
-        if time_dim == -1 and sensor_dim == -2:
-            psd = np.einsum('...dt,...et->...de', observation, observation.conj())
-            psd /= observation.shape[-1]
-        elif time_dim == -2 and sensor_dim == -1:
-            psd = np.einsum('...td,...te->...de', observation, observation.conj())
-            psd /= observation.shape[-2]
-        elif time_dim == 0 and sensor_dim == 1:
-            psd = np.einsum('td...,te...->de...', observation, observation.conj())
-            psd /= observation.shape[0]
-        else:
-            print('time_dim: ', time_dim)
-            print('sensor_dim: ', sensor_dim)
-            print('observation.shape: ', observation.shape)
-            raise NotImplementedError()
+        psd = np.einsum('...dt,...et->...de', observation, observation.conj())
+
+        # normalize
+        psd /= observation.shape[-1]
+
     else:
+        # normalize
+        if mask.dtype == np.bool:
+            mask = np.asfarray(mask)
+
         mask /= np.maximum(np.sum(mask, axis=time_dim, keepdims=True), 1e-10)
 
         if mask.ndim + 1 == observation.ndim:
-            mask = np.expand_dims(mask, sensor_dim)
-            source_dim = None
+            mask = np.expand_dims(mask, -2)
+            psd = np.einsum('...dt,...et->...de', mask * observation, observation.conj())
         else:
-            mask = np.rollaxis(mask, source_dim, sensor_dim)
+            # ensure shape (..., sources, frames)
+            mask_transpose = [i for i in range(-observation.ndim, 0) if i not in [source_dim, time_dim]] + [source_dim,
+                                                                                                            time_dim]
+            mask = mask.transpose(mask_transpose)
 
-        if time_dim == -1 and sensor_dim == -2:
             psd = np.einsum('...kt,...dt,...et->...kde', mask, observation, observation.conj())
-            if source_dim is None:
-                psd = np.squeeze(psd, axis=-3)
-        elif time_dim == -2 and sensor_dim == -1:
-            psd = np.einsum('...tk,...td,...te->...kde', mask, observation, observation.conj())
-            if source_dim is None:
-                psd = np.squeeze(psd, axis=-3)
-        else:
-            raise NotImplementedError()
+
+            if source_dim < -2:
+                # assume PSD shape (sources, ..., sensors, sensors) is interested
+                psd = np.rollaxis(psd, -3, source_dim % observation.ndim)
 
     return psd
 
@@ -377,4 +379,3 @@ def pca_mvdr_wrapper_on_masks(mix, noise_mask=None, target_mask=None, regulariza
     output = apply_beamforming_vector(W_pca, mix)
 
     return output.T
-
