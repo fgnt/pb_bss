@@ -32,8 +32,7 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
     """
     Calculates the weighted power spectral density matrix.
     It's also called covariance matrix.
-
-    With the *_dim parameters you can change the sort of the dims of the observation and mask.
+    With the dim parameters you can change the sort of the dims of the observation and mask.
     But not every combination is allowed.
 
     :param observation: Complex observations with shape (..., sensors, frames)
@@ -44,7 +43,8 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
     :return: PSD matrix with shape (..., sensors, sensors) or (..., sources, sensors, sensors) or
         (sources, ..., sensors, sensors) if source_dim % observation.ndim < -2 respectively mask shape (sources, ..., frames)
 
-    Examples:
+    Examples
+    --------
     >>> F, T, D, K = 51, 31, 6, 2
     >>> X = np.random.randn(F, D, T) + 1j * np.random.randn(F, D, T)
     >>> mask = np.random.randn(F, K, T)
@@ -99,6 +99,7 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2, sou
 def get_pca_vector_old(target_psd_matrix):
     """
     Returns the beamforming vector of a PCA beamformer.
+
     :param target_psd_matrix: Target PSD matrix
         with shape (bins, sensors, sensors)
     :return: Set of beamforming vectors with shape (bins, sensors)
@@ -114,6 +115,7 @@ def get_pca_vector_old(target_psd_matrix):
 def get_pca_vector(target_psd_matrix):
     """
     Returns the beamforming vector of a PCA beamformer.
+
     :param target_psd_matrix: Target PSD matrix
         with shape (..., sensors, sensors)
     :return: Set of beamforming vectors with shape (..., sensors)
@@ -195,6 +197,7 @@ def get_mvdr_vector_old(atf_vector, noise_psd_matrix):
 def get_gev_vector(target_psd_matrix, noise_psd_matrix):
     """
     Returns the GEV beamforming vector.
+
     :param target_psd_matrix: Target PSD matrix
         with shape (bins, sensors, sensors)
     :param noise_psd_matrix: Noise PSD matrix
