@@ -9,7 +9,9 @@ def sxr(S, X):
     :param X: X power
     :return: SXR
     """
-    return 10 * numpy.log10(S/X)
+    with numpy.errstate(divide='ignore'):
+        result = 10 * numpy.log10(S/X)
+    return result
 
 
 def input_sxr(images, noise, average_sources=True):
@@ -95,7 +97,7 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True):
     :return SNR: #Sources times 1 vector of Signal to Noise Ratios
    """
 
-    # assume, that the maximum number of speakers is smaler than 10
+    # Assume, that the maximum number of speakers is smaller than 10.
 
     assert(image_contribution.shape[1] < 10)
     assert(image_contribution.shape[2] < 10)
