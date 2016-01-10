@@ -46,4 +46,4 @@ class TestBeamformerWrapper(unittest.TestCase):
         W_gev = get_gev_vector(Phi_XX, Phi_NN)
         W_pca = get_pca_vector(Phi_XX)
 
-        tc.assert_equal(cos_similarity(W_gev, W_pca), 1.0)
+        tc.assert_allclose(cos_similarity(W_gev, W_pca), 1.0, atol=1e-6)
