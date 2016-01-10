@@ -1,27 +1,13 @@
 import unittest
+from nt.utils.random import uniform, hermitian
+import nt.testing as tc
+from nt.utils.math_ops import cos_similarity
 import numpy as np
 
 from nt.speech_enhancement.beamformer import get_gev_vector
 from nt.speech_enhancement.beamformer import get_lcmv_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_pca_vector
-
-
-def rand(*shape, data_type=np.complex128):
-    if not shape:
-        shape = (1,)
-    elif isinstance(shape[0], tuple):
-        shape = shape[0]
-
-    def uniform(data_type_local):
-        return np.random.uniform(-1, 1, shape).astype(data_type_local)
-
-    if data_type in (np.float32, np.float64):
-        return uniform(data_type)
-    elif data_type is np.complex64:
-        return uniform(np.float32) + 1j * uniform(np.float32)
-    elif data_type is np.complex128:
-        return uniform(np.float64) + 1j * uniform(np.float64)
 
 
 class TestBeamformerWrapper(unittest.TestCase):
@@ -36,22 +22,28 @@ class TestBeamformerWrapper(unittest.TestCase):
 
     def test_gev_dimensions(self):
         for shape in self.shapes:
-            output = get_gev_vector(rand(shape[0]), rand(shape[0]))
+            output = get_gev_vector(uniform(shape[0]), uniform(shape[0]))
             assert output.shape == shape[1]
 
     def test_pca_dimensions(self):
         for shape in self.shapes:
-            output = get_pca_vector(rand(shape[0]))
+            output = get_pca_vector(uniform(shape[0]))
             assert output.shape == shape[1]
 
     def test_mvdr_dimensions(self):
         for shape in self.shapes:
-            output = get_mvdr_vector(rand(shape[1]), rand(shape[0]))
+            output = get_mvdr_vector(uniform(shape[1]), uniform(shape[0]))
             assert output.shape == shape[1]
 
     def test_lcmv_dimensions(self):
         K, F, D = 2, 3, 6
-        output = get_lcmv_vector(rand((K, F, D)), [1, 0], rand((F, D, D)))
+        output = get_lcmv_vector(uniform((K, F, D)), [1, 0], uniform((F, D, D)))
         assert output.shape == (F, D)
 
+    def test_gev_falls_back_to_pca_for_unity_noise_matrix(self):
+        Phi_XX = hermitian(6, 6)
+        Phi_NN = np.identity(6)
+        W_gev = get_gev_vector(Phi_XX, Phi_NN)
+        W_pca = get_pca_vector(Phi_XX)
 
+        tc.assert_equal(cos_similarity(W_gev, W_pca), 1.0)
