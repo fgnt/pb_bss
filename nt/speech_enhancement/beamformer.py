@@ -148,11 +148,13 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix):
     """
 
     assert target_psd_matrix.shape == noise_psd_matrix.shape
+    assert target_psd_matrix.shape[-2] == target_psd_matrix.shape[-1]
+
+    sensors = target_psd_matrix.shape[-1]
 
     original_shape = target_psd_matrix.shape
-    sensors = original_shape[-1]
     target_psd_matrix = target_psd_matrix.reshape((-1, sensors, sensors))
-    noise_psd_matrix = target_psd_matrix.reshape((-1, sensors, sensors))
+    noise_psd_matrix = noise_psd_matrix.reshape((-1, sensors, sensors))
 
     bins = target_psd_matrix.shape[0]
     beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
