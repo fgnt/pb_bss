@@ -1,4 +1,5 @@
-import numpy as np
+import numpy
+
 
 def get_snr(X, N):
     """
@@ -10,9 +11,10 @@ def get_snr(X, N):
     :param N: STFT-signal of noise image.
     :return: SNR of STFT signals in dB.
     """
-    energy_X = np.abs(np.sum(X * X.conj()))
-    energy_N = np.abs(np.sum(N * N.conj()))
-    return 10 * np.log10(energy_X / energy_N)
+    energy_X = numpy.sum(numpy.abs(X * X.conj()))
+    energy_N = numpy.sum(numpy.abs(N * N.conj()))
+    return 10 * numpy.log10(energy_X / energy_N)
+
 
 def set_snr(X, N, snr, current_snr=None):
     """
@@ -34,4 +36,4 @@ def set_snr(X, N, snr, current_snr=None):
     if current_snr is None:
         current_snr = get_snr(X, N)
 
-    return np.copy(X), N * 10 ** (-(snr - current_snr) / 20)
+    return numpy.copy(X), N * 10 ** (-(snr - current_snr) / 20)
