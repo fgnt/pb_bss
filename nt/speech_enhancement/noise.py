@@ -3,13 +3,15 @@ import numpy
 
 def get_snr(X, N):
     """
-    Return SNR of STFT signals in dB.
+    Return SNR of time signals or STFT signals in dB.
     You can use any input dimension. It will always create the mean SNR of all
     channels, frames, ...
 
-    :param X: STFT-signal of target image.
-    :param N: STFT-signal of noise image.
-    :return: SNR of STFT signals in dB.
+    The SNR in time domain or STFT domain is almost equal.
+
+    :param X: Signal of target image.
+    :param N: Signal of noise image.
+    :return: SNR of time signals or STFT signals in dB.
     """
     energy_X = numpy.sum(numpy.abs(X * X.conj()))
     energy_N = numpy.sum(numpy.abs(N * N.conj()))
