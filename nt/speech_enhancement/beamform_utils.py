@@ -1,6 +1,8 @@
 import numpy
+from nt.transform.module_stft import get_stft_center_frequencies
 
-def _angle_to_ratation_matrix(rotation_angles):
+
+def _angle_to_rotation_matrix(rotation_angles):
 
     azimuth = rotation_angles[0]
     elevation = rotation_angles[1]
@@ -20,23 +22,46 @@ def _angle_to_ratation_matrix(rotation_angles):
     return numpy.dot(rotate_y, rotate_z)
 
 
-def steering_vector(model_TDOA, stft_size, sampling_rate,
-                    model_attenuation=numpy.array(1.),
-                    normalize=False):
-    frequency = numpy.arange(stft_size//2) * sampling_rate / stft_size
-    frequency = frequency[:, None, None]
-    model_TDOA = model_TDOA[None, :, :]
-    model_mode_vectors = numpy.exp(-2. * numpy.pi * 1j * frequency * model_TDOA)
-    model_mode_vectors *= numpy.atleast_3d(model_attenuation)
+def get_steering_vector(
+        time_difference_of_arrival,
+        stft_size=1024,
+        sample_rate=16000,
+        normalize=False
+):
+    center_frequencies = get_stft_center_frequencies(stft_size, sample_rate)
+    steering_vector = numpy.exp(
+        -2j * numpy.pi *
+        center_frequencies[numpy.newaxis, numpy.newaxis, :] *
+        time_difference_of_arrival[:, :, numpy.newaxis]
+    )
     if normalize:
-        model_mode_vectors /= \
-            numpy.sqrt(numpy.sum(
-                model_mode_vectors.conj() * model_mode_vectors, axis=1))
-    return model_mode_vectors
+        steering_vector /= numpy.sqrt(numpy.sum(
+            steering_vector.conj() * steering_vector, axis=1
+        ))
 
 
-def get_farfield_TDOA(source_angles, sensor_positions, reference_channel=1,
-                      sound_velocity=343):
+def get_nearfield_time_of_flight(source_positions, sensor_positions,
+                                 sound_velocity=343):
+    """ Calculates exact time of flight in seconds without farfield assumption.
+
+    :param source_positions: Array of 3D source position column vectors.
+    :param sensor_positions: Array of 3D sensor position column vectors.
+    :param sound_velocity: Speed of sound in m/s.
+    :return: Time of flight in s.
+    """
+    # TODO: Check, if this works for any number of sources and sensors.
+    difference = source_positions[:, :, numpy.newaxis]
+    difference -= sensor_positions[:, numpy.newaxis, :]
+    difference = numpy.linalg.norm(difference, axis=0)
+    return difference / sound_velocity
+
+
+def get_farfield_time_difference_of_arrival(
+        source_angles,
+        sensor_positions,
+        reference_channel=1,
+        sound_velocity=343
+):
     """ Calculates the far field time difference of arrival
 
     :param source_angles: Impinging angle of the planar waves (assumes an
@@ -45,7 +70,7 @@ def get_farfield_TDOA(source_angles, sensor_positions, reference_channel=1,
     :param sensor_positions: Sensor positions
     :type sensor_positions: 3xM matrix, where M is the number of sensors and
         3 are the cartesian dimensions
-    :param reference_channel: Reference microphone
+    :param reference_channel: Reference microphone starting from index=0.
     :param sound_velocity: Speed of sound
     :return: Time difference of arrival
     """
@@ -53,18 +78,22 @@ def get_farfield_TDOA(source_angles, sensor_positions, reference_channel=1,
     sensors = sensor_positions.shape[1]
     angles = source_angles.shape[1]
 
-    sensor_distance_vector = sensor_positions - \
-                             sensor_positions[:, reference_channel - 1, None]
+    sensor_distance_vector = (
+        sensor_positions - sensor_positions[:, reference_channel, None]
+    )
     source_direction_vector = numpy.zeros([3, angles])
     for k in range(angles):
-        source_direction_vector[:, k] = numpy.dot(-_angle_to_ratation_matrix(
-            source_angles[:, k]
-        ), numpy.eye(N=3, M=1))[:, 0]
+        source_direction_vector[:, k] = numpy.dot(
+            -_angle_to_rotation_matrix(source_angles[:, k]),
+            numpy.eye(N=3, M=1)
+        )[:, 0]
 
     projected_distance = numpy.zeros([sensors, angles])
     for s in range(sensors):
-        projected_distance[s, :] = numpy.dot(sensor_distance_vector[:, s],
-                                             source_direction_vector)
+        projected_distance[s, :] = numpy.dot(
+            sensor_distance_vector[:, s],
+            source_direction_vector
+        )
 
     return projected_distance / sound_velocity
 
