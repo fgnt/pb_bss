@@ -1,5 +1,6 @@
 import numpy
 from nt.transform.module_stft import get_stft_center_frequencies
+from numpy.linalg import norm
 
 
 def _angle_to_rotation_matrix(rotation_angles):
@@ -35,9 +36,8 @@ def get_steering_vector(
         time_difference_of_arrival[:, :, numpy.newaxis]
     )
     if normalize:
-        steering_vector /= numpy.sqrt(numpy.sum(
-            steering_vector.conj() * steering_vector, axis=1
-        ))
+        steering_vector /= norm(steering_vector, axis=1, keepdims=True)
+    return steering_vector
 
 
 def get_nearfield_time_of_flight(source_positions, sensor_positions,
@@ -50,10 +50,13 @@ def get_nearfield_time_of_flight(source_positions, sensor_positions,
     :return: Time of flight in s.
     """
     # TODO: Check, if this works for any number of sources and sensors.
-    difference = source_positions[:, :, numpy.newaxis]
-    difference -= sensor_positions[:, numpy.newaxis, :]
+
+    assert source_positions.shape[0] == 3
+    assert sensor_positions.shape[0] == 3
+
+    difference = source_positions[:, :, None] - sensor_positions[:, None, :]
     difference = numpy.linalg.norm(difference, axis=0)
-    return difference / sound_velocity
+    return numpy.asarray(difference / sound_velocity)
 
 
 def get_farfield_time_difference_of_arrival(
