@@ -20,7 +20,7 @@ def get_snr(X, N):
 
 def set_snr(X, N, snr, current_snr=None):
     """
-    Set the SNR of two input images by rescaling the noise signal.
+    Set the SNR of two input images by rescaling the noise signal in place.
 
     This decision was made, because a quantization error should not deteriorate
     the target signal.
@@ -30,12 +30,12 @@ def set_snr(X, N, snr, current_snr=None):
     Multi-source environments are not yet implemented.
 
     :param X: STFT-signal of target image.
-    :param N: STFT-signal of noise image.
+    :param N: STFT-signal of noise image (will be modified in place).
     :param snr: Single source SNR of STFT signals in dB.
-    :return: Rescaled copies of both images.
+    :return: None
     """
 
     if current_snr is None:
         current_snr = get_snr(X, N)
 
-    return numpy.copy(X), N * 10 ** (-(snr - current_snr) / 20)
+    N *= 10 ** (-(snr - current_snr) / 20)
