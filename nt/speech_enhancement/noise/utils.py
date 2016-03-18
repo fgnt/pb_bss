@@ -1,6 +1,10 @@
 import numpy
 
 
+def get_power(x, axis=None):
+    return numpy.sum(numpy.abs(x * x.conj()), axis=axis)
+
+
 def get_snr(X, N):
     """
     Return SNR of time signals or STFT signals in dB.
