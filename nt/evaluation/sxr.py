@@ -1,6 +1,6 @@
 import numpy
 import itertools
-
+from nt.speech_enhancement.noise import get_power
 
 def sxr(S, X):
     """ Calculate signal to `X` ratio
@@ -43,11 +43,11 @@ def input_sxr(images, noise, average_sources=True):
 
     for d in range(D):
         for k in range(K):
-            S[k, d] = numpy.var(images[:, d, k], axis=0)
+            S[k, d] = get_power(images[:, d, k], axis=0)
             I[k, d] = numpy.sum(
-                numpy.var(images[:, d, [n for n in range(K) if n != k]],
+                get_power(images[:, d, [n for n in range(K) if n != k]],
                           axis=0))
-        N[d] = numpy.var(noise[:, d], axis=0)
+        N[d] = get_power(noise[:, d], axis=0)
 
     if average_sources:
         S = numpy.mean(S)
@@ -112,10 +112,10 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True):
 
     for k_target in range(K_target):
         for k_source in range(K_source):
-            S[k_source, k_target] = numpy.var(
+            S[k_source, k_target] = get_power(
                 image_contribution[:, k_source, k_target], axis=0
             )
-        N[k_target] = numpy.var(noise_contribution[:, k_target], axis=0)
+        N[k_target] = get_power(noise_contribution[:, k_target], axis=0)
 
     all_permutations = \
         numpy.array(list(itertools.permutations(range(K_target))))
