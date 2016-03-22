@@ -230,6 +230,15 @@ def apply_beamforming_vector(vector, mix):
     """
     return np.einsum('...a,...at->...t', vector.conj(), mix)
 
+def apply_online_beamforming_vector(vector, mix):
+    """Applies a beamforming vector such that the sensor dimension disappears.
+
+    :param vector: Beamforming vector with dimensions ..., sensors
+    :param mix: Observed signal with dimensions ..., sensors, time-frames
+    :return: A beamformed signal with dimensions ..., time-frames
+    """
+    vector = vector.transpose(1, 2, 0)
+    return np.einsum('...at,...at->...t', vector.conj(), mix)
 
 def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
                          normalization=False):
