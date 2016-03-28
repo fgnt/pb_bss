@@ -1,10 +1,10 @@
 import unittest
-from nt.utils.random import uniform, hermitian
+from nt.utils.random import uniform, hermitian, pos_def_hermitian
 import nt.testing as tc
 from nt.utils.math_ops import cos_similarity
 import numpy as np
 
-from nt.speech_enhancement.beamformer import get_gev_vector
+from nt.speech_enhancement.beamformer import get_gev_vector, _get_gev_vector
 from nt.speech_enhancement.beamformer import get_lcmv_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_pca_vector
@@ -47,3 +47,16 @@ class TestBeamformerWrapper(unittest.TestCase):
         W_pca = get_pca_vector(Phi_XX)
 
         tc.assert_allclose(cos_similarity(W_gev, W_pca), 1.0, atol=1e-6)
+
+class TestCythonizedGetGEV(unittest.TestCase):
+
+    def test_import(self):
+        from nt.speech_enhancement.beamformer import c_get_gev_vector
+
+    def test_result_equal(self):
+        phi_XX = pos_def_hermitian(2, 6, 6)
+        phi_NN = pos_def_hermitian(2, 6, 6)
+        python_gev = _get_gev_vector(phi_XX, phi_NN)
+        cython_gev = get_gev_vector(phi_XX, phi_NN)
+        tc.assert_allclose(cos_similarity(python_gev, cython_gev),
+                           1.0, atol=1e-6)
