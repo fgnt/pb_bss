@@ -22,4 +22,10 @@ def hermitian(*shape, data_type=np.complex128):
     assert shape[-1] == shape[-2]
     matrix = uniform(shape, data_type)
     matrix = matrix + np.swapaxes(matrix, -1, -2).conj()
+    np.testing.assert_allclose(matrix, np.swapaxes(matrix, -1, -2).conj())
+    return matrix
+
+def pos_def_hermitian(*shape, data_type=np.complex128):
+    matrix = hermitian(*shape, data_type=data_type)
+    matrix += np.broadcast_to(shape[-1] * np.eye(shape[-1]), shape)
     return matrix
