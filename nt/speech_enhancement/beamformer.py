@@ -1,7 +1,19 @@
-from scipy.linalg import eig
+import warnings
+
 import numpy as np
-from scipy.linalg import eigh
 from numpy.linalg import solve
+from scipy.linalg import eig
+from scipy.linalg import eigh
+
+try:
+    from .cythonized.get_gev_vector import _c_get_gev_vector
+except ImportError:
+    c_gev_available = False
+    warnings.warn('Could not import cythonized get_gev_vector. Falling back to '
+                  'python implementation. Maybe you need to rebuild/reinstall '
+                  'the toolbox?')
+else:
+    c_gev_available = True
 
 
 def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
@@ -41,11 +53,13 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
     """
 
     # ensure negative dim indexes
-    sensor_dim, source_dim, time_dim = (d % observation.ndim - observation.ndim for d in
+    sensor_dim, source_dim, time_dim = (d % observation.ndim - observation.ndim
+                                        for d in
                                         (sensor_dim, source_dim, time_dim))
 
     # ensure observation shape (..., sensors, frames)
-    obs_transpose = [i for i in range(-observation.ndim, 0) if i not in [sensor_dim, time_dim]] + [sensor_dim, time_dim]
+    obs_transpose = [i for i in range(-observation.ndim, 0) if
+                     i not in [sensor_dim, time_dim]] + [sensor_dim, time_dim]
     observation = observation.transpose(obs_transpose)
 
     if mask is None:
@@ -63,14 +77,17 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
 
         if mask.ndim + 1 == observation.ndim:
             mask = np.expand_dims(mask, -2)
-            psd = np.einsum('...dt,...et->...de', mask * observation, observation.conj())
+            psd = np.einsum('...dt,...et->...de', mask * observation,
+                            observation.conj())
         else:
             # ensure shape (..., sources, frames)
-            mask_transpose = [i for i in range(-observation.ndim, 0) if i not in [source_dim, time_dim]] + [source_dim,
-                                                                                                            time_dim]
+            mask_transpose = [i for i in range(-observation.ndim, 0) if
+                              i not in [source_dim, time_dim]] + [source_dim,
+                                                                  time_dim]
             mask = mask.transpose(mask_transpose)
 
-            psd = np.einsum('...kt,...dt,...et->...kde', mask, observation, observation.conj())
+            psd = np.einsum('...kt,...dt,...et->...kde', mask, observation,
+                            observation.conj())
 
             if source_dim < -2:
                 # assume PSD shape (sources, ..., sensors, sensors) is interested
@@ -146,7 +163,23 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix):
         with shape (bins, sensors, sensors)
     :return: Set of beamforming vectors with shape (bins, sensors)
     """
+    if c_gev_available:
+        return c_get_gev_vector(target_psd_matrix, noise_psd_matrix)
+    else:
+        return _get_gev_vector(target_psd_matrix, noise_psd_matrix)
 
+
+def c_get_gev_vector(target_psd_matrix, noise_psd_matrix):
+    assert target_psd_matrix.shape == noise_psd_matrix.shape
+    assert target_psd_matrix.ndim == 3
+    assert target_psd_matrix.shape[1] == target_psd_matrix.shape[2]
+    c_vec = _c_get_gev_vector(
+        np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
+        np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+    return c_vec
+
+
+def _get_gev_vector(target_psd_matrix, noise_psd_matrix):
     assert target_psd_matrix.shape == noise_psd_matrix.shape
     assert target_psd_matrix.shape[-2] == target_psd_matrix.shape[-1]
 
@@ -230,6 +263,7 @@ def apply_beamforming_vector(vector, mix):
     """
     return np.einsum('...a,...at->...t', vector.conj(), mix)
 
+
 def apply_online_beamforming_vector(vector, mix):
     """Applies a beamforming vector such that the sensor dimension disappears.
 
@@ -239,6 +273,7 @@ def apply_online_beamforming_vector(vector, mix):
     """
     vector = vector.transpose(1, 2, 0)
     return np.einsum('...at,...at->...t', vector.conj(), mix)
+
 
 def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
                          normalization=False):
