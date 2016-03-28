@@ -51,7 +51,8 @@ class TestBeamformerWrapper(unittest.TestCase):
 class TestCythonizedGetGEV(unittest.TestCase):
 
     def test_import(self):
-        from nt.speech_enhancement.beamformer import c_get_gev_vector
+        from nt.speech_enhancement.cythonized.get_gev_vector import \
+            _c_get_gev_vector
 
     def test_result_equal(self):
         phi_XX = pos_def_hermitian(2, 6, 6)
