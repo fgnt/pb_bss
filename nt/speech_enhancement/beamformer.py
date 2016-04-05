@@ -2,11 +2,12 @@ import warnings
 
 import numpy as np
 from numpy.linalg import solve
+from numpy.linalg import eigh
 from scipy.linalg import eig
 from scipy.linalg import eigh
 
 try:
-    from .cythonized.get_gev_vector import _c_get_gev_vector
+    from .cythonized.get_gev_vector import _c_get_gev_vector, _c_get_gev_vector_parallel
 except ImportError:
     c_gev_available = False
     warnings.warn('Could not import cythonized get_gev_vector. Falling back to '
@@ -153,7 +154,7 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
     return beamforming_vector
 
 
-def get_gev_vector(target_psd_matrix, noise_psd_matrix):
+def get_gev_vector(target_psd_matrix, noise_psd_matrix, *, parallel = False):
     """
     Returns the GEV beamforming vector.
 
@@ -164,18 +165,24 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix):
     :return: Set of beamforming vectors with shape (bins, sensors)
     """
     if c_gev_available:
-        return c_get_gev_vector(target_psd_matrix, noise_psd_matrix)
+        return c_get_gev_vector(target_psd_matrix, noise_psd_matrix, parallel=parallel)
     else:
         return _get_gev_vector(target_psd_matrix, noise_psd_matrix)
 
 
-def c_get_gev_vector(target_psd_matrix, noise_psd_matrix):
+def c_get_gev_vector(target_psd_matrix, noise_psd_matrix, *, parallel = False):
     assert target_psd_matrix.shape == noise_psd_matrix.shape
     assert target_psd_matrix.ndim == 3
     assert target_psd_matrix.shape[1] == target_psd_matrix.shape[2]
-    c_vec = _c_get_gev_vector(
-        np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
-        np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+
+    if parallel:
+        c_vec = _c_get_gev_vector_parallel(
+            np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
+            np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+    else:
+        c_vec = _c_get_gev_vector(
+            np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
+            np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
     return c_vec
 
 

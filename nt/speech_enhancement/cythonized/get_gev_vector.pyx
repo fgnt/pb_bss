@@ -2,6 +2,12 @@ import numpy as np
 cimport numpy as np
 from scipy.linalg.cython_lapack cimport zhegvd
 cimport cython
+from cython.parallel import parallel, prange
+
+#http://stackoverflow.com/questions/18593308/tips-for-optimising-code-in-cython
+# importing math functions from a C-library (faster than numpy)
+from libc.math cimport sin, cos, acos, exp, sqrt, fabs, M_PI
+
 
 @cython.boundscheck(False)
 @cython.wraparound(False)
@@ -99,8 +105,129 @@ def _c_get_gev_vector(np.ndarray[complex, ndim=3] target_psd_matrix,
                     i=INFO-sensors, f=f
                 ))
         for w_idx in range(sensors):
-            if abs(w_view[w_idx]) > w_max:
+            if fabs(w_ptr[w_idx]) > w_max:
                 max_idx[f] = w_idx
-                w_max = abs(w_view[w_idx])
+                w_max = fabs(w_ptr[w_idx])
+
+    return a[:, max_idx, range(bins)].T.conj()
+
+
+
+@cython.boundscheck(False)
+@cython.wraparound(False)
+def _c_get_gev_vector_parallel(np.ndarray[complex, ndim=3] target_psd_matrix,
+                       np.ndarray[complex, ndim=3] noise_psd_matrix):
+    """
+    Returns the GEV beamforming vector.
+
+    :param target_psd_matrix: Target PSD matrix
+        with shape (bins, sensors, sensors)
+    :param noise_psd_matrix: Noise PSD matrix
+        with shape (bins, sensors, sensors)
+    :return: Set of beamforming vectors with shape (bins, sensors)
+    """
+
+    # Get the dimensions
+    cdef size_t sensors = target_psd_matrix.shape[0]
+    cdef size_t bins = target_psd_matrix.shape[2]
+    cdef int N = target_psd_matrix.shape[0]
+    cdef int LDA = target_psd_matrix.shape[1]
+    cdef int LDB = noise_psd_matrix.shape[1]
+
+
+    cdef np.ndarray[complex, ndim=3] a = target_psd_matrix[:]
+    cdef np.ndarray[complex, ndim=3] b = noise_psd_matrix[:]
+    cdef complex[:, :, :] a_view = a
+    cdef complex[:, :, :] b_view = b
+    cdef size_t f
+    cdef char JOBZ = 'V'
+    cdef char UPLO = 'L'
+    cdef int ITYPE = 1
+    cdef int tmp_size = -1
+    cdef int INFO = 0
+
+    # Get the size of the workspace
+    cdef complex* a_ptr = &a_view[0, 0, 0]
+    cdef complex* b_ptr = &b_view[0, 0, 0]
+    cdef np.ndarray[complex, ndim=1] work_tmp = np.empty(2, dtype=np.complex)
+    cdef np.ndarray[double, ndim=1] w = np.empty(N, dtype=np.float64)
+    cdef np.ndarray[double, ndim=1] rwork_tmp = np.empty(2, dtype=np.float64)
+    cdef np.ndarray[int, ndim=1] iwork_tmp = np.empty(2, dtype=np.int32)
+
+    cdef double* w_ptr = <double*> w.data
+    cdef complex* work_ptr = <complex*> work_tmp.data
+    cdef double* rwork_ptr = <double*> rwork_tmp.data
+    cdef int* iwork_ptr = <int*> iwork_tmp.data
+
+    zhegvd(&ITYPE, &JOBZ, &UPLO, &N, a_ptr, &LDA, b_ptr, &LDB, w_ptr, work_ptr,
+           &tmp_size, rwork_ptr, &tmp_size, iwork_ptr, &tmp_size, &INFO)
+
+    cdef int work_tmp_size = np.abs(work_tmp[0]).astype(np.int)
+    cdef int rwork_tmp_size = np.abs(rwork_tmp[0]).astype(np.int)
+    cdef int iwork_tmp_size = np.abs(iwork_tmp[0]).astype(np.int)
+
+    # Create workspace
+    cdef np.ndarray[complex, ndim=1] work = np.empty(work_tmp_size * bins,
+                                                     dtype=np.complex, order='F')
+    cdef np.ndarray[double, ndim=1] rwork = np.empty(rwork_tmp_size * bins,
+                                                      dtype=np.float64, order='F')
+    cdef np.ndarray[int, ndim=1] iwork = np.empty(iwork_tmp_size * bins,
+                                                      dtype=np.int32, order='F')
+    cdef np.ndarray[int, ndim=1] w_work = np.empty(N * bins,
+                                                      dtype=np.int32, order='F')
+    work_ptr = <complex*> work.data
+    rwork_ptr = <double*> rwork.data
+    iwork_ptr = <int*> iwork.data
+    w_ptr = <double*> w_work.data
+
+    cdef np.ndarray[int, ndim=1] max_idx = np.empty(bins, dtype=np.int32)
+    cdef int[:] max_idx_view = max_idx
+    cdef double[:] w_view = w
+    cdef size_t w_idx
+
+    cdef double w_max = 0
+    cdef Py_ssize_t offset
+
+    for f in prange(bins, nogil=True):
+        a_ptr = &a_view[0, 0, f]
+        b_ptr = &b_view[0, 0, f]
+
+        offset = work_tmp_size * f
+
+        zhegvd(&ITYPE, &JOBZ, &UPLO, &N, a_ptr, &LDA,
+               b_ptr, &LDB,
+               w_ptr + offset,
+               work_ptr + offset, &work_tmp_size,
+               rwork_ptr + offset, &rwork_tmp_size,
+               iwork_ptr + offset, &iwork_tmp_size,
+               &INFO)
+        w_max = 0 # with this line the variable will be local
+        #https://groups.google.com/forum/#!topic/cython-users/dCqd70kz_1U
+
+        if INFO != 0:
+            if INFO < 0:
+                with gil:
+                    raise ValueError('Value {} has an illegal value for '
+                                 'frequency {}'.format(-INFO, f))
+            elif INFO > 0 and INFO < sensors:
+                with gil:
+                    raise ValueError('Algorithm failed to compute an eigenvalue '
+                                     'while working on the submatrix lying in rows '
+                                     'and columns {i}/({n}+1) '
+                                     'through mod({i},{n}+1)'.format(
+                        i=INFO, n=sensors))
+            else:
+                with gil:
+                    raise ValueError('the leading minor of order {i} of B is not '
+                                     'positive definite. The factorization of B '
+                                     'could not be completed and no eigenvalues '
+                                     'or eigenvectors were computed for '
+                                     'frequency {f}'.format(
+                        i=INFO-sensors, f=f
+                ))
+        for w_idx in range(sensors):
+            if fabs((w_ptr+offset)[w_idx]) > w_max:
+                max_idx[f] = w_idx
+                w_max = fabs((w_ptr+offset)[w_idx])
 
     return a[:, max_idx, range(bins)].T.conj()
