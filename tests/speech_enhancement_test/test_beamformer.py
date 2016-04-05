@@ -55,9 +55,26 @@ class TestCythonizedGetGEV(unittest.TestCase):
             _c_get_gev_vector
 
     def test_result_equal(self):
-        phi_XX = pos_def_hermitian(2, 6, 6)
-        phi_NN = pos_def_hermitian(2, 6, 6)
+        import time
+
+        F = 100
+
+        phi_XX = pos_def_hermitian(F, 6, 6)
+        phi_NN = pos_def_hermitian(F, 6, 6)
+        t = time.time()
         python_gev = _get_gev_vector(phi_XX, phi_NN)
+        elapsed_time_python = time.time() - t
+
+        t = time.time()
+        #for i in range(200):
         cython_gev = get_gev_vector(phi_XX, phi_NN)
+        elapsed_time_cython1 = time.time() - t
+
+        t = time.time()
+        cython_gev = get_gev_vector(phi_XX, phi_NN, parallel=True)
+        elapsed_time_cython2 = time.time() - t
+
+
         tc.assert_allclose(cos_similarity(python_gev, cython_gev),
                            1.0, atol=1e-6)
+        print(elapsed_time_python, elapsed_time_python/elapsed_time_cython1, elapsed_time_python/elapsed_time_cython2)
