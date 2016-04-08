@@ -112,21 +112,25 @@ def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1,
         return output
 
 
-def quantile_mask(observations, quantile_fraction=0.98, quantile_weight=0.999):
+def quantile_mask(observations, lorenz_fraction=0.98, weight=0.999):
     """ Calculate softened mask according to lorenz function criterion.
 
+    To be precise, the lorenz_fraction is not actually a quantile
+    although it is in the range [0, 1]. If it was the quantile fraction, it
+    would the the fraction of the number of observations.
+
     :param observation: STFT of the the observed signal
-    :param quantile_fraction: Fraction of observations which are rated down
-    :param quantile_weight: Governs the influence of the mask
+    :param lorenz_fraction: Fraction of observations which are rated down
+    :param weight: Governs the influence of the mask
     :return: quantile_mask
 
     """
     power = (observations * observations.conj())
     sorted_power = np.sort(power, axis=None)[::-1]
     lorenz_function = np.cumsum(sorted_power) / np.sum(sorted_power)
-    threshold = np.min(sorted_power[lorenz_function < quantile_fraction])
+    threshold = np.min(sorted_power[lorenz_function < lorenz_fraction])
     mask = power > threshold
-    mask = 0.5 + quantile_weight * (mask - 0.5)
+    mask = 0.5 + weight * (mask - 0.5)
     return mask
 
 
