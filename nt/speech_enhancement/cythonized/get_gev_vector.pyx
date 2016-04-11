@@ -1,7 +1,7 @@
 # encoding: utf-8
 ## cython: profile=True
 # distutils: language = c++
-# distutils: libraries = tbb lapack blas
+## distutils: libraries = tbb lapack blas
 # distutils: extra_compile_args = -fopenmp -std=c++11
 # distutils: extra_link_args = -fopenmp -std=c++11
 # filename: get_gev_vector.pyx
@@ -309,24 +309,24 @@ def _c_get_gev_vector_v2(np.ndarray[complex, ndim=3] target_psd_matrix,
     # return a[:, max_idx, range(bins)].T.conj()
 
 
-cdef extern from "get_gev_vector_cpp.hpp":
-    void call_zhegvd(double complex *a, double complex *b, const int mat_size, const int F)
-
-@cython.boundscheck(False)
-@cython.wraparound(False)
-def _c_get_gev_vector_cpp(np.ndarray[complex, ndim=3] target_psd_matrix,
-                       np.ndarray[complex, ndim=3] noise_psd_matrix):
-    cdef int mat_size = target_psd_matrix.shape[1]
-    #assert mat_size == target_psd_matrix.shape[2], "_c_get_gev_vector_cpp"
-    #assert mat_size == noise_psd_matrix.shape[1], "_c_get_gev_vector_cpp"
-    #assert mat_size == noise_psd_matrix.shape[2], "_c_get_gev_vector_cpp"
-
-    cdef int F = target_psd_matrix.shape[0]
-
-    cdef double complex[:] a = target_psd_matrix.ravel()
-    cdef double complex[:] b = noise_psd_matrix.ravel()
-    # cdef vector[double complex] out
-    call_zhegvd(&a[0], &b[0], mat_size, F)
-    # return np.array(a).reshape(F, mat_size, mat_size)[:, -1, :].conj()
-    return target_psd_matrix[:, -1, :].conj()
-    # return out_np
+# cdef extern from "get_gev_vector_cpp.hpp":
+#     void call_zhegvd(double complex *a, double complex *b, const int mat_size, const int F)
+#
+# @cython.boundscheck(False)
+# @cython.wraparound(False)
+# def _c_get_gev_vector_cpp(np.ndarray[complex, ndim=3] target_psd_matrix,
+#                        np.ndarray[complex, ndim=3] noise_psd_matrix):
+#     cdef int mat_size = target_psd_matrix.shape[1]
+#     #assert mat_size == target_psd_matrix.shape[2], "_c_get_gev_vector_cpp"
+#     #assert mat_size == noise_psd_matrix.shape[1], "_c_get_gev_vector_cpp"
+#     #assert mat_size == noise_psd_matrix.shape[2], "_c_get_gev_vector_cpp"
+#
+#     cdef int F = target_psd_matrix.shape[0]
+#
+#     cdef double complex[:] a = target_psd_matrix.ravel()
+#     cdef double complex[:] b = noise_psd_matrix.ravel()
+#     # cdef vector[double complex] out
+#     call_zhegvd(&a[0], &b[0], mat_size, F)
+#     # return np.array(a).reshape(F, mat_size, mat_size)[:, -1, :].conj()
+#     return target_psd_matrix[:, -1, :].conj()
+#     # return out_np
