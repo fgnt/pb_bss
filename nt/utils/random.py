@@ -19,13 +19,28 @@ def uniform(*shape, data_type=np.complex128):
 
 
 def hermitian(*shape, data_type=np.complex128):
+    """ Assures a random positive-semidefinite hermitian matrix.
+
+    :param shape:
+    :param data_type:
+    :return:
+    """
     assert shape[-1] == shape[-2]
     matrix = uniform(shape, data_type)
     matrix = matrix + np.swapaxes(matrix, -1, -2).conj()
     np.testing.assert_allclose(matrix, np.swapaxes(matrix, -1, -2).conj())
     return matrix
 
+
 def pos_def_hermitian(*shape, data_type=np.complex128):
+    """ Assures a random POSITIVE-DEFINITE hermitian matrix.
+
+    TODO: Can this be changed? Why do we need 2?
+
+    :param shape:
+    :param data_type:
+    :return:
+    """
     matrix = hermitian(*shape, data_type=data_type)
     matrix += np.broadcast_to(shape[-1] * 2 * np.eye(shape[-1]), shape)
     return matrix
