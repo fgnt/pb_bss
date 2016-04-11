@@ -27,5 +27,5 @@ def hermitian(*shape, data_type=np.complex128):
 
 def pos_def_hermitian(*shape, data_type=np.complex128):
     matrix = hermitian(*shape, data_type=data_type)
-    matrix += np.broadcast_to(shape[-1] * np.eye(shape[-1]), shape)
+    matrix += np.broadcast_to(shape[-1] * 2 * np.eye(shape[-1]), shape)
     return matrix
