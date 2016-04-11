@@ -7,7 +7,7 @@ from scipy.linalg import eig
 from scipy.linalg import eigh
 
 try:
-    from .cythonized.get_gev_vector import _c_get_gev_vector, _c_get_gev_vector_v2, _c_get_gev_vector_cpp
+    from .cythonized.get_gev_vector import _c_get_gev_vector, _c_get_gev_vector_v2#, _c_get_gev_vector_cpp
 except ImportError:
     c_gev_available = False
     warnings.warn('Could not import cythonized get_gev_vector. Falling back to '
@@ -165,7 +165,7 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, *, version=1):
     :return: Set of beamforming vectors with shape (bins, sensors)
     """
     if c_gev_available:
-        return c_get_gev_vector(target_psd_matrix, noise_psd_matrix, parallel=parallel, version=version)
+        return c_get_gev_vector(target_psd_matrix, noise_psd_matrix, version=version)
     else:
         return _get_gev_vector(target_psd_matrix, noise_psd_matrix)
 
