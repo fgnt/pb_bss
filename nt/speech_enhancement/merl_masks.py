@@ -102,7 +102,7 @@ def ideal_complex_mask(S, N):
     :param eps: Regularizing parameter to avoid division by zero.
     :return: Mask with shape (frames, 1, features)
     """
-    return S / N
+    return S / (S + N)
 
 
 def ideal_complex_mask_williamson(S, N, eps=1e-18):
@@ -110,6 +110,8 @@ def ideal_complex_mask_williamson(S, N, eps=1e-18):
 
     Williamson, Donald, et al. "Complex ratio masking for joint enhancement of
     magnitude and phase" ICASSP, 2016.
+
+    This is simply a different implementation of ``ideal_complex_mask()``.
 
     :param S: Source image with shape (frames, 1, features)
     :param N: Noise image with shape (frames, 1, features)
@@ -122,3 +124,20 @@ def ideal_complex_mask_williamson(S, N, eps=1e-18):
         (Y.real * S.real + Y.imag * S.imag) / denominator +
         1j * (Y.real * S.imag - Y.imag * S.real) / denominator
     )
+
+
+def apply_mask_clipping(mask, threshold=1):
+    """ Clip a real or complex mask to a positive threshold.
+
+    If the mask is complex, the amplitude of the mask will be clipped.
+
+    :param mask: Real or complex valued mask.
+    :param threshold:
+    :return:
+    """
+    if mask.dtype in (np.complex64, np.complex128):
+        return np.clip(np.abs(mask), 0, threshold) * np.exp(1j * np.angle(mask))
+    elif mask.dtype in (np.float32, np.float64):
+        return np.clip(mask, -threshold, threshold)
+    else:
+        raise TypeError('Desired mask.dtype not supported.')
