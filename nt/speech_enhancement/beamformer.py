@@ -164,7 +164,7 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, *, version=1):
         with shape (bins, sensors, sensors)
     :return: Set of beamforming vectors with shape (bins, sensors)
     """
-    if c_gev_available:
+    if target_psd_matrix.ndim == 3 and c_gev_available:
         return c_get_gev_vector(target_psd_matrix, noise_psd_matrix, version=version)
     else:
         return _get_gev_vector(target_psd_matrix, noise_psd_matrix)
@@ -183,10 +183,10 @@ def c_get_gev_vector(target_psd_matrix, noise_psd_matrix, *, version=1):
         c_vec = _c_get_gev_vector_v2(
             np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
             np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
-    elif version == 3:
-        c_vec = _c_get_gev_vector_cpp(
-            np.ascontiguousarray(target_psd_matrix, dtype=np.complex128),
-            np.ascontiguousarray(noise_psd_matrix, dtype=np.complex128))
+    # elif version == 3:
+    #     c_vec = _c_get_gev_vector_cpp(
+    #         np.ascontiguousarray(target_psd_matrix, dtype=np.complex128),
+    #         np.ascontiguousarray(noise_psd_matrix, dtype=np.complex128))
 
     else:
         raise NotImplementedError()
