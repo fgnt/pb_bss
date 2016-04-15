@@ -1,11 +1,27 @@
 import numpy as np
+from functools import wraps
 
 
+def _force_correct_shape(f):
+    """ This decorator sets the seed and fix the snr.
+
+    :param f: Function to be wrapped
+    :return: noise_signal
+    """
+    @wraps(f)
+    def wrapper(*shape, **kwargs):
+        if not shape:
+            shape = (1,)
+        elif isinstance(shape[0], tuple):
+            shape = shape[0]
+
+        return f(*shape, **kwargs)
+
+    return wrapper
+
+
+@_force_correct_shape
 def uniform(*shape, data_type=np.complex128):
-    if not shape:
-        shape = (1,)
-    elif isinstance(shape[0], tuple):
-        shape = shape[0]
 
     def _uniform(data_type_local):
         return np.random.uniform(-1, 1, shape).astype(data_type_local)
@@ -18,6 +34,7 @@ def uniform(*shape, data_type=np.complex128):
         return _uniform(np.float64) + 1j * _uniform(np.float64)
 
 
+@_force_correct_shape
 def hermitian(*shape, data_type=np.complex128):
     """ Assures a random positive-semidefinite hermitian matrix.
 
@@ -32,6 +49,7 @@ def hermitian(*shape, data_type=np.complex128):
     return matrix
 
 
+@_force_correct_shape
 def pos_def_hermitian(*shape, data_type=np.complex128):
     """ Assures a random POSITIVE-DEFINITE hermitian matrix.
 
