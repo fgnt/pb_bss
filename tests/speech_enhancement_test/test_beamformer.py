@@ -1,42 +1,38 @@
 import unittest
-from nt.utils.random import uniform, hermitian, pos_def_hermitian
-import nt.testing as tc
-from nt.utils.math_ops import cos_similarity
+
 import numpy as np
 
+import nt.testing as tc
 from nt.speech_enhancement.beamformer import get_gev_vector, _get_gev_vector
 from nt.speech_enhancement.beamformer import get_lcmv_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_pca_vector
+from nt.utils.math_ops import cos_similarity
+from nt.utils.random import uniform, hermitian, pos_def_hermitian
 
 
 class TestBeamformerWrapper(unittest.TestCase):
+    K, F, D = 2, 3, 6
+    shape_psd = (F, D, D)
+
     @classmethod
     def setUpClass(self):
-        K, F, D = 2, 3, 6
-        self.shapes = [
-            ((D, D), (D,)),
-            ((F, D, D), (F, D)),
-            ((K, F, D, D), (K, F, D)),
-        ]
+        self.shape_vector = self.shape_psd[:-1]
 
     def test_gev_dimensions(self):
-        for shape in self.shapes:
-            output = get_gev_vector(uniform(shape[0]), uniform(shape[0]))
-            assert output.shape == shape[1]
+        output = get_gev_vector(pos_def_hermitian(self.shape_psd), pos_def_hermitian(self.shape_psd))
+        tc.assert_equal(output.shape, self.shape_vector)
 
     def test_pca_dimensions(self):
-        for shape in self.shapes:
-            output = get_pca_vector(uniform(shape[0]))
-            assert output.shape == shape[1]
+        output = get_pca_vector(uniform(self.shape_psd))
+        assert output.shape == self.shape_vector
 
     def test_mvdr_dimensions(self):
-        for shape in self.shapes:
-            output = get_mvdr_vector(uniform(shape[1]), uniform(shape[0]))
-            assert output.shape == shape[1]
+        output = get_mvdr_vector(uniform(self.shape_vector), uniform(self.shape_psd))
+        assert output.shape == self.shape_vector
 
     def test_lcmv_dimensions(self):
-        K, F, D = 2, 3, 6
+        K, F, D = self.K, self.F, self.D
         output = get_lcmv_vector(uniform((K, F, D)), [1, 0], uniform((F, D, D)))
         assert output.shape == (F, D)
 
@@ -48,16 +44,23 @@ class TestBeamformerWrapper(unittest.TestCase):
 
         tc.assert_allclose(cos_similarity(W_gev, W_pca), 1.0, atol=1e-6)
 
-class TestCythonizedGetGEV(unittest.TestCase):
 
+class TestBeamformerWrapperWithoutIndependent(TestBeamformerWrapper):
+    K, F, D = 2, 3, 6
+    shape_psd = (D, D)
+
+
+class TestBeamformerWrapperWithSpeakers(TestBeamformerWrapper):
+    K, F, D = 2, 3, 6
+    shape_psd = (K, F, D, D)
+
+
+class TestCythonizedGetGEV(unittest.TestCase):
     def test_import(self):
-        from nt.speech_enhancement.cythonized.get_gev_vector import \
-            _c_get_gev_vector
+        pass
 
     def test_result_equal(self):
-        import time, os
-
-        #print('OMP_NUM_THREADS: ', os.environ['OMP_NUM_THREADS'])
+        import time
 
         F = 513
 
@@ -67,25 +70,20 @@ class TestCythonizedGetGEV(unittest.TestCase):
         python_gev = _get_gev_vector(phi_XX, phi_NN)
         elapsed_time_python = time.time() - t
 
-
         t = time.time()
-        #for i in range(200):
-        # cython_gev = get_gev_vector(phi_XX, phi_NN)
-        cython_gev = get_gev_vector(phi_XX, phi_NN, version = 1)
+        cython_gev = get_gev_vector(phi_XX, phi_NN, version=1)
         elapsed_time_cython1 = time.time() - t
 
         # t = time.time()
-        #for i in range(200):
+        # for i in range(200):
         # cython_gev = get_gev_vector(phi_XX, phi_NN)
         # cython_gev = get_gev_vector(phi_XX, phi_NN, version = 2)
         # elapsed_time_cython2 = time.time() - t
 
-
         tc.assert_allclose(cos_similarity(python_gev, cython_gev),
                            1.0, atol=1e-6)
 
-        # assume speedup is bigger than 10
-        tc.assert_array_greater(elapsed_time_python/elapsed_time_cython1, 10)
+        # assume speedup is bigger than 8
+        tc.assert_array_greater(elapsed_time_python / elapsed_time_cython1, 8)
         # print(elapsed_time_python, elapsed_time_python/elapsed_time_cython1)
-
         # print(elapsed_time_cython1/elapsed_time_cython2, elapsed_time_cython1/elapsed_time_cython3)
