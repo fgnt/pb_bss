@@ -7,7 +7,7 @@ from scipy.linalg import eig
 from scipy.linalg import eigh
 
 try:
-    from .cythonized.get_gev_vector import _c_get_gev_vector, _c_get_gev_vector_v2#, _c_get_gev_vector_cpp
+    from .cythonized.get_gev_vector import _c_get_gev_vector
 except ImportError:
     c_gev_available = False
     warnings.warn('Could not import cythonized get_gev_vector. Falling back to '
@@ -154,7 +154,7 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
     return beamforming_vector
 
 
-def get_gev_vector(target_psd_matrix, noise_psd_matrix, *, version=1):
+def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False):
     """
     Returns the GEV beamforming vector.
 
@@ -164,33 +164,17 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, *, version=1):
         with shape (bins, sensors, sensors)
     :return: Set of beamforming vectors with shape (bins, sensors)
     """
-    if target_psd_matrix.ndim == 3 and c_gev_available:
-        return c_get_gev_vector(target_psd_matrix, noise_psd_matrix, version=version)
-    else:
-        return _get_gev_vector(target_psd_matrix, noise_psd_matrix)
-
-
-def c_get_gev_vector(target_psd_matrix, noise_psd_matrix, *, version=1):
-    assert target_psd_matrix.shape == noise_psd_matrix.shape
-    assert target_psd_matrix.ndim == 3
-    assert target_psd_matrix.shape[1] == target_psd_matrix.shape[2]
-
-    if version == 1:
-        c_vec = _c_get_gev_vector(
-            np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
-            np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
-    elif version == 2:
-        c_vec = _c_get_gev_vector_v2(
-            np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
-            np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
-    # elif version == 3:
-    #     c_vec = _c_get_gev_vector_cpp(
-    #         np.ascontiguousarray(target_psd_matrix, dtype=np.complex128),
-    #         np.ascontiguousarray(noise_psd_matrix, dtype=np.complex128))
-
-    else:
-        raise NotImplementedError()
-    return c_vec
+    if c_gev_available:
+        try:
+            return _c_get_gev_vector(
+                np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
+                np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+        except ValueError as e:
+            if not force_cython:
+                pass
+            else:
+                raise e
+    return _get_gev_vector(target_psd_matrix, noise_psd_matrix)
 
 
 def _get_gev_vector(target_psd_matrix, noise_psd_matrix):
