@@ -8,7 +8,7 @@ from nt.speech_enhancement.beamformer import get_lcmv_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_pca_vector
 from nt.utils.math_ops import cos_similarity
-from nt.utils.random import uniform, hermitian, pos_def_hermitian
+from nt.utils.random_helper import uniform, hermitian, pos_def_hermitian
 
 
 class TestBeamformerWrapper(unittest.TestCase):
