@@ -1,6 +1,5 @@
 import numpy as np
 from functools import wraps
-from copy import deepcopy
 
 
 def constraints(f):
@@ -142,21 +141,3 @@ def apply_mask_clipping(mask, threshold=1):
         return np.clip(mask, -threshold, threshold)
     else:
         raise TypeError('Desired mask.dtype not supported.')
-
-
-# def get_phase_difference(X):
-#     phase_difference = np.empty_like(X)
-#      np.angle(
-#         np.exp(1j * np.angle(X[:-1, ...])) /
-#         np.exp(1j * np.angle(X[1:, ...]))
-#     )
-#     return phase_difference
-#
-#
-# def transform_to_baseband(X, size, shift):
-#     X = deepcopy(X)
-#     T, _, F = X.shape
-#     for t in range(T):
-#         for f in range(F):
-#             X[t, :, f] *= np.exp(-2j * np.pi * t * f * shift / size)
-#     return X
