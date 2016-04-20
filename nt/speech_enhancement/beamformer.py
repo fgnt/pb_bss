@@ -188,7 +188,7 @@ def _get_gev_vector(target_psd_matrix, noise_psd_matrix):
     noise_psd_matrix = noise_psd_matrix.reshape((-1, sensors, sensors))
 
     bins = target_psd_matrix.shape[0]
-    beamforming_vector = np.empty((bins, sensors), dtype=np.complex)
+    beamforming_vector = np.empty((bins, sensors), dtype=np.complex128)
 
     for f in range(bins):
         try:
