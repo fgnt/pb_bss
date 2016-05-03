@@ -1,5 +1,11 @@
 import numpy as np
 from functools import wraps
+import chainer.functions as functions
+from chainer.functions.array.split_axis import split_axis
+from chainer.functions.math.sum import sum
+from chainer.functions.math.basic_math import pow, absolute
+from chainer import link
+from chainer.functions.array.broadcast import broadcast_to
 
 
 def constraints(f):
@@ -141,3 +147,23 @@ def apply_mask_clipping(mask, threshold=1):
         return np.clip(mask, -threshold, threshold)
     else:
         raise TypeError('Desired mask.dtype not supported.')
+
+
+class PhaseSensitiveSpectrumApproximation(link.Link):
+    def __call__(self, mask, noisy, clean):
+        """  D_psa according to [Erdogan2015Masks]
+        Args:
+            mask: Real valued mask
+            noisy: Stacked real and complex values of noisy observation
+            clean: Stacked real and complex values of target clean signal
+
+        Returns:
+
+        """
+        noisy_real, noisy_imag = split_axis(noisy, 2, -1)
+        clean_real, clean_imag = split_axis(clean, 2, -1)
+
+        return (
+            functions.mean_squared_error(mask * noisy_real, clean_real) +
+            functions.mean_squared_error(mask * noisy_imag, clean_imag)
+        )
