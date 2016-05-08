@@ -5,6 +5,7 @@ from numpy.linalg import solve
 from numpy.linalg import eigh
 from scipy.linalg import eig
 from scipy.linalg import eigh
+from nt.utils.math_ops import covariance
 
 try:
     from .cythonized.get_gev_vector import _c_get_gev_vector
