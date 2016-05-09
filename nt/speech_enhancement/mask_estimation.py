@@ -48,8 +48,8 @@ def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1,
     """
     :param input: list of array_like or array_like
         These are the arrays like X, N or X_all.
-        The arrays X and N will concanated on the last dim, if they have the same shape.
-    :param featureDim: The sum diemension
+        The arrays X and N will concatenated on the last dim, if they have the same shape.
+    :param featureDim: The sum dimension
     :param sourceDim: The dimension, where the sum is one.
     :param tuple_output:
     :return: ideal_soft_mask
