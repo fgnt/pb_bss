@@ -35,6 +35,20 @@ def uniform(*shape, data_type=np.complex128):
 
 
 @_force_correct_shape
+def randn(*shape, dtype=np.complex128):
+
+    def _randn(data_type_local):
+        return np.random.randn(*shape).astype(data_type_local)
+
+    if dtype in (np.float32, np.float64):
+        return _randn(dtype)
+    elif dtype is np.complex64:
+        return _randn(np.float32) + 1j * _randn(np.float32)
+    elif dtype is np.complex128:
+        return _randn(np.float64) + 1j * _randn(np.float64)
+
+
+@_force_correct_shape
 def hermitian(*shape, data_type=np.complex128):
     """ Assures a random positive-semidefinite hermitian matrix.
 
