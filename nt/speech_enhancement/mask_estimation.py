@@ -1,12 +1,11 @@
 import numpy as np
 
 
-def _voiced_unvoiced_split_characteristic(number_of_frequency_bins):
-    split_bin = 200
+def _voiced_unvoiced_split_characteristic(number_of_frequency_bins,
+                                          low_bin=4, high_bin=500):
+    split_bin = number_of_frequency_bins // 2
     transition_width = 99
     fast_transition_width = 5
-    low_bin = 4
-    high_bin = 500
 
     a = np.arange(0, transition_width)
     a = np.pi / (transition_width - 1) * a
@@ -133,7 +132,8 @@ def quantile_mask(observations, lorenz_fraction=0.98, weight=0.999):
     mask = 0.5 + weight * (mask - 0.5)
     return mask
 
-
+# TODO: Split characteristic does not work for certain cases (i.e. high_cut=199
+# when the stft size is 400)
 def estimate_IBM(X, N,
                  threshold_unvoiced_speech=5,
                  threshold_voiced_speech=0,
@@ -156,7 +156,9 @@ def estimate_IBM(X, N,
     :return: (speech mask, noise mask): tuple containing the two arrays,
         which are the masks for X and N
     """
-    (voiced, unvoiced) = _voiced_unvoiced_split_characteristic(X.shape[-1])
+    (voiced, unvoiced) = _voiced_unvoiced_split_characteristic(X.shape[-1],
+                                                               low_cut,
+                                                               high_cut)
 
     # calculate the thresholds
     threshold = threshold_voiced_speech * voiced + \
@@ -173,6 +175,52 @@ def estimate_IBM(X, N,
     xPSD_threshold_new = xPSD / c_new
 
     nPSD = N * N.conjugate()
+
+    speechMask = (xPSD_threshold > nPSD)
+
+    speechMask = np.logical_and(speechMask, (xPSD_threshold > 0.005))
+    speechMask[..., 0:low_cut - 1] = 0
+    speechMask[..., high_cut:len(speechMask[0])] = 0
+
+    noiseMask = (xPSD_threshold_new < nPSD)
+
+    noiseMask = np.logical_or(noiseMask, (xPSD_threshold_new < 0.005))
+    noiseMask[..., 0: low_cut - 1] = 1
+    noiseMask[..., high_cut: len(noiseMask[0])] = 1
+
+    return (speechMask, noiseMask)
+
+
+def estimate_simple_IBM(X, N,
+                 threshold_speech=5,
+                 threshold_noise=-10,
+                 low_cut=5,
+                 high_cut=500):
+
+
+    """Estimate an ideal binary mask given the speech and noise spectrum.
+
+    :param X: speech signal in STFT domain with shape (frames, frequency-bins)
+    :param N: noise signal in STFT domain with shape (frames, frequency-bins)
+    :param threshold_speech:
+    :param threshold_noise:
+    :param low_cut: all values with frequency<low_cut are set to 0 in the
+        speech mask ans set to 1 in the noise mask
+    :param high_cut: all values with frequency>high_cut are set to 0 in the
+        speech mask ans set to 1 in the noise mask
+    :return: (speech mask, noise mask): tuple containing the two arrays,
+        which are the masks for X and N
+    """
+
+    xPSD = X * X.conjugate()  # |X|^2 = Power-Spectral-Density
+
+    # each frequency is multiplied with another threshold
+    c = np.power(10, (threshold_speech / 10))
+    xPSD_threshold = xPSD / c
+    c_new = np.power(10, (threshold_noise / 10))
+    xPSD_threshold_new = xPSD / c_new
+
+    nPSD = N.real**2 * N.imag**2
 
     speechMask = (xPSD_threshold > nPSD)
 
