@@ -147,8 +147,13 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
     noise_psd_matrix = 0.5 * (
         noise_psd_matrix + np.conj(noise_psd_matrix.swapaxes(-1, -2))
     )
-
-    numerator = solve(noise_psd_matrix, atf_vector)
+    try:
+        numerator = solve(noise_psd_matrix, atf_vector)
+    except np.linalg.LinAlgError:
+        bins = noise_psd_matrix.shape[0]
+        numerator = np.empty_like(atf_vector)
+        for f in range(bins):
+            numerator[f], *_ = np.linalg.lstsq(noise_psd_matrix[f], atf_vector[..., f, :])
     denominator = np.einsum('...d,...d->...', atf_vector.conj(), numerator)
     beamforming_vector = numerator / np.expand_dims(denominator, axis=-1)
 
