@@ -42,10 +42,10 @@ def _voiced_unvoiced_split_characteristic(number_of_frequency_bins,
     return (voiced, unvoiced)
 
 
-def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1,
+def simple_ideal_soft_mask(*ins, feature_dim=-2, source_dim=-1,
                            tuple_output=False):
     """
-    :param input: list of array_like or array_like
+    :param ins: list of array_like or array_like
         These are the arrays like X, N or X_all.
         The arrays X and N will concatenated on the last dim, if they have the same shape.
     :param featureDim: The sum dimension
@@ -76,20 +76,20 @@ def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1,
 
     assert feature_dim != source_dim
 
-    if len(input) != 1:
-        num_dims_max = np.max([i.ndim for i in input])
-        num_dims_min = np.min([i.ndim for i in input])
+    if len(ins) != 1:
+        num_dims_max = np.max([i.ndim for i in ins])
+        num_dims_min = np.min([i.ndim for i in ins])
         if num_dims_max != num_dims_min:
             assert num_dims_max == num_dims_min + 1
             # Expand dims, if necessary
-            input = [
+            ins = [
                 np.expand_dims(i, source_dim) if i.ndim == num_dims_min else i
-                for i in input]
+                for i in ins]
         else:
-            input = [np.expand_dims(i, num_dims_min + 1) for i in input]
-        X = np.concatenate(input, axis=source_dim)
+            ins = [np.expand_dims(i, num_dims_min + 1) for i in ins]
+        X = np.concatenate(ins, axis=source_dim)
     else:
-        X = input[0]
+        X = ins[0]
 
     power = np.sum(X.conjugate() * X, axis=feature_dim, keepdims=True)
     mask = (power / np.sum(power, axis=source_dim, keepdims=True)).real
@@ -97,7 +97,7 @@ def simple_ideal_soft_mask(*input, feature_dim=-2, source_dim=-1,
     if not tuple_output:
         return np.squeeze(mask, axis=feature_dim)
     else:
-        sizes = np.cumsum([o.shape[source_dim] for o in input])
+        sizes = np.cumsum([o.shape[source_dim] for o in ins])
         output = np.split(mask, sizes[:-1], axis=source_dim)
 
         for i in range(len(output)):
