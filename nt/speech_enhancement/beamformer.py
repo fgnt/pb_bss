@@ -98,14 +98,7 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
     return psd
 
 
-def get_pca_vector(target_psd_matrix):
-    """
-    Returns the beamforming vector of a PCA beamformer.
-
-    :param target_psd_matrix: Target PSD matrix
-        with shape (..., sensors, sensors)
-    :return: Set of beamforming vectors with shape (..., sensors)
-    """
+def get_pca(target_psd_matrix):
     # Save the shape of target_psd_matrix
     shape = target_psd_matrix.shape
 
@@ -120,10 +113,25 @@ def get_pca_vector(target_psd_matrix):
     beamforming_vector = np.array(
         [eigenvecs[i, :, vals[i]] for i in range(eigenvals.shape[0])]
     )
+    eigenvalues = np.array(
+        [eigenvals[i, vals[i]] for i in range(eigenvals.shape[0])]
+    )
     # Reconstruct original shape
     beamforming_vector = np.reshape(beamforming_vector, shape[:-1])
+    eigenvalues = np.reshape(eigenvalues, shape[:-2])
 
-    return beamforming_vector
+    return beamforming_vector, eigenvalues
+
+
+def get_pca_vector(target_psd_matrix):
+    """
+    Returns the beamforming vector of a PCA beamformer.
+
+    :param target_psd_matrix: Target PSD matrix
+        with shape (..., sensors, sensors)
+    :return: Set of beamforming vectors with shape (..., sensors)
+    """
+    return get_pca(target_psd_matrix)[0]
 
 
 # TODO: Possible test case: Assert W^H * H = 1.
