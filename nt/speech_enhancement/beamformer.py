@@ -71,6 +71,9 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
         psd /= observation.shape[-1]
 
     else:
+        # Unfortunately, this function changes mask.
+        mask = np.copy(mask)
+
         # normalize
         if mask.dtype == np.bool:
             mask = np.asfarray(mask)
