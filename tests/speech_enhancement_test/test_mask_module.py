@@ -2,8 +2,8 @@ import unittest
 import nt.testing as tc
 import numpy as np
 from nt.speech_enhancement.mask_estimation import simple_ideal_soft_mask
-from nt.speech_enhancement.mask import ideal_binary_mask
-from nt.speech_enhancement.mask import wiener_like_mask
+from nt.speech_enhancement.mask_module import ideal_binary_mask
+from nt.speech_enhancement.mask_module import wiener_like_mask
 
 
 def _random_stft(*shape):
