@@ -1,10 +1,10 @@
 """
 All provided masking functions expect the complex valued stft signal as input.
 Each masking function should not take care of further convenience functions
-than allowing arbitrary feature_axis.
+than allowing arbitrary sensor_axis and any number of independent dimensions.
 
 Only, when a multichannel signal is used to pool the power along channels,
-the feature_axis can be provided.
+the sensor_axis can be provided.
 
 All other convenience should be dealt with from wrapper functions which possibly
 take the masking function as a callback. If you want to use lists of arrays,
