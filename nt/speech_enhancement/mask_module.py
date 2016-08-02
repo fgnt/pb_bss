@@ -23,6 +23,13 @@ Optional axis parameters are:
 
 All other axes are regarded as independent dimensions.
 """
+
+# TODO: Migrate and remove this files:
+# TODO:  - tests/speech_enhancement_test/test_merl_masks.py
+# TODO:  - nt/speech_enhancement/merl_masks.py
+# TODO:  - nt/speech_enhancement/mask_estimation.py
+
+
 import numpy as np
 EPS = 1e-18
 

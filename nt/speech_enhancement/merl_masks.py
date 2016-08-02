@@ -6,6 +6,7 @@ from chainer.functions.math.sum import sum
 from chainer.functions.math.basic_math import pow, absolute
 from chainer import link
 from chainer.functions.array.broadcast import broadcast_to
+from nt.speech_enhancement import mask
 
 
 def constraints(f):
@@ -31,8 +32,10 @@ def ideal_binary_mask(S, N):
     :param N: Noise image with shape (frames, 1, features)
     :return: Mask with shape (frames, 1, features)
     """
-    out_type = S.real.dtype
-    return (np.abs(S) > np.abs(N)).astype(out_type)
+    return mask.ideal_binary_mask(
+        np.concatenate([S, N], 1),
+        component_axis=1
+    )[:, [0], :]
 
 
 def ideal_ratio_mask(S, N, eps=1e-18):
@@ -46,8 +49,11 @@ def ideal_ratio_mask(S, N, eps=1e-18):
     :param eps: Regularizing parameter to avoid division by zero.
     :return: Mask with shape (frames, 1, features)
     """
-    out_type = S.real.dtype
-    return (np.abs(S) / (np.abs(S) + np.abs(N) + eps)).astype(out_type)
+    return mask.ideal_ratio_mask(
+        np.concatenate([S, N], 1),
+        component_axis=1,
+        eps=eps
+    )[:, [0], :]
 
 
 def wiener_like_mask(S, N, eps=1e-18):
@@ -61,8 +67,11 @@ def wiener_like_mask(S, N, eps=1e-18):
     :param eps: Regularizing parameter to avoid division by zero.
     :return: Mask with shape (frames, 1, features)
     """
-    out_type = S.real.dtype
-    return (np.abs(S)**2 / (np.abs(S)**2 + np.abs(N)**2 + eps)).astype(out_type)
+    return mask.wiener_like_mask(
+        np.concatenate([S, N], 1),
+        component_axis=1,
+        eps=eps
+    )[:, [0], :]
 
 
 def ideal_amplitude_mask(S, N, eps=1e-18):
@@ -76,8 +85,11 @@ def ideal_amplitude_mask(S, N, eps=1e-18):
     :param eps: Regularizing parameter to avoid division by zero.
     :return: Mask with shape (frames, 1, features)
     """
-    out_type = S.real.dtype
-    return (np.abs(S) / (np.abs(S + N) + eps)).astype(out_type)
+    return mask.ideal_amplitude_mask(
+        np.concatenate([S, N], 1),
+        component_axis=1,
+        eps=eps
+    )[:, [0], :]
 
 
 def phase_sensitive_mask(S, N, eps=1e-18):
@@ -91,10 +103,11 @@ def phase_sensitive_mask(S, N, eps=1e-18):
     :param eps: Regularizing parameter to avoid division by zero.
     :return: Mask with shape (frames, 1, features)
     """
-    out_type = S.real.dtype
-    Y = S + N
-    theta = np.angle(S) - np.angle(Y)
-    return (np.abs(S) / (np.abs(Y) + eps) * np.cos(theta)).astype(out_type)
+    return mask.phase_sensitive_mask(
+        np.concatenate([S, N], 1),
+        component_axis=1,
+        eps=eps
+    )[:, [0], :]
 
 
 def ideal_complex_mask(S, N):
@@ -108,7 +121,10 @@ def ideal_complex_mask(S, N):
     :param eps: Regularizing parameter to avoid division by zero.
     :return: Mask with shape (frames, 1, features)
     """
-    return S / (S + N)
+    return mask.ideal_complex_mask(
+        np.concatenate([S, N], 1),
+        component_axis=1,
+    )[:, [0], :]
 
 
 def ideal_complex_mask_williamson(S, N, eps=1e-18):
