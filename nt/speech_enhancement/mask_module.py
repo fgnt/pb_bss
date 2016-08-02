@@ -38,7 +38,9 @@ EPS = 1e-18
 
 
 def voiced_unvoiced_split_characteristic(
-        frequency_bins, split_bin=None, width=None
+        frequency_bins: int,
+        split_bin: Optional[int]=None,
+        width: Optional[int]=None
 ):
     """ Use this to define different behavior for (un)voiced speech parts.
 
@@ -70,13 +72,19 @@ def voiced_unvoiced_split_characteristic(
     return voiced, unvoiced
 
 
-def ideal_binary_mask(signal: np.ndarray,
-                      source_axis: int=0,
-                      sensor_axis: Optional[int]=None,
-                      )-> np.ndarray:
+def ideal_binary_mask(
+        signal: np.ndarray,
+        source_axis: int=0,
+        sensor_axis: Optional[int]=None,
+) -> np.ndarray:
     """
     The resulting masks are binary (Value is zero or one).
     Also the sum of all masks is one.
+
+    LD: What happens by equal values? See testcases.
+
+    Erdogan, Hakan, et al. "Phase-sensitive and recognition-boosted speech
+    separation using deep recurrent neural networks." ICASSP, 2015.
 
     Example:
         >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
@@ -111,18 +119,20 @@ def ideal_binary_mask(signal: np.ndarray,
     return np.asarray(mask, dtype=dtype)
 
 
-def wiener_like_mask(signal: np.ndarray,
-                     source_axis: int=0,
-                     sensor_axis: Optional[int]=None,
-                     eps: float=EPS,
-                     ) -> np.ndarray:
+def wiener_like_mask(
+        signal: np.ndarray,
+        source_axis: int=0,
+        sensor_axis: Optional[int]=None,
+        eps: float=EPS,
+) -> np.ndarray:
     """
 
     The resulting masks are soft (Value between zero and one).
     The mask values are source power / all power
     Also the sum of all masks is one.
 
-    CB: Wo kommt der name her?
+    Erdogan, Hakan, et al. "Phase-sensitive and recognition-boosted speech
+    separation using deep recurrent neural networks." ICASSP, 2015.
 
     Example:
         >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
@@ -150,18 +160,20 @@ def wiener_like_mask(signal: np.ndarray,
     return mask
 
 
-def ideal_ratio_mask(signal: np.ndarray,
-                     source_axis: int=0,
-                     sensor_axis: Optional[int]=None,
-                     eps: float=EPS,
-                     ) -> np.ndarray:
+def ideal_ratio_mask(
+        signal: np.ndarray,
+        source_axis: int=0,
+        sensor_axis: Optional[int]=None,
+        eps: float=EPS,
+) -> np.ndarray:
     """
 
     The resulting masks are soft (Value between zero and one).
     The mask values are source magnitude / sum magnitude
     Also the sum of all masks is one.
 
-    CB: Why is there a limit for only two sources?
+    Erdogan, Hakan, et al. "Phase-sensitive and recognition-boosted speech
+    separation using deep recurrent neural networks." ICASSP, 2015.
 
     Example:
         >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
@@ -177,14 +189,19 @@ def ideal_ratio_mask(signal: np.ndarray,
         array([ 1.])
     """
     components = signal.shape[source_axis]
-    assert components == 2, 'Only works for one speaker and noise.'
+    # np.testing.assert_equal(components, 2,
+    #                         'Only works for one speaker and noise.')
 
-    if sensor_axis is not None:
-        mask = signal.real ** 2 + signal.imag ** 2
-        mask = mask.sum(sensor_axis, keepdims=True)
-        mask = np.sqrt(mask)
-    else:
-        mask = np.abs(signal)
+    np.testing.assert_equal(sensor_axis, None, """
+How to handle sensor_axis is not defined.
+Possible ways to handle it:
+    signal = signal.abs().sum(sensor_axis)
+    signal = signal.sum(sensor_axis)
+    signal = (signal**2).abs().sum(sensor_axis).sqrt()
+But this destroys the signal, which is complex.
+""")
+
+    mask = np.abs(signal)
 
     mask /= mask.sum(source_axis, keepdims=True) + eps
 
@@ -194,11 +211,12 @@ def ideal_ratio_mask(signal: np.ndarray,
     return mask
 
 
-def ideal_amplitude_mask(signal: np.ndarray,
-                         source_axis: int=0,
-                         sensor_axis: Optional[int]=None,
-                         eps: float=EPS,
-                         ) -> np.ndarray:
+def ideal_amplitude_mask(
+        signal: np.ndarray,
+        source_axis: int=0,
+        sensor_axis: Optional[int]=None,
+        eps: float=EPS,
+) -> np.ndarray:
     """
 
     The resulting masks are soft (Value between zero and one).
@@ -208,6 +226,9 @@ def ideal_amplitude_mask(signal: np.ndarray,
     CB: This is simmilar to ideal_ratio_mask.
         The different is in how sensor_axis is handeld.
         There is a sum over signal, which is complex ???
+
+    Erdogan, Hakan, et al. "Phase-sensitive and recognition-boosted speech
+    separation using deep recurrent neural networks." ICASSP, 2015.
 
     Example:
         >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
@@ -222,9 +243,15 @@ def ideal_amplitude_mask(signal: np.ndarray,
             axis=0))
         array([ 1.])
     """
-    if sensor_axis is not None:
-        # TODO: Make sure, this is not an inplace operation.
-        signal = np.sum(signal, sensor_axis, keepdims=True)
+
+    np.testing.assert_equal(sensor_axis, None, """
+How to handle sensor_axis is not defined.
+Possible ways to handle it:
+    signal = signal.abs().sum(sensor_axis)
+    signal = signal.sum(sensor_axis)
+    signal = (signal**2).abs().sum(sensor_axis).sqrt()
+But this destroys the signal, which is complex.
+""")
 
     amplitude = np.abs(signal)
     amplitude_of_sum = np.abs(np.sum(signal, source_axis, keepdims=True))
@@ -235,20 +262,30 @@ def ideal_amplitude_mask(signal: np.ndarray,
     return mask
 
 
-def phase_sensitive_mask(signal: np.ndarray,
-                         source_axis: int=0,
-                         sensor_axis: Optional[int]=None,
-                         eps: float=EPS,
-                         ) -> np.ndarray:
+def phase_sensitive_mask(
+        signal: np.ndarray,
+        source_axis: int=0,
+        sensor_axis: Optional[int]=None,
+        eps: float=EPS,
+) -> np.ndarray:
     """
 
     CB: Explanation, why to use this mask
         There is a sum over signal, which is complex ???
 
+    Erdogan, Hakan, et al. "Phase-sensitive and recognition-boosted speech
+    separation using deep recurrent neural networks." ICASSP, 2015.
+
     """
 
-    # ToDo: comment, why no sensor_axis
-    assert sensor_axis is None
+    np.testing.assert_equal(sensor_axis, None, """
+How to handle sensor_axis is not defined.
+Possible ways to handle it:
+    signal = signal.abs().sum(sensor_axis)  # problem, because signal is real
+    signal = signal.sum(sensor_axis)
+    signal = (signal**2).abs().sum(sensor_axis).sqrt()  # problem, because signal is real
+But this destroys the signal, which is complex.
+""")
 
     observed_signal = np.sum(signal, axis=source_axis, keepdims=True)
     theta = np.angle(signal) - np.angle(observed_signal)
@@ -260,28 +297,39 @@ def phase_sensitive_mask(signal: np.ndarray,
     return mask
 
 
-def ideal_complex_mask(signal: np.ndarray,
-                       source_axis: int=0,
-                       sensor_axis: Optional[int]=None,
-                       ) -> np.ndarray:
+def ideal_complex_mask(
+        signal: np.ndarray,
+        source_axis: int=0,
+        sensor_axis: Optional[int]=None,
+) -> np.ndarray:
     """
 
-    CB: Explanation, why to use this mask
-        There is a sum over signal, which is complex ???
+    Erdogan, Hakan, et al. "Phase-sensitive and recognition-boosted speech
+    separation using deep recurrent neural networks." ICASSP, 2015.
 
     """
-    assert sensor_axis is None
 
-    return signal / np.sum(signal, axis=source_axis)
+    np.testing.assert_equal(sensor_axis, None, """
+How to handle sensor_axis is not defined.
+Possible ways to handle it:
+    signal = signal.abs().sum(sensor_axis)  # problem, because signal is real
+    signal = signal.sum(sensor_axis)
+    signal = (signal**2).abs().sum(sensor_axis).sqrt()  # problem, because signal is real
+But this destroys the signal, which is complex.
+""")
+
+    observed_signal = np.sum(signal, axis=source_axis, keepdims=True)
+    return signal / observed_signal
 
 
-def lorenz_mask(signal: np.ndarray,
-                sensor_axis: Optional[int]=None,
-                frequency_axis: int=-2,
-                time_axis: int=-1,
-                lorenz_fraction: float=0.98,
-                weight: float=0.999,
-                ) -> np.adarray:
+def lorenz_mask(
+        signal: np.ndarray,
+        sensor_axis: Optional[int]=None,
+        frequency_axis: int=-2,
+        time_axis: int=-1,
+        lorenz_fraction: float=0.98,
+        weight: float=0.999,
+) -> np.ndarray:
     """ Calculate softened mask according to Lorenz function criterion.
 
     To be precise, the lorenz_fraction is not actually a quantile
@@ -299,9 +347,9 @@ def lorenz_mask(signal: np.ndarray,
     Returns:
 
     """
-    assert frequency_axis == -2, 'Not yet implemented.'
-    assert time_axis == -1, 'Not yet implemented.'
-    assert sensor_axis is None, 'Not yet implemented.'
+    np.testing.assert_equal(frequency_axis, -2, 'Not yet implemented.')
+    np.testing.assert_equal(time_axis, -1, 'Not yet implemented.')
+    np.testing.assert_equal(sensor_axis, None, 'Not yet implemented.')
 
     shape = signal.shape
     dtype = signal.real.dtype
@@ -325,26 +373,27 @@ def lorenz_mask(signal: np.ndarray,
     return mask.reshape(shape)
 
 
-def biased_binary_mask(signal: np.ndarray,
-                       component_axis: int=0,
-                       feature_axis: Optional[int]=None,
-                       frequency_axis: int=-1,
-                       threshold_unvoiced_speech: int=5,
-                       threshold_voiced_speech: int=0,
-                       threshold_unvoiced_noise: int=-10,
-                       threshold_voiced_noise: int=-10,
-                       low_cut: int=5,
-                       high_cut: int=500,
-                       ) -> np.ndarray:
+def biased_binary_mask(
+        signal: np.ndarray,
+        component_axis: int=0,
+        sensor_axis: Optional[int]=None,
+        frequency_axis: int=-1,
+        threshold_unvoiced_speech: int=5,
+        threshold_voiced_speech: int=0,
+        threshold_unvoiced_noise: int=-10,
+        threshold_voiced_noise: int=-10,
+        low_cut: int=5,
+        high_cut: int=500,
+) -> np.ndarray:
     """
 
-    CB: feature_axis und frequency_axis werden nicht verwendet
 
     """
     components = signal.shape[component_axis]
-    assert components == 2, 'Only works for one speaker and noise.'
+    np.testing.assert_equal(components, 2,
+                            'Only works for one speaker and noise.')
 
-    voiced, unvoiced = voiced_unvoiced_split_characteristic(signal.shape[-1])
+    voiced, unvoiced = voiced_unvoiced_split_characteristic(signal.shape[frequency_axis])
 
     # Calculate the thresholds
     threshold_speech = (
@@ -357,6 +406,11 @@ def biased_binary_mask(signal: np.ndarray,
     )
 
     power = signal.real ** 2 + signal.imag ** 2
+
+    if sensor_axis is not None:
+        raise NotImplementedError()
+        # power = ...
+
     speech_power, noise_power = np.split(power, 2, axis=component_axis)
 
     power_threshold_speech = speech_power / 10 ** (threshold_speech / 10)
