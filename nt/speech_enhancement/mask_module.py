@@ -29,8 +29,11 @@ All other axes are regarded as independent dimensions.
 # TODO:  - nt/speech_enhancement/merl_masks.py
 # TODO:  - nt/speech_enhancement/mask_estimation.py
 
+# CB: Eventuell einen Dekorator nutzen für force signal np.ndarray?
+# CB: Eventuell einen Dekorator nutzen für force signal.real.dtype == return.dtype?
 
 import numpy as np
+from typing import Union, Optional
 EPS = 1e-18
 
 
@@ -67,7 +70,29 @@ def voiced_unvoiced_split_characteristic(
     return voiced, unvoiced
 
 
-def ideal_binary_mask(signal, source_axis=0, sensor_axis=None):
+def ideal_binary_mask(signal: np.ndarray,
+                      source_axis: int=0,
+                      sensor_axis: Optional[int]=None,
+                      )-> np.ndarray:
+    """
+    The resulting masks are binary (Value is zero or one).
+    Also the sum of all masks is one.
+
+    Example:
+        >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
+        >>> M_x, M_n = ideal_binary_mask(rand(2, 3)).shape
+        >>> ideal_binary_mask(rand(2, 3)).shape
+        (2, 3)
+        >>> ideal_binary_mask(rand(2, 3, 5)).shape
+        (2, 3, 5)
+        >>> ideal_binary_mask(rand(2, 3, 5), sensor_axis=1).shape
+        (2, 5)
+        >>> np.unique(ideal_binary_mask(rand(2, 3, 5), sensor_axis=1))
+        array([ 0.,  1.])
+        >>> np.unique(np.sum(ideal_binary_mask(rand(2, 3, 5), sensor_axis=1), \
+            axis=0))
+        array([ 1.])
+    """
     components = signal.shape[source_axis]
     dtype = signal.real.dtype
     mask = signal.real ** 2 + signal.imag ** 2
@@ -86,7 +111,32 @@ def ideal_binary_mask(signal, source_axis=0, sensor_axis=None):
     return np.asarray(mask, dtype=dtype)
 
 
-def wiener_like_mask(signal, source_axis=0, sensor_axis=None, eps=EPS):
+def wiener_like_mask(signal: np.ndarray,
+                     source_axis: int=0,
+                     sensor_axis: Optional[int]=None,
+                     eps: float=EPS,
+                     ) -> np.ndarray:
+    """
+
+    The resulting masks are soft (Value between zero and one).
+    The mask values are source power / all power
+    Also the sum of all masks is one.
+
+    CB: Wo kommt der name her?
+
+    Example:
+        >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
+        >>> M_x, M_n = wiener_like_mask(rand(2, 3)).shape
+        >>> wiener_like_mask(rand(2, 3)).shape
+        (2, 3)
+        >>> wiener_like_mask(rand(2, 3, 5)).shape
+        (2, 3, 5)
+        >>> wiener_like_mask(rand(2, 3, 5), sensor_axis=1).shape
+        (2, 5)
+        >>> np.unique(np.sum(wiener_like_mask(rand(2, 3, 5), sensor_axis=1), \
+            axis=0))
+        array([ 1.])
+    """
     mask = signal.real ** 2 + signal.imag ** 2
 
     if sensor_axis is not None:
@@ -100,7 +150,32 @@ def wiener_like_mask(signal, source_axis=0, sensor_axis=None, eps=EPS):
     return mask
 
 
-def ideal_ratio_mask(signal, source_axis=0, sensor_axis=None, eps=EPS):
+def ideal_ratio_mask(signal: np.ndarray,
+                     source_axis: int=0,
+                     sensor_axis: Optional[int]=None,
+                     eps: float=EPS,
+                     ) -> np.ndarray:
+    """
+
+    The resulting masks are soft (Value between zero and one).
+    The mask values are source magnitude / sum magnitude
+    Also the sum of all masks is one.
+
+    CB: Why is there a limit for only two sources?
+
+    Example:
+        >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
+        >>> M_x, M_n = wiener_like_mask(rand(2, 3)).shape
+        >>> ideal_ratio_mask(rand(2, 3)).shape
+        (2, 3)
+        >>> ideal_ratio_mask(rand(2, 3, 5)).shape
+        (2, 3, 5)
+        >>> ideal_ratio_mask(rand(2, 3, 5), sensor_axis=1).shape
+        (2, 5)
+        >>> np.unique(np.sum(ideal_ratio_mask(rand(2, 3, 5), sensor_axis=1), \
+            axis=0))
+        array([ 1.])
+    """
     components = signal.shape[source_axis]
     assert components == 2, 'Only works for one speaker and noise.'
 
@@ -119,7 +194,34 @@ def ideal_ratio_mask(signal, source_axis=0, sensor_axis=None, eps=EPS):
     return mask
 
 
-def ideal_amplitude_mask(signal, source_axis=0, sensor_axis=None, eps=EPS):
+def ideal_amplitude_mask(signal: np.ndarray,
+                         source_axis: int=0,
+                         sensor_axis: Optional[int]=None,
+                         eps: float=EPS,
+                         ) -> np.ndarray:
+    """
+
+    The resulting masks are soft (Value between zero and one).
+    The mask values are source magnitude / sum magnitude
+    Also the sum of all masks is one.
+
+    CB: This is simmilar to ideal_ratio_mask.
+        The different is in how sensor_axis is handeld.
+        There is a sum over signal, which is complex ???
+
+    Example:
+        >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
+        >>> M_x, M_n = wiener_like_mask(rand(2, 3)).shape
+        >>> ideal_ratio_mask(rand(2, 3)).shape
+        (2, 3)
+        >>> ideal_ratio_mask(rand(2, 3, 5)).shape
+        (2, 3, 5)
+        >>> ideal_ratio_mask(rand(2, 3, 5), sensor_axis=1).shape
+        (2, 5)
+        >>> np.unique(np.sum(ideal_ratio_mask(rand(2, 3, 5), sensor_axis=1), \
+            axis=0))
+        array([ 1.])
+    """
     if sensor_axis is not None:
         # TODO: Make sure, this is not an inplace operation.
         signal = np.sum(signal, sensor_axis, keepdims=True)
@@ -133,7 +235,19 @@ def ideal_amplitude_mask(signal, source_axis=0, sensor_axis=None, eps=EPS):
     return mask
 
 
-def phase_sensitive_mask(signal, source_axis=0, sensor_axis=None, eps=EPS):
+def phase_sensitive_mask(signal: np.ndarray,
+                         source_axis: int=0,
+                         sensor_axis: Optional[int]=None,
+                         eps: float=EPS,
+                         ) -> np.ndarray:
+    """
+
+    CB: Explanation, why to use this mask
+        There is a sum over signal, which is complex ???
+
+    """
+
+    # ToDo: comment, why no sensor_axis
     assert sensor_axis is None
 
     observed_signal = np.sum(signal, axis=source_axis, keepdims=True)
@@ -146,19 +260,28 @@ def phase_sensitive_mask(signal, source_axis=0, sensor_axis=None, eps=EPS):
     return mask
 
 
-def ideal_complex_mask(signal, source_axis=0, sensor_axis=None):
+def ideal_complex_mask(signal: np.ndarray,
+                       source_axis: int=0,
+                       sensor_axis: Optional[int]=None,
+                       ) -> np.ndarray:
+    """
+
+    CB: Explanation, why to use this mask
+        There is a sum over signal, which is complex ???
+
+    """
     assert sensor_axis is None
 
     return signal / np.sum(signal, axis=source_axis)
 
 
-def lorenz_mask(
-        signal,
-        sensor_axis=None,
-        frequency_axis=-2,
-        time_axis=-1,
-        lorenz_fraction=0.98, weight=0.999
-):
+def lorenz_mask(signal: np.ndarray,
+                sensor_axis: Optional[int]=None,
+                frequency_axis: int=-2,
+                time_axis: int=-1,
+                lorenz_fraction: float=0.98,
+                weight: float=0.999,
+                ) -> np.adarray:
     """ Calculate softened mask according to Lorenz function criterion.
 
     To be precise, the lorenz_fraction is not actually a quantile
@@ -202,18 +325,22 @@ def lorenz_mask(
     return mask.reshape(shape)
 
 
-def biased_binary_mask(
-        signal,
-        component_axis=0,
-        feature_axis=None,
-        frequency_axis=-1,
-        threshold_unvoiced_speech=5,
-        threshold_voiced_speech=0,
-        threshold_unvoiced_noise=-10,
-        threshold_voiced_noise=-10,
-        low_cut=5,
-        high_cut=500
-):
+def biased_binary_mask(signal: np.ndarray,
+                       component_axis: int=0,
+                       feature_axis: Optional[int]=None,
+                       frequency_axis: int=-1,
+                       threshold_unvoiced_speech: int=5,
+                       threshold_voiced_speech: int=0,
+                       threshold_unvoiced_noise: int=-10,
+                       threshold_voiced_noise: int=-10,
+                       low_cut: int=5,
+                       high_cut: int=500,
+                       ) -> np.ndarray:
+    """
+
+    CB: feature_axis und frequency_axis werden nicht verwendet
+
+    """
     components = signal.shape[component_axis]
     assert components == 2, 'Only works for one speaker and noise.'
 
