@@ -51,11 +51,11 @@ class TestIdealBinaryMask(unittest.TestCase):
         tc.assert_equal(mask.shape, (K, D, F, T))
 
     def test_feature_axis(self):
-        mask = ideal_binary_mask(self.signal, feature_axis=1)
+        mask = ideal_binary_mask(self.signal, sensor_axis=1)
         tc.assert_equal(mask.shape, (K, F, T))
 
     def test_component_and_feature_axis(self):
-        mask = ideal_binary_mask(self.signal, component_axis=2, feature_axis=3)
+        mask = ideal_binary_mask(self.signal, source_axis=2, sensor_axis=3)
         tc.assert_equal(mask.shape, (K, D, F))
 
     def test_forbidden_list_input(self):
@@ -77,11 +77,11 @@ class TestWienerLikeMask(unittest.TestCase):
         tc.assert_equal(mask.shape, (K, D, F, T))
 
     def test_feature_axis(self):
-        mask = wiener_like_mask(self.signal, feature_axis=1)
+        mask = wiener_like_mask(self.signal, sensor_axis=1)
         tc.assert_equal(mask.shape, (K, F, T))
 
     def test_component_and_feature_axis(self):
-        mask = wiener_like_mask(self.signal, component_axis=2, feature_axis=3)
+        mask = wiener_like_mask(self.signal, source_axis=2, sensor_axis=3)
         tc.assert_equal(mask.shape, (K, D, F))
 
     def test_forbidden_list_input(self):
