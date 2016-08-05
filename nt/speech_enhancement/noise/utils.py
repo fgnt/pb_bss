@@ -17,8 +17,8 @@ def get_snr(X, N):
     :param N: Signal of noise image.
     :return: SNR of time signals or STFT signals in dB.
     """
-    energy_X = numpy.sum(numpy.abs(X * X.conj()))
-    energy_N = numpy.sum(numpy.abs(N * N.conj()))
+    energy_X = numpy.mean(numpy.abs(X)**2)
+    energy_N = numpy.mean(numpy.abs(N)**2)
     return 10 * numpy.log10(energy_X / energy_N)
 
 
