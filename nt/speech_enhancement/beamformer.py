@@ -171,7 +171,8 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
     return beamforming_vector
 
 
-def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False):
+def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
+                   use_eig=False):
     """
     Returns the GEV beamforming vector.
 
@@ -181,7 +182,7 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False):
         with shape (bins, sensors, sensors)
     :return: Set of beamforming vectors with shape (bins, sensors)
     """
-    if c_gev_available:
+    if c_gev_available and not use_eig:
         try:
             return _c_get_gev_vector(
                 np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
@@ -191,10 +192,10 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False):
                 pass
             else:
                 raise e
-    return _get_gev_vector(target_psd_matrix, noise_psd_matrix)
+    return _get_gev_vector(target_psd_matrix, noise_psd_matrix, use_eig)
 
 
-def _get_gev_vector(target_psd_matrix, noise_psd_matrix):
+def _get_gev_vector(target_psd_matrix, noise_psd_matrix, use_eig=False):
     assert target_psd_matrix.shape == noise_psd_matrix.shape
     assert target_psd_matrix.shape[-2] == target_psd_matrix.shape[-1]
 
@@ -207,15 +208,12 @@ def _get_gev_vector(target_psd_matrix, noise_psd_matrix):
     bins = target_psd_matrix.shape[0]
     beamforming_vector = np.empty((bins, sensors), dtype=np.complex128)
 
+    solver = eig if use_eig else eigh
+
     for f in range(bins):
-        try:
-            eigenvals, eigenvecs = eigh(
-                target_psd_matrix[f, :, :], noise_psd_matrix[f, :, :]
-            )
-        except np.linalg.LinAlgError:
-            eigenvals, eigenvecs = eig(
-                target_psd_matrix[f, :, :], noise_psd_matrix[f, :, :]
-            )
+        eigenvals, eigenvecs = solver(
+            target_psd_matrix[f, :, :], noise_psd_matrix[f, :, :]
+        )
         beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
 
     return beamforming_vector.reshape(original_shape[:-1])
