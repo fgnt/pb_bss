@@ -2,6 +2,7 @@ import numpy
 import itertools
 from nt.speech_enhancement.noise import get_power
 
+
 def sxr(S, X):
     """ Calculate signal to `X` ratio
 
@@ -33,6 +34,7 @@ def input_sxr(images, noise, average_sources=True):
 
     :return: SDR, SIR, SNR
     """
+    # TODO: This is not quite the correct way when utterances have different len
 
     D = images.shape[1]  # Number of sensors
     K = images.shape[2]  # Number of speakers
@@ -96,12 +98,11 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True):
     :return SIR: #Sources times 1 vector of Signal to Interference Ratios
     :return SNR: #Sources times 1 vector of Signal to Noise Ratios
    """
+    # TODO: This is not quite the correct way when utterances have different len
 
     # Assume, that the maximum number of speakers is smaller than 10.
-
     assert(image_contribution.shape[1] < 10)
     assert(image_contribution.shape[2] < 10)
-
     assert(noise_contribution.shape[1] < 10)
 
     K_source = image_contribution.shape[1]
