@@ -125,13 +125,13 @@ class IdealBinaryMaskTest(unittest.TestCase):
         np.testing.assert_allclose(np.sum(out, out_source_axis), 1)
 
 
-class WienerLikeMaskTestInherint(IdealBinaryMaskTest):
+class WienerLikeMaskTest(IdealBinaryMaskTest):
     def setUp(self):
         self.mask_calculator = mask_module.wiener_like_mask
         self.pass_binary_result = True
 
 
-class IdealAmplitudeMaskTestInherint(IdealBinaryMaskTest):
+class IdealAmplitudeMaskTest(IdealBinaryMaskTest):
 
     pass_binary_result = True
     pass_smaler_equal_one = True
@@ -142,7 +142,7 @@ class IdealAmplitudeMaskTestInherint(IdealBinaryMaskTest):
         self.mask_calculator = mask_module.ideal_amplitude_mask
 
 
-class IdealRatioMaskTestInherint(IdealBinaryMaskTest):
+class IdealRatioMaskTest(IdealBinaryMaskTest):
 
     pass_binary_result = True
     sensor_axis_allowed = False
@@ -151,7 +151,7 @@ class IdealRatioMaskTestInherint(IdealBinaryMaskTest):
         self.mask_calculator = mask_module.ideal_ratio_mask
 
 
-class IdealComplexMaskTestInherint(IdealBinaryMaskTest):
+class IdealComplexMaskTest(IdealBinaryMaskTest):
 
     pass_binary_result = True
     pass_smaler_equal_one = True
@@ -163,7 +163,7 @@ class IdealComplexMaskTestInherint(IdealBinaryMaskTest):
         self.mask_calculator = mask_module.ideal_complex_mask
 
 
-class PhaseSensitiveMaskTestInherint(IdealBinaryMaskTest):
+class PhaseSensitiveMaskTest(IdealBinaryMaskTest):
 
     pass_binary_result = True
     pass_smaler_equal_one = True
@@ -178,33 +178,6 @@ class PhaseSensitiveMaskTestInherint(IdealBinaryMaskTest):
 F, T, D, K = 51, 31, 6, 2
 X_all = randc128(F, T, D, K)
 X, N = (X_all[:, :, :, 0], X_all[:, :, :, 1])
-
-
-class SimpleIdealSoftMaskTests(unittest.TestCase):
-    def test_single_input(self):
-        M1 = simple_ideal_soft_mask(X_all)
-        tc.assert_equal(M1.shape, (51, 31, 2))
-        tc.assert_almost_equal(np.sum(M1, axis=2), 1)
-        return M1
-
-    def test_separate_input(self):
-        M2 = simple_ideal_soft_mask(X, N)
-        tc.assert_equal(M2.shape, (51, 31, 2))
-        tc.assert_almost_equal(np.sum(M2, axis=2), 1)
-        return M2
-
-    def test_separate_input_equals_single_input(self):
-        tc.assert_equal(self.test_single_input(), self.test_separate_input())
-
-    def test_(self):
-        M3 = simple_ideal_soft_mask(X_all, N)
-        tc.assert_equal(M3.shape, (51, 31, 3))
-        tc.assert_almost_equal(np.sum(M3, axis=2), 1)
-
-    def test_negative_feature_bin(self):
-        M4 = simple_ideal_soft_mask(X, N, feature_dim=-3)
-        tc.assert_equal(M4.shape, (51, 6, 2))
-        tc.assert_almost_equal(np.sum(M4, axis=2), 1)
 
 
 class TestIdealBinaryMask(unittest.TestCase):
