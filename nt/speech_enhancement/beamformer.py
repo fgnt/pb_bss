@@ -54,6 +54,8 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
     (51, 6, 6)
     """
 
+    # TODO: Can we use nt.utils.math_ops.covariance instead?
+
     # ensure negative dim indexes
     sensor_dim, source_dim, time_dim = (d % observation.ndim - observation.ndim
                                         for d in
@@ -223,28 +225,31 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     """
 
     :param atf_vectors: Acoustic transfer function vectors for
-        each source with shape (targets, bins, sensors)
+        each source with shape (targets k, bins f, sensors d)
     :param response_vector: Defines, which sources you are interested in.
         Set it to [1, 0, ..., 0], if you are interested in the first speaker.
         It has the shape (targets,)
     :param noise_psd_matrix: Noise PSD matrix
-        with shape (bins, sensors, sensors)
-    :return: Set of beamforming vectors with shape (bins, sensors)
+        with shape (bins f, sensors d, sensors D)
+    :return: Set of beamforming vectors with shape (bins f, sensors d)
     """
+    # TODO: If it is a list, a list of response_vectors is returned.
 
     Phi_inverse_times_H = solve(
-        np.expand_dims(noise_psd_matrix, axis=0),
-        atf_vectors
-    )
+        noise_psd_matrix[None, ...],  # 1, f, d, D
+        atf_vectors  # k, f, d
+    )  # k, f, d
+
     H_times_Phi_inverse_times_H = np.einsum(
-        'k...d,l...d->...kl',
+        'k...d,K...d->...kK',
         atf_vectors.conj(),
         Phi_inverse_times_H
-    )
+    )  # f, k, K
+
     temp = solve(
         H_times_Phi_inverse_times_H,
-        np.expand_dims(response_vector, axis=0)
-    )
+        response_vector[None, ...],  # 1, K
+    )  # f, k
     beamforming_vector = np.einsum(
         'k...d,...k->...d',
         Phi_inverse_times_H,
