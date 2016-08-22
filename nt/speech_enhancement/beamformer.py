@@ -233,6 +233,7 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
         with shape (bins f, sensors d, sensors D)
     :return: Set of beamforming vectors with shape (bins f, sensors d)
     """
+    response_vector = np.asarray(response_vector)
     # TODO: If it is a list, a list of response_vectors is returned.
 
     Phi_inverse_times_H = solve(
