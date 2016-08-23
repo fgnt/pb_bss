@@ -101,6 +101,7 @@ def ideal_binary_mask(
             axis=0))
         array([ 1.])
     """
+    signal = np.asarray(signal)
     components = signal.shape[source_axis]
     dtype = signal.real.dtype
     mask = signal.real ** 2 + signal.imag ** 2
@@ -147,6 +148,7 @@ def wiener_like_mask(
             axis=0))
         array([ 1.])
     """
+    signal = np.asarray(signal)
     mask = signal.real ** 2 + signal.imag ** 2
 
     if sensor_axis is not None:
@@ -188,6 +190,7 @@ def ideal_ratio_mask(
             axis=0))
         array([ 1.])
     """
+    signal = np.asarray(signal)
     components = signal.shape[source_axis]
     # np.testing.assert_equal(components, 2,
     #                         'Only works for one speaker and noise.')
@@ -243,7 +246,7 @@ def ideal_amplitude_mask(
             axis=0))
         array([ 1.])
     """
-
+    signal = np.asarray(signal)
     np.testing.assert_equal(sensor_axis, None, """
 How to handle sensor_axis is not defined.
 Possible ways to handle it:
@@ -277,7 +280,7 @@ def phase_sensitive_mask(
     separation using deep recurrent neural networks." ICASSP, 2015.
 
     """
-
+    signal = np.asarray(signal)
     np.testing.assert_equal(sensor_axis, None, """
 How to handle sensor_axis is not defined.
 Possible ways to handle it:
@@ -308,7 +311,7 @@ def ideal_complex_mask(
     separation using deep recurrent neural networks." ICASSP, 2015.
 
     """
-
+    signal = np.asarray(signal)
     np.testing.assert_equal(sensor_axis, None, """
 How to handle sensor_axis is not defined.
 Possible ways to handle it:
@@ -347,6 +350,7 @@ def lorenz_mask(
     Returns:
 
     """
+    signal = np.asarray(signal)
     np.testing.assert_equal(frequency_axis, -2, 'Not yet implemented.')
     np.testing.assert_equal(time_axis, -1, 'Not yet implemented.')
     np.testing.assert_equal(sensor_axis, None, 'Not yet implemented.')
@@ -389,6 +393,7 @@ def biased_binary_mask(
 
 
     """
+    signal = np.asarray(signal)
     components = signal.shape[component_axis]
     np.testing.assert_equal(components, 2,
                             'Only works for one speaker and noise.')
@@ -409,6 +414,7 @@ def biased_binary_mask(
 
     if sensor_axis is not None:
         raise NotImplementedError()
+        
         # power = ...
 
     speech_power, noise_power = np.split(power, 2, axis=component_axis)
