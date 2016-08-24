@@ -196,10 +196,6 @@ class TestIdealBinaryMask(unittest.TestCase):
         mask = ideal_binary_mask(self.signal, source_axis=2, sensor_axis=3)
         tc.assert_equal(mask.shape, (K, D, F))
 
-    def test_forbidden_list_input(self):
-        with self.assertRaises(AttributeError):
-            ideal_binary_mask([self.signal, self.signal])
-
     def test_equal_power(self):
         signal = np.asarray([0.5 + 0.5j, 0.5 + 0.5j])
         mask = ideal_binary_mask(signal)
@@ -221,10 +217,6 @@ class TestWienerLikeMask(unittest.TestCase):
     def test_component_and_feature_axis(self):
         mask = wiener_like_mask(self.signal, source_axis=2, sensor_axis=3)
         tc.assert_equal(mask.shape, (K, D, F))
-
-    def test_forbidden_list_input(self):
-        with self.assertRaises(AttributeError):
-            wiener_like_mask([self.signal, self.signal])
 
     def test_equal_power(self):
         signal = np.asarray([0.5 + 0.5j, 0.5 + 0.5j])
