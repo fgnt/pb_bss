@@ -1,8 +1,13 @@
 import numpy
+import numpy as np
 
 
 def get_power(x, axis=None):
     return numpy.sum(numpy.abs(x * x.conj()), axis=axis)
+
+
+def get_variance_for_zero_mean_signal(X):
+    return np.mean(np.abs(X) ** 2)
 
 
 def get_snr(X, N):
@@ -17,9 +22,9 @@ def get_snr(X, N):
     :param N: Signal of noise image.
     :return: SNR of time signals or STFT signals in dB.
     """
-    energy_X = numpy.var(X)
-    energy_N = numpy.var(N)
-    return 10 * numpy.log10(energy_X / energy_N)
+    power_X = get_variance_for_zero_mean_signal(X)
+    power_N = get_variance_for_zero_mean_signal(N)
+    return 10 * np.log10(power_X / power_N)
 
 
 def set_snr(X, N, snr, current_snr=None):
