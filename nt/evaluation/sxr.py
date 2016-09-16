@@ -15,7 +15,7 @@ def sxr(S, X):
     return result
 
 
-def input_sxr(images, noise, average_sources=True):
+def input_sxr(images, noise, average_sources=True, *, return_dict=False):
     """ Calculate input SXR values according to Tran Vu.
 
     The SXR definition is inspired by E. Vincent but the
@@ -31,8 +31,12 @@ def input_sxr(images, noise, average_sources=True):
     :type noise: numpy.ndarray with #Samples x #Sensors
     :param average_sources: Logical if SXR is average of speakers
     :type average_sources: bool
+    :param return_dict: specifies if the returned value is a list or a dict.
+                        If return_dict is a str, it is the prefix for the
+                        dict keys
+    :type return_dict: bool or str
 
-    :return: SDR, SIR, SNR
+    :return: SDR, SIR, SNR or {'sdr': SDR, 'sir': SIR, 'snr': SNR}
     """
     # TODO: This is not quite the correct way when utterances have different len
 
@@ -57,16 +61,28 @@ def input_sxr(images, noise, average_sources=True):
     else:
         S = numpy.mean(S, axis=1)
         I = numpy.mean(I, axis=1)
+
     N = numpy.mean(N)
 
     SDR = sxr(S, I+N)
     SIR = sxr(S, I)
     SNR = sxr(S, N)
 
-    return SDR, SIR, SNR
+    if return_dict:
+        if return_dict is True:
+            return {'sdr': SDR, 'sir': SIR, 'snr': SNR}
+        elif isinstance(return_dict, str):
+            return {return_dict+'sdr': SDR,
+                    return_dict+'sir': SIR,
+                    return_dict+'snr': SNR}
+        else:
+            raise TypeError(return_dict)
+    else:
+        return SDR, SIR, SNR
 
 
-def output_sxr(image_contribution, noise_contribution, average_sources=True):
+def output_sxr(image_contribution, noise_contribution, average_sources=True,
+               return_dict=False):
     """ Calculate output SXR values.
 
     The SXR definition is inspired by E. Vincent but the
@@ -93,6 +109,10 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True):
     :type noise_contribution: #Samples times #targetSpeakers
     :param average_sources: Scalar logical if SXR is average of speakers;
       optional (default: true). If set to true, SXR-values are scalars.
+    :param return_dict: specifies if the returned value is a list or a dict.
+                        If return_dict is a str, it is the prefix for the
+                        dict keys
+    :type return_dict: bool or str
 
     :return SDR: #Sources times 1 vector of Signal to Distortion Ratios
     :return SIR: #Sources times 1 vector of Signal to Interference Ratios
@@ -148,4 +168,14 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True):
     SIR = sxr(SS, II)
     SNR = sxr(SS, N)
 
-    return SDR, SIR, SNR
+    if return_dict:
+        if return_dict is True:
+            return {'sdr': SDR, 'sir': SIR, 'snr': SNR}
+        elif isinstance(return_dict, str):
+            return {return_dict + 'sdr': SDR,
+                    return_dict + 'sir': SIR,
+                    return_dict + 'snr': SNR}
+        else:
+            raise TypeError(return_dict)
+    else:
+        return SDR, SIR, SNR
