@@ -3,12 +3,14 @@ import unittest
 import numpy as np
 
 import nt.testing as tc
-from nt.speech_enhancement.beamformer import get_gev_vector, _get_gev_vector
+from nt.speech_enhancement.beamformer import get_gev_vector, \
+    _get_gev_vector, _cythonized_eig, eig
 from nt.speech_enhancement.beamformer import get_lcmv_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_pca_vector
 from nt.utils.math_ops import cos_similarity
 from nt.utils.random_helper import uniform, hermitian, pos_def_hermitian
+
 
 
 class TestBeamformerWrapper(unittest.TestCase):
@@ -80,3 +82,36 @@ class TestCythonizedGetGEV(unittest.TestCase):
 
         # assume speedup is bigger than 5
         tc.assert_array_greater(elapsed_time_python/elapsed_time_cython1, 5)
+
+
+class TestCythonizedEig(unittest.TestCase):
+    def test_result_equal(self):
+        import time
+
+        F = 513
+
+        phi_XX = pos_def_hermitian(F, 6, 6)
+        phi_NN = pos_def_hermitian(F, 6, 6)
+        t = time.time()
+        beamforming_vector = np.empty((F, 6), dtype=np.complex128)
+        eigenvals = np.empty((F, 6), dtype=np.complex128)
+        eigenvecs = np.empty((F, 6, 6), dtype=np.complex128)
+        for f in range(F):
+            eigenvals[f], eigenvecs[f] = eig(
+                phi_XX[f, :, :], phi_NN[f, :, :]
+            )
+            beamforming_vector[f, :] = eigenvecs[f, :, np.argmax(eigenvals[f])]
+        elapsed_time_python = time.time() - t
+
+        t = time.time()
+        eigenvals_c, eigenvecs_c = _cythonized_eig(phi_XX, phi_NN)
+        beamforming_vector_cython = eigenvecs_c[range(F), :,
+                                    np.argmax(eigenvals_c, axis=1)]
+        elapsed_time_cython1 = time.time() - t
+
+        tc.assert_allclose(
+            cos_similarity(beamforming_vector, beamforming_vector_cython),
+            1.0, atol=1e-6)
+
+        # assume speedup is bigger than 5
+        tc.assert_array_greater(elapsed_time_python / elapsed_time_cython1, 5)
