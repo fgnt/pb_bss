@@ -4,7 +4,6 @@ import numpy as np
 from numpy.linalg import solve
 from scipy.linalg import eig
 from scipy.linalg import eigh
-from nt.utils.math_ops import covariance
 
 try:
     from .cythonized.get_gev_vector import _c_get_gev_vector
@@ -15,6 +14,16 @@ except ImportError:
                   'the toolbox?')
 else:
     c_gev_available = True
+
+try:
+    from .cythonized.c_eig import _cythonized_eig
+except ImportError:
+    c_eig_available = False
+    warnings.warn('Could not import cythonized eig. Falling back to '
+                  'python implementation. Maybe you need to rebuild/reinstall '
+                  'the toolbox?')
+else:
+    c_eig_available = True
 
 
 def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
@@ -165,7 +174,8 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
         bins = noise_psd_matrix.shape[0]
         numerator = np.empty_like(atf_vector)
         for f in range(bins):
-            numerator[f], *_ = np.linalg.lstsq(noise_psd_matrix[f], atf_vector[..., f, :])
+            numerator[f], *_ = np.linalg.lstsq(noise_psd_matrix[f],
+                                               atf_vector[..., f, :])
     denominator = np.einsum('...d,...d->...', atf_vector.conj(), numerator)
     beamforming_vector = numerator / np.expand_dims(denominator, axis=-1)
 
@@ -188,6 +198,18 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
             return _c_get_gev_vector(
                 np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
                 np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+        except ValueError as e:
+            if not force_cython:
+                pass
+            else:
+                raise e
+    if c_eig_available and use_eig:
+        try:
+            eigenvals_c, eigenvecs_c = _cythonized_eig(
+                target_psd_matrix, noise_psd_matrix)
+            return eigenvecs_c[
+                   range(target_psd_matrix.shape[0]), :,
+                   np.argmax(eigenvals_c, axis=1)]
         except ValueError as e:
             if not force_cython:
                 pass

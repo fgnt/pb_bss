@@ -2,7 +2,7 @@
 
 cimport numpy as np
 import numpy as np
-from scipy.linalg.cython_lapack cimport zhegvd
+from scipy.linalg.cython_lapack cimport zhegvd, zggev
 cimport cython
 
 #http://stackoverflow.com/questions/18593308/tips-for-optimising-code-in-cython
