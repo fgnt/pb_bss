@@ -100,11 +100,11 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
     noise separately. Evaluate the results with this function to obtain
     intrusive SXR measures.
 
-    :param image_contribution:  Put the clean images into the separation
+    :param image_contribution:  Put each of the clean images into the separation
       algorithm with fixed parameters. The output of the separation algorithm
       can now be used as imageContribution.
     :type image_contribution: #Samples x #sourceSpeakers x #targetSpeakers
-    :param noise_contribution: Put the ground truth into the separation
+    :param noise_contribution: Put the ground truth noise into the separation
       algorithm with fixed parameters. The output is noiseContribution.
     :type noise_contribution: #Samples times #targetSpeakers
     :param average_sources: Scalar logical if SXR is average of speakers;
