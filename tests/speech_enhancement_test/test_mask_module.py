@@ -2,7 +2,6 @@ import unittest
 import nt.testing as tc
 from nose_parameterized import parameterized, param
 import numpy as np
-from nt.speech_enhancement.mask_estimation import simple_ideal_soft_mask
 from nt.speech_enhancement.mask_module import ideal_binary_mask
 from nt.speech_enhancement.mask_module import wiener_like_mask
 from nt.utils.random_helper import randn

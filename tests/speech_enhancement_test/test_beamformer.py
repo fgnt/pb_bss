@@ -8,7 +8,7 @@ from nt.speech_enhancement.beamformer import get_gev_vector, \
 from nt.speech_enhancement.beamformer import get_lcmv_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_pca_vector
-from nt.utils.math_ops import cos_similarity
+from nt.math.vector import cos_similarity
 from nt.utils.random_helper import uniform, hermitian, pos_def_hermitian
 
 
