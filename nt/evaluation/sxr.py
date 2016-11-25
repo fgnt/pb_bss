@@ -1,6 +1,6 @@
 import numpy
 import itertools
-from nt.speech_enhancement.noise import get_power
+from nt.speech_enhancement.noise import get_energy
 
 
 def sxr(S, X):
@@ -49,11 +49,11 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
 
     for d in range(D):
         for k in range(K):
-            S[k, d] = get_power(images[:, d, k], axis=0)
+            S[k, d] = get_energy(images[:, d, k], axis=0)
             I[k, d] = numpy.sum(
-                get_power(images[:, d, [n for n in range(K) if n != k]],
+                get_energy(images[:, d, [n for n in range(K) if n != k]],
                           axis=0))
-        N[d] = get_power(noise[:, d], axis=0)
+        N[d] = get_energy(noise[:, d], axis=0)
 
     if average_sources:
         S = numpy.mean(S)
@@ -133,10 +133,10 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
 
     for k_target in range(K_target):
         for k_source in range(K_source):
-            S[k_source, k_target] = get_power(
+            S[k_source, k_target] = get_energy(
                 image_contribution[:, k_source, k_target], axis=0
             )
-        N[k_target] = get_power(noise_contribution[:, k_target], axis=0)
+        N[k_target] = get_energy(noise_contribution[:, k_target], axis=0)
 
     all_permutations = \
         numpy.array(list(itertools.permutations(range(K_target))))
