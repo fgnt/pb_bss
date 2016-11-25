@@ -105,7 +105,7 @@ def _cythonized_eig(np.ndarray[complex, ndim=3] a, np.ndarray[complex, ndim=3] b
             if INFO < 0:
                 raise ValueError('Value {} has an illegal value for '
                                  'frequency {}'.format(-INFO, f))
-            elif INFO > 0 and INFO <= sensors:
+            elif 0 < INFO <= sensors:
                 raise ValueError('''The QZ iteration failed.  No eigenvectors have been
                 calculated, but ALPHA(j) and BETA(j) should be
                 correct for j={}+1,...,N.'''.format(

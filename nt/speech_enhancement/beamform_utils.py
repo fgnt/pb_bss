@@ -85,6 +85,7 @@ def get_farfield_time_difference_of_arrival(
         sensor_positions - sensor_positions[:, reference_channel, None]
     )
     source_direction_vector = numpy.zeros([3, angles])
+
     for k in range(angles):
         source_direction_vector[:, k] = numpy.dot(
             -_angle_to_rotation_matrix(source_angles[:, k]),
