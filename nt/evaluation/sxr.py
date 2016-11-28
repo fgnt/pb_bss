@@ -1,9 +1,12 @@
 import numpy
 import itertools
-from nt.speech_enhancement.noise import get_energy
+from nt.speech_enhancement.noise import get_energy, get_snr
 
 
-def sxr(S, X):
+__all__ = ['get_snr', 'input_sxr', 'output_sxr']
+
+
+def _sxr(S, X):
     """ Calculate signal to `X` ratio
 
     :param S: Signal power
@@ -38,7 +41,8 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
 
     :return: SDR, SIR, SNR or {'sdr': SDR, 'sir': SIR, 'snr': SNR}
     """
-    # TODO: This is not quite the correct way when utterances have different len
+    # TODO: This is not quite the correct way when utterances have different
+    # len
 
     D = images.shape[1]  # Number of sensors
     K = images.shape[2]  # Number of speakers
@@ -52,7 +56,7 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
             S[k, d] = get_energy(images[:, d, k], axis=0)
             I[k, d] = numpy.sum(
                 get_energy(images[:, d, [n for n in range(K) if n != k]],
-                          axis=0))
+                           axis=0))
         N[d] = get_energy(noise[:, d], axis=0)
 
     if average_sources:
@@ -64,9 +68,9 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
 
     N = numpy.mean(N)
 
-    SDR = sxr(S, I+N)
-    SIR = sxr(S, I)
-    SNR = sxr(S, N)
+    SDR = _sxr(S, I+N)
+    SIR = _sxr(S, I)
+    SNR = _sxr(S, N)
 
     if return_dict:
         if return_dict is True:
@@ -100,9 +104,9 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
     noise separately. Evaluate the results with this function to obtain
     intrusive SXR measures.
 
-    :param image_contribution:  Put each of the clean images into the separation
-      algorithm with fixed parameters. The output of the separation algorithm
-      can now be used as imageContribution.
+    :param image_contribution:  Put each of the clean images into the
+      separation algorithm with fixed parameters. The output of the separation
+      algorithm can now be used as imageContribution.
     :type image_contribution: #Samples x #sourceSpeakers x #targetSpeakers
     :param noise_contribution: Put the ground truth noise into the separation
       algorithm with fixed parameters. The output is noiseContribution.
@@ -118,7 +122,8 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
     :return SIR: #Sources times 1 vector of Signal to Interference Ratios
     :return SNR: #Sources times 1 vector of Signal to Noise Ratios
    """
-    # TODO: This is not quite the correct way when utterances have different len
+    # TODO: This is not quite the correct way when utterances have different
+    # len
 
     # Assume, that the maximum number of speakers is smaller than 10.
     assert(image_contribution.shape[1] < 10)
@@ -164,9 +169,9 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
         II = numpy.mean(II)
     N = numpy.mean(N)
 
-    SDR = sxr(SS, II+N)
-    SIR = sxr(SS, II)
-    SNR = sxr(SS, N)
+    SDR = _sxr(SS, II+N)
+    SIR = _sxr(SS, II)
+    SNR = _sxr(SS, N)
 
     if return_dict:
         if return_dict is True:
