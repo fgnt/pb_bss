@@ -1,7 +1,9 @@
 import numpy as np
 
+
 def get_energy(x, axis=None):
     return np.sum(np.abs(x * x.conj()), axis=axis)
+
 
 def get_variance_for_zero_mean_signal(X):
     return np.mean(X.real ** 2 + X.imag ** 2)
