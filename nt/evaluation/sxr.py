@@ -68,7 +68,7 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
 
     N = numpy.mean(N)
 
-    SDR = _sxr(S, I+N)
+    SDR = _sxr(S, I + N)
     SIR = _sxr(S, I)
     SNR = _sxr(S, N)
 
@@ -76,9 +76,9 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
         if return_dict is True:
             return {'sdr': SDR, 'sir': SIR, 'snr': SNR}
         elif isinstance(return_dict, str):
-            return {return_dict+'sdr': SDR,
-                    return_dict+'sir': SIR,
-                    return_dict+'snr': SNR}
+            return {return_dict + 'sdr': SDR,
+                    return_dict + 'sir': SIR,
+                    return_dict + 'snr': SNR}
         else:
             raise TypeError(return_dict)
     else:
@@ -169,7 +169,7 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
         II = numpy.mean(II)
     N = numpy.mean(N)
 
-    SDR = _sxr(SS, II+N)
+    SDR = _sxr(SS, II + N)
     SIR = _sxr(SS, II)
     SNR = _sxr(SS, N)
 
