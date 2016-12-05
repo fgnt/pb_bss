@@ -22,7 +22,10 @@ class TestBeamformerWrapper(unittest.TestCase):
         self.shape_vector = self.shape_psd[:-1]
 
     def test_gev_dimensions(self):
-        output = get_gev_vector(pos_def_hermitian(self.shape_psd), pos_def_hermitian(self.shape_psd))
+        output = get_gev_vector(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd))
         tc.assert_equal(output.shape, self.shape_vector)
 
     def test_pca_dimensions(self):
