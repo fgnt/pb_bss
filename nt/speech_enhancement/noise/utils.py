@@ -5,11 +5,11 @@ def get_energy(x, axis=None):
     return np.sum(np.abs(x * x.conj()), axis=axis)
 
 
-def get_variance_for_zero_mean_signal(X):
-    return np.mean(X.real ** 2 + X.imag ** 2)
+def get_variance_for_zero_mean_signal(X, axis=None):
+    return np.mean(X.real ** 2 + X.imag ** 2, axis=axis)
 
 
-def get_snr(X, N):
+def get_snr(X, N, axis=None):
     """
     Return SNR of time signals or STFT signals in dB.
     You can use any input dimension. It will always create the mean SNR of all
@@ -21,12 +21,12 @@ def get_snr(X, N):
     :param N: Signal of noise image.
     :return: SNR of time signals or STFT signals in dB.
     """
-    power_X = get_variance_for_zero_mean_signal(X)
-    power_N = get_variance_for_zero_mean_signal(N)
+    power_X = get_variance_for_zero_mean_signal(X, axis=axis)
+    power_N = get_variance_for_zero_mean_signal(N, axis=axis)
     return 10 * np.log10(power_X / power_N)
 
 
-def set_snr(X, N, snr, current_snr=None):
+def set_snr(X, N, snr, current_snr=None, *, axis=None):
     """
     Set the SNR of two input images by rescaling the noise signal in place.
 
@@ -44,6 +44,6 @@ def set_snr(X, N, snr, current_snr=None):
     """
 
     if current_snr is None:
-        current_snr = get_snr(X, N)
+        current_snr = get_snr(X, N, axis=axis)
 
     N *= 10 ** (-(snr - current_snr) / 20)
