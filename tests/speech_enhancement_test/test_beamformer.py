@@ -114,4 +114,4 @@ class TestCythonizedEig(unittest.TestCase):
             1.0, atol=1e-6)
 
         # assume speedup is bigger than 5
-        tc.assert_array_greater(elapsed_time_python / elapsed_time_cython1, 5)
+        tc.assert_array_greater(elapsed_time_python / elapsed_time_cython1, 4)
