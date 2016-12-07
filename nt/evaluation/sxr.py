@@ -146,14 +146,14 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
     all_permutations = \
         numpy.array(list(itertools.permutations(range(K_target))))
 
-    mutal_power = numpy.zeros(all_permutations.shape[0])
+    mutual_power = numpy.zeros(all_permutations.shape[0])
 
     for p in range(all_permutations.shape[0]):
         for k_target in range(K_target):
-            mutal_power[p] = mutal_power[p] + \
+            mutual_power[p] = mutual_power[p] + \
                 S[all_permutations[p, k_target], k_target]
 
-    max_idx = numpy.argmax(mutal_power)
+    max_idx = numpy.argmax(mutual_power)
     permutation = all_permutations[max_idx]
 
     SS = numpy.zeros(K_target)
