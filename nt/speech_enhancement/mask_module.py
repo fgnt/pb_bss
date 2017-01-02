@@ -28,7 +28,7 @@ All other axes are regarded as independent dimensions.
 # TODO:  - tests/speech_enhancement_test/test_merl_masks.py
 # TODO:  - nt/speech_enhancement/merl_masks.py
 # TODO:  - nt/speech_enhancement/mask_estimation.py
-
+# TODO: Add test-case for LorenzMask
 # CB: Eventuell einen Dekorator nutzen für force signal np.ndarray?
 # CB: Eventuell einen Dekorator nutzen für force signal.real.dtype == return.dtype?
 
@@ -76,6 +76,7 @@ def ideal_binary_mask(
         signal: np.ndarray,
         source_axis: int=0,
         sensor_axis: Optional[int]=None,
+        keepdims: bool=False
 ) -> np.ndarray:
     """
     The resulting masks are binary (Value is zero or one).
@@ -114,7 +115,7 @@ def ideal_binary_mask(
     mask = np.expand_dims(np.argmax(mask, axis=source_axis), source_axis)
     mask = mask == np.reshape(np.arange(components), range_dimensions)
 
-    if sensor_axis is not None:
+    if sensor_axis is not None and not keepdims:
         mask = np.squeeze(mask, sensor_axis)
 
     return np.asarray(mask, dtype=dtype)
@@ -353,7 +354,10 @@ def lorenz_mask(
     signal = np.asarray(signal)
     np.testing.assert_equal(frequency_axis, -2, 'Not yet implemented.')
     np.testing.assert_equal(time_axis, -1, 'Not yet implemented.')
-    np.testing.assert_equal(sensor_axis, None, 'Not yet implemented.')
+
+    if sensor_axis is not None:
+        signal = signal.real ** 2 + signal.imag ** 2
+        signal = signal.sum(axis=sensor_axis, keepdims=True)
 
     shape = signal.shape
     dtype = signal.real.dtype
@@ -362,17 +366,16 @@ def lorenz_mask(
     signal = np.reshape(signal, (-1, np.prod(shape[-2:])))
     mask = np.zeros_like(signal, dtype=dtype)
 
-    def _mask(observations):
-        power = (observations * observations.conj())
+    def get_mask(power):
         sorted_power = np.sort(power, axis=None)[::-1]
         lorenz_function = np.cumsum(sorted_power) / np.sum(sorted_power)
         threshold = np.min(sorted_power[lorenz_function < lorenz_fraction])
-        mask = power > threshold
-        mask = 0.5 + weight * (mask - 0.5)
-        return mask
+        _mask = power > threshold
+        _mask = 0.5 + weight * (_mask - 0.5)
+        return _mask
 
     for i in range(signal.shape[0]):
-        mask[i, :] = _mask(signal[i])
+        mask[i, :] = get_mask(signal[i])
 
     return mask.reshape(shape)
 
