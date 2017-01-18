@@ -355,16 +355,16 @@ def lorenz_mask(
     np.testing.assert_equal(frequency_axis, -2, 'Not yet implemented.')
     np.testing.assert_equal(time_axis, -1, 'Not yet implemented.')
 
+    power = signal.real ** 2 + signal.imag ** 2
     if sensor_axis is not None:
-        signal = signal.real ** 2 + signal.imag ** 2
-        signal = signal.sum(axis=sensor_axis, keepdims=True)
+        power = power.sum(axis=sensor_axis, keepdims=True)
 
-    shape = signal.shape
-    dtype = signal.real.dtype
+    shape = power.shape
+    dtype = power.real.dtype
 
     # Only works, when last two dimensions are frequency and time.
-    signal = np.reshape(signal, (-1, np.prod(shape[-2:])))
-    mask = np.zeros_like(signal, dtype=dtype)
+    power = np.reshape(power, (-1, np.prod(shape[-2:])))
+    mask = np.zeros_like(power, dtype=dtype)
 
     def get_mask(power):
         sorted_power = np.sort(power, axis=None)[::-1]
@@ -374,8 +374,8 @@ def lorenz_mask(
         _mask = 0.5 + weight * (_mask - 0.5)
         return _mask
 
-    for i in range(signal.shape[0]):
-        mask[i, :] = get_mask(signal[i])
+    for i in range(power.shape[0]):
+        mask[i, :] = get_mask(power[i])
 
     return mask.reshape(shape)
 
