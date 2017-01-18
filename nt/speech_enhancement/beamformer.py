@@ -188,10 +188,10 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
     Returns the GEV beamforming vector.
 
     :param target_psd_matrix: Target PSD matrix
-        with shape (bins, sensors, sensors)
+        with shape (..., sensors, sensors)
     :param noise_psd_matrix: Noise PSD matrix
-        with shape (bins, sensors, sensors)
-    :return: Set of beamforming vectors with shape (bins, sensors)
+        with shape (..., sensors, sensors)
+    :return: Set of beamforming vectors with shape (..., sensors)
     """
     if c_gev_available and not use_eig:
         try:
