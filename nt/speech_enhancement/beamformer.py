@@ -120,15 +120,9 @@ def get_pca(target_psd_matrix):
 
     # Calculate eigenvals/vecs
     eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
-    # Find max eigenvals
-    vals = np.argmax(eigenvals, axis=-1)
-    # Select eigenvec for max eigenval
-    beamforming_vector = np.array(
-        [eigenvecs[i, :, vals[i]] for i in range(eigenvals.shape[0])]
-    )
-    eigenvalues = np.array(
-        [eigenvals[i, vals[i]] for i in range(eigenvals.shape[0])]
-    )
+    # Select eigenvec for max eigenval. Eigenvals are sorted in ascending order.
+    beamforming_vector = eigenvecs[..., -1]
+    eigenvalues = eigenvals[..., -1]
     # Reconstruct original shape
     beamforming_vector = np.reshape(beamforming_vector, shape[:-1])
     eigenvalues = np.reshape(eigenvalues, shape[:-2])
@@ -234,9 +228,15 @@ def _get_gev_vector(target_psd_matrix, noise_psd_matrix, use_eig=False):
     solver = eig if use_eig else eigh
 
     for f in range(bins):
-        eigenvals, eigenvecs = solver(
-            target_psd_matrix[f, :, :], noise_psd_matrix[f, :, :]
-        )
+        try:
+            eigenvals, eigenvecs = solver(
+                target_psd_matrix[f, :, :], noise_psd_matrix[f, :, :]
+            )
+        except ValueError:
+            raise ValueError('Error for frequency {}\n'
+                             'phi_xx: {}\n'
+                             'phi_nn: {}'.format(
+                f, target_psd_matrix[f], noise_psd_matrix[f]))
         beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
 
     return beamforming_vector.reshape(original_shape[:-1])
