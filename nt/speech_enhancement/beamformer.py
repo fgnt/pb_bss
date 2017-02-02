@@ -195,7 +195,7 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
                     np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
             else:
                 D = target_psd_matrix.shape[-1]
-                assert D == target_psd_matrix.shape[:-2]
+                assert D == target_psd_matrix.shape[-2]
                 assert target_psd_matrix.shape == noise_psd_matrix.shape
                 dst_shape = target_psd_matrix.shape[:-1]
                 target_psd_matrix = target_psd_matrix.reshape(-1, D, D)
