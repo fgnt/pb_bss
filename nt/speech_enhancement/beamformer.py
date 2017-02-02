@@ -189,9 +189,21 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
     """
     if c_gev_available and not use_eig:
         try:
-            return _c_get_gev_vector(
-                np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
-                np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+            if target_psd_matrix.ndim == 3:
+                return _c_get_gev_vector(
+                    np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
+                    np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+            else:
+                D = target_psd_matrix.shape[-1]
+                assert D == target_psd_matrix.shape[:-2]
+                assert target_psd_matrix.shape == noise_psd_matrix.shape
+                dst_shape = target_psd_matrix.shape[:-1]
+                target_psd_matrix = target_psd_matrix.reshape(-1, D, D)
+                noise_psd_matrix = noise_psd_matrix.reshape(-1, D, D)
+                ret = _c_get_gev_vector(
+                    np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
+                    np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+                return ret.reshape(*dst_shape)
         except ValueError as e:
             if not force_cython:
                 pass
