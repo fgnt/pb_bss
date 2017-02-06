@@ -1,13 +1,13 @@
 import unittest
-import nt.testing as tc
-from nose_parameterized import parameterized, param
-import numpy as np
-from nt.speech_enhancement.mask_module import ideal_binary_mask
-from nt.speech_enhancement.mask_module import wiener_like_mask
-from nt.utils.random_helper import randn
-import nt.testing as tc
 
+import numpy as np
+from nose_parameterized import parameterized, param
+
+import nt.testing as tc
 from nt.speech_enhancement import mask_module
+from nt.speech_enhancement.mask_module import wiener_like_mask, lorenz_mask, \
+    ideal_binary_mask
+from nt.utils.random_helper import randn
 
 
 def randc128(*shape):
@@ -57,7 +57,7 @@ class IdealBinaryMaskTest(unittest.TestCase):
 
     pass_binary_result = False
     pass_greater_equal_zero = False
-    pass_smaler_equal_one = False
+    pass_smaller_equal_one = False
     pass_sum_to_one = False
     sensor_axis_allowed = True
 
@@ -101,7 +101,7 @@ class IdealBinaryMaskTest(unittest.TestCase):
 
     @parameterized.expand(params)
     def test_smaler_equal_one(self, name, kwargs, out_shape, out_source_axis):
-        if self.pass_smaler_equal_one:
+        if self.pass_smaller_equal_one:
             return
         if not self.sensor_axis_allowed:
             if len(kwargs) > 2:
@@ -133,7 +133,7 @@ class WienerLikeMaskTest(IdealBinaryMaskTest):
 class IdealAmplitudeMaskTest(IdealBinaryMaskTest):
 
     pass_binary_result = True
-    pass_smaler_equal_one = True
+    pass_smaller_equal_one = True
     pass_sum_to_one = True
     sensor_axis_allowed = False
 
@@ -153,7 +153,7 @@ class IdealRatioMaskTest(IdealBinaryMaskTest):
 class IdealComplexMaskTest(IdealBinaryMaskTest):
 
     pass_binary_result = True
-    pass_smaler_equal_one = True
+    pass_smaller_equal_one = True
     pass_greater_equal_zero = True
     # pass_sum_to_one = True
     sensor_axis_allowed = False
@@ -165,7 +165,7 @@ class IdealComplexMaskTest(IdealBinaryMaskTest):
 class PhaseSensitiveMaskTest(IdealBinaryMaskTest):
 
     pass_binary_result = True
-    pass_smaler_equal_one = True
+    pass_smaller_equal_one = True
     pass_greater_equal_zero = True
     # pass_sum_to_one = True
     sensor_axis_allowed = False
@@ -221,6 +221,97 @@ class TestWienerLikeMask(unittest.TestCase):
         signal = np.asarray([0.5 + 0.5j, 0.5 + 0.5j])
         mask = wiener_like_mask(signal)
         tc.assert_equal(mask, [0.5, 0.5])
+
+
+class TestLorenzMask(unittest.TestCase):
+    def setUp(self):
+        self.signal = randc128(K, D, F, T)
+
+    params_sensor_axis = [
+        param('sensor_axis_None', sensor_axis=None),
+        param('sensor_axis_0', sensor_axis=0),
+        param('sensor_axis_1', sensor_axis=1),
+    ]
+
+    params_lorenz_fraction = [
+        param('lorenz_fraction_{}'.format(lorenz_fraction),
+              lorenz_fraction=lorenz_fraction)
+        for lorenz_fraction in (0.1, 0.4, 0.8, 0.89)
+        ]
+
+    params_weight = [
+        param('weight_{}'.format(weight), weight=weight)
+        for weight in (0, 0.5, 0.999)
+        ]
+
+    @parameterized.expand(
+        params_sensor_axis + params_lorenz_fraction + params_weight)
+    def test_shape(self, name, sensor_axis=None, lorenz_fraction=0.98,
+                   weight=0.999):
+        mask = lorenz_mask(
+            self.signal,
+            sensor_axis=sensor_axis,
+            lorenz_fraction=lorenz_fraction,
+            weight=weight
+        )
+        tc.assert_equal(
+            mask.shape,
+            tuple([1 if sensor_axis == i else [K, D, F, T][i]
+                   for i in range(4)])
+        )
+
+    @parameterized.expand(params_sensor_axis + params_lorenz_fraction)
+    def test_weight_0(self, name, sensor_axis=None, lorenz_fraction=0.98):
+        mask = lorenz_mask(
+            self.signal,
+            sensor_axis=sensor_axis,
+            lorenz_fraction=lorenz_fraction,
+            weight=0
+        )
+        tc.assert_equal(mask, np.ones_like(mask) / 2)
+
+    @parameterized.expand(
+        params_sensor_axis + params_lorenz_fraction + params_weight)
+    def test_in_bound(self, name, sensor_axis=None, lorenz_fraction=0.98,
+                      weight=0.999):
+        mask = lorenz_mask(
+            self.signal,
+            sensor_axis=sensor_axis,
+            lorenz_fraction=lorenz_fraction,
+            weight=weight
+        )
+        tc.assert_array_greater_equal(mask, 0.5 * (1 - weight))
+        tc.assert_array_less_equal(mask, 0.5 * (1 + weight))
+
+    def test_multi_channel(self):
+        signal = self.signal[0][0]
+        mask1 = lorenz_mask(signal)
+        mask2 = lorenz_mask([signal, signal])
+        tc.assert_equal(mask1, mask2[0])
+        tc.assert_equal(mask1, mask2[1])
+
+    def test_mask_single_channel(self):
+        shape = (3, 3)
+        signal = np.arange(np.prod(shape)).reshape(shape).astype(np.float32)
+        mask = lorenz_mask(signal, weight=1)
+
+        tc.assert_equal(mask, np.asarray([0, 0, 0, 0, 1, 1, 1, 1, 1],
+                                         dtype=np.float32).reshape(shape))
+
+    def test_mask_two_channels(self):
+        shape = (2, 3, 3)
+        signal = np.arange(np.prod(shape)).reshape(shape).astype(np.float32)
+        mask = lorenz_mask(signal, weight=1)
+
+        tc.assert_equal(mask, np.asarray([
+            [[0, 0, 0],
+             [0, 1, 1],
+             [1, 1, 1]],
+            [[0, 0, 1],
+             [1, 1, 1],
+             [1, 1, 1]]], dtype=np.float32))
+
+
 
 if __name__ == '__main__':
 
