@@ -281,17 +281,50 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     return beamforming_vector
 
 
-def blind_analytic_normalization(vector, noise_psd_matrix):
-    bins, sensors = vector.shape
-    normalization = np.zeros(bins)
-    for f in range(bins):
-        normalization[f] = np.abs(np.sqrt(np.dot(
-            np.dot(np.dot(vector[f, :].T.conj(), noise_psd_matrix[f]),
-                   noise_psd_matrix[f]), vector[f, :])))
-        normalization[f] /= np.abs(np.dot(
-            np.dot(vector[f, :].T.conj(), noise_psd_matrix[f]), vector[f, :]))
+def blind_analytic_normalization(vector, noise_psd_matrix,
+                                 target_psd_matrix=None):
+    nominator = np.einsum(
+        'fa,fab,fbc,fc->f',
+        vector.conj(), noise_psd_matrix, noise_psd_matrix, vector
+    )
+    if target_psd_matrix is not None:
+        atf = get_pca_vector(target_psd_matrix)
+        nominator /= atf
+    nominator = np.sqrt(nominator)
+
+    denominator = np.einsum(
+        'fa,fab,fb->f', vector.conj(), noise_psd_matrix, vector
+    )
+    denominator = np.sqrt(denominator * denominator.conj())
+
+    normalization = np.abs(nominator / denominator)
 
     return vector * normalization[:, np.newaxis]
+
+
+def distortionless_normalization(vector, atf_vector, noise_psd_matrix):
+    nominator = np.einsum(
+        'fab,fb,fc->fac', noise_psd_matrix, vector, vector.conj()
+    )
+    denominator = np.einsum(
+        'fa,fab,fb->f', vector.conj(), noise_psd_matrix, vector
+    )
+    projection_matrix = nominator / denominator[..., None, None]
+    return np.einsum('fab,fb->fa', projection_matrix, atf_vector)
+
+
+def mvdr_snr_postfilter(vector, target_psd_matrix, noise_psd_matrix):
+    nominator = np.einsum(
+        'fa,fab,fb->f', vector.conj(), target_psd_matrix, vector
+    )
+    denominator = np.einsum(
+        'fa,fab,fb->f', vector.conj(), noise_psd_matrix, vector
+    )
+    return (nominator / denominator)[:, None]
+
+
+def zero_degree_normalization(vector, reference_channel):
+    return vector * np.exp(-1j * np.angle(vector[:, reference_channel]))
 
 
 def apply_beamforming_vector(vector, mix):
