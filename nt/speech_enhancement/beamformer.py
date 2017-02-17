@@ -1,3 +1,16 @@
+""" Beamformer module.
+
+The shape convention is to place time at the end to speed up computation and
+move independent dimensions to the front.
+
+That results i.e. in the following possible shapes:
+    X: Shape (F, D, T).
+    mask: Shape (F, K, T).
+    PSD: Shape (F, D, D).
+
+The functions themselves are written more generic, though.
+"""
+
 import warnings
 
 import numpy as np
