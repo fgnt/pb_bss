@@ -332,12 +332,22 @@ def phase_correction(vector):
     multiplication. Otherwise, the vector would be modified in place.
 
     TODO: Write test cases.
-    TODO: Write it with independent leading dimensions.
     TODO: Only use non-loopy version when test case is written.
 
     Args:
-        vector: Beamforming vector with shape (bins, sensors).
+        vector: Beamforming vector with shape (..., bins, sensors).
     Returns: Phase corrected beamforming vectors. Lengths remain.
+
+    >>> w = np.array([[1, 1], [-1, -1]], dtype=np.complex128)
+    >>> np.around(phase_correction(w), decimals=14)
+    array([[ 1.+0.j,  1.+0.j],
+           [ 1.-0.j,  1.-0.j]])
+    >>> np.around(phase_correction([w]), decimals=14)[0]
+    array([[ 1.+0.j,  1.+0.j],
+           [ 1.-0.j,  1.-0.j]])
+    >>> w  # ensure that w is not modified
+    array([[ 1.+0.j,  1.+0.j],
+           [-1.+0.j, -1.+0.j]])
     """
 
     # w = W.copy()
@@ -347,12 +357,12 @@ def phase_correction(vector):
     #         np.sum(w[f, :] * w[f-1, :].conj(), axis=-1, keepdims=True)))
     # return w
 
-    vector = vector.copy()
-    vector[1:, :] *= np.cumprod(
+    vector = np.array(vector, copy=True)
+    vector[..., 1:, :] *= np.cumprod(
         np.exp(
             1j * np.angle(
                 np.sum(
-                    vector[1:, :].conj() * vector[:-1, :],
+                    vector[..., 1:, :].conj() * vector[..., :-1, :],
                     axis=-1, keepdims=True
                 )
             )
