@@ -1,3 +1,16 @@
+""" Beamformer module.
+
+The shape convention is to place time at the end to speed up computation and
+move independent dimensions to the front.
+
+That results i.e. in the following possible shapes:
+    X: Shape (F, D, T).
+    mask: Shape (F, K, T).
+    PSD: Shape (F, D, D).
+
+The functions themselves are written more generic, though.
+"""
+
 import warnings
 
 import numpy as np
@@ -311,8 +324,6 @@ def blind_analytic_normalization(vector, noise_psd_matrix,
 
     normalization = np.abs(nominator / denominator)
 
-    return vector * normalization[:, np.newaxis]
-
 
 def distortionless_normalization(vector, atf_vector, noise_psd_matrix):
     nominator = np.einsum(
@@ -337,6 +348,52 @@ def mvdr_snr_postfilter(vector, target_psd_matrix, noise_psd_matrix):
 
 def zero_degree_normalization(vector, reference_channel):
     return vector * np.exp(-1j * np.angle(vector[:, reference_channel]))
+
+
+def phase_correction(vector):
+    """Phase correction to reduce distortions due to phase inconsistencies.
+
+    We need a copy first, because not all elements are touched during the
+    multiplication. Otherwise, the vector would be modified in place.
+
+    TODO: Write test cases.
+    TODO: Only use non-loopy version when test case is written.
+
+    Args:
+        vector: Beamforming vector with shape (..., bins, sensors).
+    Returns: Phase corrected beamforming vectors. Lengths remain.
+
+    >>> w = np.array([[1, 1], [-1, -1]], dtype=np.complex128)
+    >>> np.around(phase_correction(w), decimals=14)
+    array([[ 1.+0.j,  1.+0.j],
+           [ 1.-0.j,  1.-0.j]])
+    >>> np.around(phase_correction([w]), decimals=14)[0]
+    array([[ 1.+0.j,  1.+0.j],
+           [ 1.-0.j,  1.-0.j]])
+    >>> w  # ensure that w is not modified
+    array([[ 1.+0.j,  1.+0.j],
+           [-1.+0.j, -1.+0.j]])
+    """
+
+    # w = W.copy()
+    # F, D = w.shape
+    # for f in range(1, F):
+    #     w[f, :] *= np.exp(-1j*np.angle(
+    #         np.sum(w[f, :] * w[f-1, :].conj(), axis=-1, keepdims=True)))
+    # return w
+
+    vector = np.array(vector, copy=True)
+    vector[..., 1:, :] *= np.cumprod(
+        np.exp(
+            1j * np.angle(
+                np.sum(
+                    vector[..., 1:, :].conj() * vector[..., :-1, :],
+                    axis=-1, keepdims=True
+                )
+            )
+        ), axis=0
+    )
+    return vector
 
 
 def apply_beamforming_vector(vector, mix):
