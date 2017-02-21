@@ -307,7 +307,13 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
 
 
 def blind_analytic_normalization(vector, noise_psd_matrix):
-    bins, sensors = vector.shape
+    """Reduces distortions in beamformed ouptput.
+
+    Args:
+        vector: Beamforming vector with shape (bins, sensors)
+        noise_psd_matrix: With shape (bins, sensors, sensors)
+    """
+    bins, _ = vector.shape
     normalization = np.zeros(bins)
     for f in range(bins):
         normalization[f] = np.abs(np.sqrt(np.dot(
@@ -317,6 +323,42 @@ def blind_analytic_normalization(vector, noise_psd_matrix):
             np.dot(vector[f, :].T.conj(), noise_psd_matrix[f]), vector[f, :]))
 
     return vector * normalization[:, np.newaxis]
+
+
+def phase_correction(vector):
+    """Phase correction to reduce distortions due to phase inconsistencies.
+
+    We need a copy first, because not all elements are touched during the
+    multiplication. Otherwise, the vector would be modified in place.
+
+    TODO: Write test cases.
+    TODO: Write it with independent leading dimensions.
+    TODO: Only use non-loopy version when test case is written.
+
+    Args:
+        vector: Beamforming vector with shape (bins, sensors).
+    Returns: Phase corrected beamforming vectors. Lengths remain.
+    """
+
+    # w = W.copy()
+    # F, D = w.shape
+    # for f in range(1, F):
+    #     w[f, :] *= np.exp(-1j*np.angle(
+    #         np.sum(w[f, :] * w[f-1, :].conj(), axis=-1, keepdims=True)))
+    # return w
+
+    vector = vector.copy()
+    vector[1:, :] *= np.cumprod(
+        np.exp(
+            1j * np.angle(
+                np.sum(
+                    vector[1:, :].conj() * vector[:-1, :],
+                    axis=-1, keepdims=True
+                )
+            )
+        ), axis=0
+    )
+    return vector
 
 
 def apply_beamforming_vector(vector, mix):
