@@ -262,6 +262,11 @@ def _get_gev_vector(target_psd_matrix, noise_psd_matrix, use_eig=False):
                              'phi_xx: {}\n'
                              'phi_nn: {}'.format(
                 f, target_psd_matrix[f], noise_psd_matrix[f]))
+        except np.linalg.LinAlgError:
+            raise np.linalg.LinAlgError('Error for frequency {}\n'
+                             'phi_xx: {}\n'
+                             'phi_nn: {}'.format(
+                f, target_psd_matrix[f], noise_psd_matrix[f]))
         beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
 
     return beamforming_vector.reshape(original_shape[:-1])
