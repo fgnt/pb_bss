@@ -189,6 +189,35 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
     return beamforming_vector
 
 
+def get_mvdr_vector_merl(target_psd_matrix, noise_psd_matrix):
+    """
+    Returns the MVDR beamforming vector.
+
+    This implementation is based on a variant described in 
+    https://www.merl.com/publications/docs/TR2016-072.pdf
+    It selects a reference channel that maximizes the post-SNR.
+
+    :param target_psd_matrix: Target PSD matrix
+        with shape (..., bins, sensors, sensors)
+    :param noise_psd_matrix: Noise PSD matrix
+        with shape (..., bins, sensors, sensors)
+    :return: Set of beamforming vectors with shape (..., bins, sensors)
+    """
+    G = np.linalg.solve(noise_psd_matrix, target_psd_matrix)
+    lambda_ = np.trace(G, axis1=-2, axis2=-1)
+    h = G / lambda_[..., None, None]
+
+    nom = np.sum(
+        np.einsum('...fac,fab,...fbc->c', h.conj(), target_psd_matrix, h)
+    )
+    denom = np.sum(
+        np.einsum('...fac,fab,...fbc->c', h.conj(), noise_psd_matrix, h)
+    )
+    h_idx = np.argmax(nom/denom)
+
+    return h[..., h_idx]
+
+
 def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
                    use_eig=False):
     """
