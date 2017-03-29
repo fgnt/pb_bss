@@ -357,6 +357,7 @@ def blind_analytic_normalization(vector, noise_psd_matrix,
     denominator = np.sqrt(denominator * denominator.conj())
 
     normalization = np.abs(nominator / denominator)
+    return vector * normalization[:, np.newaxis]
 
 
 def distortionless_normalization(vector, atf_vector, noise_psd_matrix):
