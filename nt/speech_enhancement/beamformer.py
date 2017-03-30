@@ -342,8 +342,13 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
 
 def blind_analytic_normalization(vector, noise_psd_matrix,
                                  target_psd_matrix=None):
+    """Reduces distortions in beamformed ouptput.
+    Args:
+        vector: Beamforming vector with shape (..., sensors)
+        noise_psd_matrix: With shape (..., sensors, sensors)
+    """
     nominator = np.einsum(
-        'fa,fab,fbc,fc->f',
+        '...a,...ab,...bc,...c->...',
         vector.conj(), noise_psd_matrix, noise_psd_matrix, vector
     )
     if target_psd_matrix is not None:
@@ -352,12 +357,12 @@ def blind_analytic_normalization(vector, noise_psd_matrix,
     nominator = np.sqrt(nominator)
 
     denominator = np.einsum(
-        'fa,fab,fb->f', vector.conj(), noise_psd_matrix, vector
+        '...a,...ab,...b->...', vector.conj(), noise_psd_matrix, vector
     )
     denominator = np.sqrt(denominator * denominator.conj())
 
     normalization = np.abs(nominator / denominator)
-    return vector * normalization[:, np.newaxis]
+    return vector * normalization[..., np.newaxis]
 
 
 def distortionless_normalization(vector, atf_vector, noise_psd_matrix):
