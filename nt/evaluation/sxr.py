@@ -36,7 +36,7 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
     :type average_sources: bool
     :param return_dict: specifies if the returned value is a list or a dict.
                         If return_dict is a str, it is the prefix for the
-                        dict keys
+                        dict keys (i.e. 'input_').
     :type return_dict: bool or str
 
     :return: SDR, SIR, SNR or {'sdr': SDR, 'sir': SIR, 'snr': SNR}
