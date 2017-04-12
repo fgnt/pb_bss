@@ -17,6 +17,7 @@ import numpy as np
 from numpy.linalg import solve
 from scipy.linalg import eig
 from scipy.linalg import eigh
+from nt.math.correlation import covariance  # as shortcut!
 
 try:
     from .cythonized.get_gev_vector import _c_get_gev_vector
