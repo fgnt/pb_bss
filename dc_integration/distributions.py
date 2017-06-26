@@ -1,17 +1,22 @@
 """Contains all distributions which are possibly used for BSS."""
 import math
-
+import warnings
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.special import hyp1f1
 from scipy.special import ive
 import matplotlib.pyplot as plt
 
-from nt.utils.numpy_utils import reshape
-from nt.visualization import plot, facet_grid, context_manager
-from nt.speech_enhancement.beamformer import get_pca
-from nt.speech_enhancement.beamformer import get_power_spectral_density_matrix
-from nt.transform.module_stft import get_stft_center_frequencies
+from dc_integration.utils import reshape
+from dc_integration.utils import get_pca
+from dc_integration.utils import get_power_spectral_density_matrix
+from dc_integration.utils import get_stft_center_frequencies
+
+try:
+    from nt.visualization import plot, facet_grid, context_manager
+except ImportError:
+    warnings.warn('Visual debugging not possible.')
+
 
 def _unit_norm(signal):
     """Unit normalization.
@@ -22,6 +27,7 @@ def _unit_norm(signal):
         Normalized STFT signal with same shape.
     """
     return signal / (np.linalg.norm(signal, axis=-1, keepdims=True) + 1e-4)
+
 
 def _phase_norm(signal, reference_channel=0):
     """Unit normalization.
@@ -34,11 +40,12 @@ def _phase_norm(signal, reference_channel=0):
     angles = np.angle(signal[..., [reference_channel]])
     return signal * np.exp(-1j * angles)
 
+
 def _frequency_norm(
         signal,
         max_sensor_distance=None, shrink_factor=1.2,
         fft_size=1024, sample_rate=16000, sound_velocity=343
-    ):
+):
     """Unit normalization.
 
     Aside from this function, the whole class is frequency independent.
@@ -74,9 +81,10 @@ def _frequency_norm(
     norm_factor = norm_factor[:, None, None]
     signal = np.abs(signal) * np.exp(1j * np.angle(signal) * norm_factor)
 
+
 class ComplexWatson:
     """
-    >>> import cluster.algorithm.distributions.complex_watson as cw
+    >>> import dc_integration.distributions.complex_watson as cw
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>> scales = [
@@ -240,7 +248,7 @@ class ComplexWatsonMixtureModel:
     def fit(
             self, Y_normalized, initialization,
             iterations=100, max_concentration=100
-        ):
+    ):
         """ EM for CWMMs with any number of independent dimensions.
 
         Does not support sequence lengths.
@@ -307,6 +315,7 @@ class ComplexGaussianMixtureModel:
     This algorithm does not work well with too few channels.
     At least 4 channels are necessary for proper mask results.
     """
+
     def __init__(
             self, use_mixture_weights=False,
             eps=1e-10, visual_debug=False
@@ -362,15 +371,17 @@ class ComplexGaussianMixtureModel:
             # Equation 6
             self.covariance = get_power_spectral_density_matrix(
                 Y_for_psd,
-                np.copy(np.clip(affiliations, self.eps, 1 - self.eps) / power, 'C'),
+                np.copy(np.clip(affiliations, self.eps, 1 - self.eps) / power,
+                        'C'),
                 sensor_dim=-2, source_dim=-2, time_dim=-1
             )
 
             if hermitize:
                 self.covariance = (
-                    self.covariance
-                    + np.swapaxes(self.covariance.conj(), -1, -2)
-                ) / 2
+                                      self.covariance
+                                      + np.swapaxes(self.covariance.conj(), -1,
+                                                    -2)
+                                  ) / 2
 
             if trace_norm:
                 self.covariance /= np.einsum(
@@ -389,9 +400,11 @@ class ComplexGaussianMixtureModel:
                 'fkwx,fkxy,fkzy->fkwz', eigenvecs, diagonal, eigenvecs.conj()
             )
             self.determinant = np.prod(eigenvals, axis=-1)
-            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D), 1 / eigenvals)
+            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D),
+                                         1 / eigenvals)
             self.precision = np.einsum(
-                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal, eigenvecs.conj()
+                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal,
+                eigenvecs.conj()
             )
 
             if self.visual_debug:
@@ -425,10 +438,12 @@ class ComplexGaussianMixtureModel:
             ).real / D + self.eps
         elif inverse == 'eig':
             power = np.abs(
-                np.einsum('...td,...kde,...te->...kt', Y.conj(), self.precision, Y)
+                np.einsum('...td,...kde,...te->...kt', Y.conj(), self.precision,
+                          Y)
             ) / D + self.eps
 
-        affiliations = np.exp(-np.log(self.determinant)[..., None] - D * np.log(power))
+        affiliations = np.exp(
+            -np.log(self.determinant)[..., None] - D * np.log(power))
 
         if self.use_mixture_weights:
             affiliations *= self.pi[..., None]
@@ -459,6 +474,7 @@ class VonMisesFisher:
     mu: (K, D) SOLL (..., D)
     kappa: (K,) SOLL (...)
     """
+
     @classmethod
     def norm(cls, kappa, D):
         return np.exp(cls.log_norm(kappa, D))
@@ -577,9 +593,10 @@ class ComplexAngularCentralGaussianMixtureModel:
 
             if hermitize:
                 self.covariance = (
-                    self.covariance
-                    + np.swapaxes(self.covariance.conj(), -1, -2)
-                ) / 2
+                                      self.covariance
+                                      + np.swapaxes(self.covariance.conj(), -1,
+                                                    -2)
+                                  ) / 2
 
             if trace_norm:
                 self.covariance /= np.einsum(
@@ -597,9 +614,11 @@ class ComplexAngularCentralGaussianMixtureModel:
                 'fkwx,fkxy,fkzy->fkwz', eigenvecs, diagonal, eigenvecs.conj()
             )
             self.determinant = np.prod(eigenvals, axis=-1)
-            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D), 1 / eigenvals)
+            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D),
+                                         1 / eigenvals)
             self.precision = np.einsum(
-                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal, eigenvecs.conj()
+                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal,
+                eigenvecs.conj()
             )
 
             if self.visual_debug:
@@ -826,7 +845,6 @@ class VonMisesFisherComplexGaussianMixtureModel:
         self.precision = np.empty((), dtype=np.float)
         self.determinant = np.empty((), dtype=np.float)
 
-
     def fit(
             self, Y, embedding, initialization, iterations=100,
             min_concentration_vmf=0, max_concentration_vmf=500,
@@ -857,22 +875,25 @@ class VonMisesFisherComplexGaussianMixtureModel:
         for i in range(iterations):
             # E step
             if i > 0:
-                affiliations, power = self._predict(Y_for_pdf, embedding.T, inverse=inverse)
+                affiliations, power = self._predict(Y_for_pdf, embedding.T,
+                                                    inverse=inverse)
 
             # M step
             self.pi = affiliations.mean(axis=-1)
 
             self.covariance = get_power_spectral_density_matrix(
                 Y_for_psd,
-                np.copy(np.clip(affiliations, self.eps, 1 - self.eps) / power, 'C'),
+                np.copy(np.clip(affiliations, self.eps, 1 - self.eps) / power,
+                        'C'),
                 sensor_dim=-2, source_dim=-2, time_dim=-1
             )
 
             if hermitize:
                 self.covariance = (
-                    self.covariance
-                    + np.swapaxes(self.covariance.conj(), -1, -2)
-                ) / 2
+                                      self.covariance
+                                      + np.swapaxes(self.covariance.conj(), -1,
+                                                    -2)
+                                  ) / 2
 
             if trace_norm:
                 self.covariance /= np.einsum(
@@ -891,9 +912,11 @@ class VonMisesFisherComplexGaussianMixtureModel:
                 'fkwx,fkxy,fkzy->fkwz', eigenvecs, diagonal, eigenvecs.conj()
             )
             self.determinant = np.prod(eigenvals, axis=-1)
-            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D), 1 / eigenvals)
+            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D),
+                                         1 / eigenvals)
             self.precision = np.einsum(
-                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal, eigenvecs.conj()
+                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal,
+                eigenvecs.conj()
             )
 
             if self.visual_debug:
@@ -908,7 +931,8 @@ class VonMisesFisherComplexGaussianMixtureModel:
 
             self.mu, self.kappa_vmf = VonMisesFisher.fit(
                 embedding.T,
-                np.clip(reshape(affiliations, 'fkt->k,t*f'), self.eps, 1 - self.eps),
+                np.clip(reshape(affiliations, 'fkt->k,t*f'), self.eps,
+                        1 - self.eps),
                 min_concentration=min_concentration_vmf,
                 max_concentration=max_concentration_vmf
             )
@@ -934,10 +958,12 @@ class VonMisesFisherComplexGaussianMixtureModel:
             ).real / D + self.eps
         elif inverse == 'eig':
             power = np.abs(
-                np.einsum('...td,...kde,...te->...kt', Y.conj(), self.precision, Y)
+                np.einsum('...td,...kde,...te->...kt', Y.conj(), self.precision,
+                          Y)
             ) / D + self.eps
 
-        spatial = np.exp(-np.log(self.determinant)[..., None] - D * np.log(power))
+        spatial = np.exp(
+            -np.log(self.determinant)[..., None] - D * np.log(power))
 
         emb = np.reshape(
             VonMisesFisher.pdf(
@@ -970,6 +996,7 @@ class VonMisesFisherComplexGaussianMixtureModel:
         Returns: Affiliations with shape (..., K, T).
         """
         return self._predict(Y, embedding, inverse=inverse)[0]
+
 
 class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
     """Hybrid model."""
@@ -1020,7 +1047,8 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
         for i in range(iterations):
             # E step
             if i > 0:
-                affiliations, quadratic_form = self._predict(Y_for_pdf, embedding)
+                affiliations, quadratic_form = self._predict(Y_for_pdf,
+                                                             embedding)
 
             # M step
             self.pi = affiliations.mean(axis=-1)
@@ -1049,9 +1077,11 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
                 'fkwx,fkxy,fkzy->fkwz', eigenvecs, diagonal, eigenvecs.conj()
             )
             self.determinant = np.prod(eigenvals, axis=-1)
-            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D), 1 / eigenvals)
+            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D),
+                                         1 / eigenvals)
             self.precision = np.einsum(
-                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal, eigenvecs.conj()
+                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal,
+                eigenvecs.conj()
             )
 
             if self.visual_debug:
@@ -1066,7 +1096,8 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
 
             self.mu, self.kappa_vmf = VonMisesFisher.fit(
                 embedding.T,
-                np.clip(reshape(affiliations, 'fkt->k,t*f'), self.eps, 1 - self.eps),
+                np.clip(reshape(affiliations, 'fkt->k,t*f'), self.eps,
+                        1 - self.eps),
                 min_concentration=min_concentration_vmf,
                 max_concentration=max_concentration_vmf
             )
@@ -1124,6 +1155,7 @@ def _plot_condition_number(matrix):
         plt.xlabel('frequency bin')
         plt.ylabel('log cond A')
         plt.show()
+
 
 def _plot_affiliations(*affiliation_list):
     """Each argument must have shape (F, K, T)."""
