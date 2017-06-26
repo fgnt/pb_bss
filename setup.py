@@ -1,7 +1,7 @@
 import setuptools
 
 setuptools.setup(
-    name="cluster",
+    name="dc_integration",
 
     author="Lukas Drude",
     author_email="mail@lukas-drude.de",
