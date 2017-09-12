@@ -6,7 +6,11 @@ def get_energy(x, axis=None):
 
 
 def get_variance_for_zero_mean_signal(X, axis=None):
-    return np.mean(X.real ** 2 + X.imag ** 2, axis=axis)
+    # Bug fix for https://github.com/numpy/numpy/issues/9679
+    if np.iscomplexobj(X):
+        return np.mean(X.real ** 2 + X.imag ** 2, axis=axis)
+    else:
+        return np.mean(X ** 2, axis=axis)
 
 
 def get_snr(X, N, axis=None):
