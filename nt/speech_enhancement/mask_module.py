@@ -34,6 +34,7 @@ All other axes are regarded as independent dimensions.
 
 import numpy as np
 from typing import Union, Optional
+from nt.math.misc import abs_square
 EPS = 1e-18
 
 
@@ -105,7 +106,7 @@ def ideal_binary_mask(
     signal = np.asarray(signal)
     components = signal.shape[source_axis]
     dtype = signal.real.dtype
-    mask = signal.real ** 2 + signal.imag ** 2
+    mask = abs_square(signal)
 
     if sensor_axis is not None:
         mask = mask.sum(sensor_axis, keepdims=True)
@@ -150,7 +151,7 @@ def wiener_like_mask(
         array([ 1.])
     """
     signal = np.asarray(signal)
-    mask = signal.real ** 2 + signal.imag ** 2
+    mask = abs_square(signal)
 
     if sensor_axis is not None:
         mask = mask.sum(sensor_axis, keepdims=True)
@@ -355,7 +356,7 @@ def lorenz_mask(
     np.testing.assert_equal(frequency_axis, -2, 'Not yet implemented.')
     np.testing.assert_equal(time_axis, -1, 'Not yet implemented.')
 
-    power = signal.real ** 2 + signal.imag ** 2
+    power = abs_square(signal)
     if sensor_axis is not None:
         power = power.sum(axis=sensor_axis, keepdims=True)
 
@@ -413,7 +414,7 @@ def biased_binary_mask(
         threshold_voiced_noise * unvoiced
     )
 
-    power = signal.real ** 2 + signal.imag ** 2
+    power = abs_square(signal)
 
     if sensor_axis is not None:
         raise NotImplementedError()
