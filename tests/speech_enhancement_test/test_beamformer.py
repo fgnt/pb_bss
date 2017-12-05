@@ -8,9 +8,9 @@ from nt.speech_enhancement.beamformer import get_gev_vector, \
 from nt.speech_enhancement.beamformer import get_lcmv_vector
 from nt.speech_enhancement.beamformer import get_mvdr_vector
 from nt.speech_enhancement.beamformer import get_pca_vector
+from nt.speech_enhancement.beamformer import get_mvdr_vector_souden
 from nt.math.vector import cos_similarity
 from nt.utils.random_helper import uniform, hermitian, pos_def_hermitian
-
 
 
 class TestBeamformerWrapper(unittest.TestCase):
@@ -23,6 +23,13 @@ class TestBeamformerWrapper(unittest.TestCase):
 
     def test_gev_dimensions(self):
         output = get_gev_vector(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd))
+        tc.assert_equal(output.shape, self.shape_vector)
+
+    def test_mvdr_souden_dimensions(self):
+        output = get_mvdr_vector_souden(
             pos_def_hermitian(
                 self.shape_psd), pos_def_hermitian(
                 self.shape_psd))
