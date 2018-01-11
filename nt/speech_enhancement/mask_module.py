@@ -33,7 +33,7 @@ All other axes are regarded as independent dimensions.
 # CB: Eventuell einen Dekorator nutzen für force signal.real.dtype == return.dtype?
 
 import numpy as np
-from typing import Union, Optional
+from typing import Optional
 from nt.math.misc import abs_square
 EPS = 1e-18
 
@@ -83,7 +83,7 @@ def ideal_binary_mask(
     The resulting masks are binary (Value is zero or one).
     Also the sum of all masks is one.
 
-    LD: What happens by equal values? See testcases.
+    LD: What happens with equal values? See testcases.
 
     Erdogan, Hakan, et al. "Phase-sensitive and recognition-boosted speech
     separation using deep recurrent neural networks." ICASSP, 2015.
