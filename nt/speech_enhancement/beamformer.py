@@ -549,13 +549,14 @@ def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, eps=1e-5):
     Returns the MVDR beamforming vector described in [Souden10].
 
     :param target_psd_matrix: Target PSD matrix
-        with shape (bins, sensors, sensors)
+        with shape (..., bins, sensors, sensors)
     :param noise_psd_matrix: Noise PSD matrix
-        with shape (bins, sensors, sensors)
+        with shape (..., bins, sensors, sensors)
     :return: Set of beamforming vectors with shape (..., bins, sensors)
     """
 
     # Make sure matrix is hermitian
+    shape = target_psd_matrix.shape
     noise_psd_matrix = 0.5 * (
         noise_psd_matrix + np.conj(noise_psd_matrix.swapaxes(-1, -2))
     )
@@ -577,14 +578,16 @@ def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, eps=1e-5):
             raise ValueError('Error for frequency {}\n'
                              'phi_xx: {}\n'
                              'phi_nn: {}'.format(
-                f, target_psd_matrix[f], noise_psd_matrix[f]))
+                f, target_psd_matrix[f, :, :],
+                noise_psd_matrix[f, :, :]))
         except np.linalg.LinAlgError:
             raise np.linalg.LinAlgError('Error for frequency {}\n'
                                         'phi_xx: {}\n'
                                         'phi_nn: {}'.format(
-                f, target_psd_matrix[f], noise_psd_matrix[f]))
-    denominator = np.trace(numerator, axis1=1, axis2=2)
-    beamforming_vector = numerator[:, :, 0] / np.expand_dims(denominator + eps, axis=-1)
-
+                f, target_psd_matrix[f, :, :],
+                noise_psd_matrix[f, :, :]))
+    denominator = np.trace(numerator, axis1=-1, axis2=-2)
+    beamforming_vector = numerator[:, 0] / np.expand_dims(denominator + eps, axis=-1)
+    beamforming_vector = beamforming_vector.reshape(shape[:-1])
     return beamforming_vector
 
