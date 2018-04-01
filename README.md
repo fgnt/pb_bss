@@ -2,7 +2,7 @@
 
 This repository covers the EM algorithms proposed in the Interspeech paper "Tight integration of spatial and spectral features for BSS with Deep Clustering embeddings" presented at Interspeech 2017 in Stockholm.
 
-Currently, the repository contains the used EM algorithms and also also alternative observation models.
+Currently, the repository contains the EM algorithms presented in the paper and some alternative observation models.
 
 ```
 @InProceedings{Drude2017DeepClusteringIntegration,
