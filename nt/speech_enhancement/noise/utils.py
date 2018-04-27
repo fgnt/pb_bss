@@ -35,7 +35,7 @@ def get_snr(X, N, *, axis=None, keepdims=False):
     return 10 * np.log10(power_X / power_N)
 
 
-def set_snr(X, N, snr, current_snr=None, *, axis, inplace=True):
+def set_snr(X, N, snr, current_snr=None, *, axis=None, inplace=True):
     """
     Set the SNR of two input images by rescaling the noise signal in place.
 
