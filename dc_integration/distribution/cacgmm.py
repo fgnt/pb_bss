@@ -1,13 +1,15 @@
-from dataclasses import dataclass
-from dataclasses import field
+from dataclasses import dataclass, field
 
 import numpy as np
-from .complex_angular_central_gaussian import ComplexAngularCentralGaussianParameters
+from .complex_angular_central_gaussian import (
+    ComplexAngularCentralGaussianParameters,
+)
 
 
 @dataclass
 class ComplexAngularCentralGaussianMixtureModelParameters:
-    complex_angular_central_gaussian: ComplexAngularCentralGaussianParameters = field(default_factory=ComplexAngularCentralGaussianParameters)
+    complex_angular_central_gaussian: ComplexAngularCentralGaussianParameters \
+        = field(default_factory=ComplexAngularCentralGaussianParameters)
     mixture_weight: np.array = None
     affiliation: np.array = None
 

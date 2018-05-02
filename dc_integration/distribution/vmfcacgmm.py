@@ -41,7 +41,7 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
         """Fit a vMFcACGMM.
 
         Args:
-            Y: Mix with shape (F, D, T).
+            Y: Mix with shape (F, T, D).
             embedding: Embedding from Deep Clustering with shape (F*T, E).
             initialization: Shape (F, K, T)
             iterations: Most of the time 10 iterations are acceptable.
@@ -51,7 +51,6 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
         Returns:
         """
         F, T, D = Y.shape
-        D = Y.shape[-1]
         Y_for_psd = np.copy(np.swapaxes(Y, -2, -1), 'C')
         Y_for_pdf = np.copy(Y, 'C')
         embedding = np.copy(np.swapaxes(embedding, -2, -1), 'C')

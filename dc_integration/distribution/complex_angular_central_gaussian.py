@@ -15,13 +15,13 @@ class ComplexAngularCentralGaussianParameters:
 
 class ComplexAngularCentralGaussian:
     def fit(
-            self, Y, saliency=1
+            self, Y, saliency=None
     ) -> ComplexAngularCentralGaussianParameters:
         """
 
         Args:
-            Y: Complex observation with shape ()
-            saliency:
+            Y: Complex observation with shape (..., T, D)
+            saliency: Weight for each observation (..., T)
 
         Returns:
 
