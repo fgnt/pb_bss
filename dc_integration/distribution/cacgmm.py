@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from .complex_angular_central_gaussian import (
     ComplexAngularCentralGaussianParameters,
+    ComplexAngularCentralGaussian,
 )
 from .util import (
     _unit_norm,
@@ -75,11 +76,7 @@ class ComplexAngularCentralGaussianMixtureModel:
 
     def __init__(self, eps=1e-10, visual_debug=False, pbar=False):
         self.eps = eps
-        self.visual_debug = visual_debug
-        # self.covariance = np.empty((), dtype=np.complex)
-        # self.precision = np.empty((), dtype=np.complex)
-        # self.determinant = np.empty((), dtype=np.float)
-        # self.pi = np.empty((), dtype=np.float)
+        self.visual_debug = visual_debug  # ToDo
         self.pbar = pbar
 
     def fit(
@@ -109,13 +106,14 @@ class ComplexAngularCentralGaussianMixtureModel:
             eps_style='where'
         )
 
-        Y_for_psd = np.ascontiguousarray(np.swapaxes(Y, -2, -1))
-        # Y_for_psd: Shape (..., T, K)
+        Y_for_psd = np.ascontiguousarray(np.swapaxes(Y, -2, -1))[..., None, :, :]
+        # Y_for_psd: Shape (..., 1, T, K)
         Y_for_pdf = np.ascontiguousarray(Y)
 
         params = ComplexAngularCentralGaussianMixtureModelParameters(
             eps=self.eps
         )
+        cacg_model = ComplexAngularCentralGaussian()
 
         params.affiliation = np.copy(initialization)  # Shape (..., K, T)
         quadratic_form = np.ones_like(params.affiliation)  # Shape (..., K, T)
@@ -135,46 +133,13 @@ class ComplexAngularCentralGaussianMixtureModel:
             params.mixture_weight = np.mean(params.affiliation, axis=-1)
             assert params.mixture_weight.shape == (*independent, K), params.mixture_weight.shape
 
-            mask = params.affiliation[..., None, :]
-            assert mask.shape == (*independent, K, 1, T), mask.shape
-            params.cacg.covariance = D * np.einsum(
-                '...kt,...dt,...et->...kde',
-                (params.affiliation / quadratic_form),
-                Y_for_psd,
-                Y_for_psd.conj()
-            )
-            normalization = np.sum(mask, axis=-1, keepdims=True)
-            params.cacg.covariance /= normalization
-            assert params.cacg.covariance.shape == (*independent, K, D, D), params.cacg.covariance.shape
-
-            if hermitize:
-                params.cacg.covariance = \
-                    (
-                            params.cacg.covariance
-                            + np.swapaxes(params.cacg.covariance.conj(), -1, -2)
-                    ) / 2
-
-            if trace_norm:
-                params.cacg.covariance /= np.einsum(
-                    '...dd', params.cacg.covariance
-                )[..., None, None]
-
-            eigenvals, eigenvecs = np.linalg.eigh(params.cacg.covariance)
-            eigenvals = eigenvals.real
-            eigenvals = np.maximum(
-                eigenvals,
-                np.max(eigenvals, axis=-1, keepdims=True) * eigenvalue_floor
-            )
-            diagonal = np.einsum('de,...kd->...kde', np.eye(D), eigenvals)
-            params.cacg.covariance = np.einsum(
-                '...kwx,...kxy,...kzy->...kwz', eigenvecs, diagonal, eigenvecs.conj()
-            )
-            params.cacg.determinant = np.prod(eigenvals, axis=-1)
-            inverse_diagonal = np.einsum('de,...kd->...kde', np.eye(D),
-                                         1 / eigenvals)
-            params.cacg.precision = np.einsum(
-                '...kwx,...kxy,...kzy->...kwz', eigenvecs, inverse_diagonal,
-                eigenvecs.conj()
+            params.cacg = cacg_model._fit(
+                Y=Y_for_psd,
+                saliency=params.affiliation,
+                quadratic_form=quadratic_form,
+                hermitize=hermitize,
+                trace_norm=trace_norm,
+                eigenvalue_floor=eigenvalue_floor,
             )
         return params
 
