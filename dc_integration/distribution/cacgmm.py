@@ -19,7 +19,7 @@ class ComplexAngularCentralGaussianMixtureModelParameters:
 
     eps: float = 1e-10
 
-    def _predict(self, Y, souce_activity_mask=None):
+    def _predict(self, Y, source_activity_mask=None):
         """Predict class affiliation posteriors from given model.
 
         Args:
@@ -47,8 +47,8 @@ class ComplexAngularCentralGaussianMixtureModelParameters:
         affiliation = np.exp(affiliation)
         affiliation *= self.mixture_weight[..., None]
 
-        if souce_activity_mask is not None:
-            affiliation *= souce_activity_mask
+        if source_activity_mask is not None:
+            affiliation *= source_activity_mask
 
         # ToDo: Figure out if
         #  >>> affiliations /= np.sum(affiliations, axis=-2, keepdims=True) + self.eps
@@ -58,7 +58,7 @@ class ComplexAngularCentralGaussianMixtureModelParameters:
         # >>> affiliations /= np.sum(affiliations, axis=-2, keepdims=True) + self.eps
         # is better
 
-        affiliation / np.sum(affiliation, axis=-2, keepdims=True) + self.eps
+        affiliation /= np.sum(affiliation, axis=-2, keepdims=True) + self.eps
         affiliation = np.clip(affiliation, self.eps, 1 - self.eps)
 
         # if self.visual_debug:
@@ -88,7 +88,7 @@ class ComplexAngularCentralGaussianMixtureModel:
             self,
             Y,
             initialization,
-            souce_activity_mask=None,
+            source_activity_mask=None,
             iterations=100,
             hermitize=True,
             trace_norm=True,
@@ -133,9 +133,9 @@ class ComplexAngularCentralGaussianMixtureModel:
         params.affiliation = np.copy(initialization)  # Shape (..., K, T)
         quadratic_form = np.ones_like(params.affiliation)  # Shape (..., K, T)
 
-        if souce_activity_mask is not None:
-            assert souce_activity_mask.dtype == np.bool, souce_activity_mask.dtype
-            assert souce_activity_mask.shape == params.affiliation.shape, (souce_activity_mask.shape, params.affiliation.shape)
+        if source_activity_mask is not None:
+            assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
+            assert source_activity_mask.shape == params.affiliation.shape, (source_activity_mask.shape, params.affiliation.shape)
 
         if self.pbar:
             import tqdm
@@ -148,12 +148,13 @@ class ComplexAngularCentralGaussianMixtureModel:
             if i > 0:
                 # Equation 12
                 params.affiliation, quadratic_form = params._predict(
-                    Y_for_pdf, souce_activity_mask=souce_activity_mask
+                    Y_for_pdf, source_activity_mask=source_activity_mask
                 )
 
             params.mixture_weight = np.mean(params.affiliation, axis=-1)
             assert params.mixture_weight.shape == (*independent, K), params.mixture_weight.shape
 
+            del params.cacg
             params.cacg = cacg_model._fit(
                 Y=Y_for_psd,
                 saliency=params.affiliation,
