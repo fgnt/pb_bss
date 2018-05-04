@@ -2,9 +2,10 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from dc_integration.distribution.util import _Parameter
 
 @dataclass
-class ComplexAngularCentralGaussianParameters:
+class ComplexAngularCentralGaussianParameters(_Parameter):
     covariance: np.array = None
     precision: np.array = None
     determinant: np.array = None
@@ -54,11 +55,11 @@ class ComplexAngularCentralGaussian:
         assert mask.shape == (*independent, 1, T), (mask.shape, (*independent, 1, T))
 
         params.covariance = D * np.einsum(
-            '...t,...dt,...et->...de',
-            (saliency / quadratic_form),
-            Y,
+            '...dt,...et->...de',
+            (saliency / quadratic_form)[..., None, :] * Y,
             Y.conj()
         )
+
         normalization = np.sum(mask, axis=-1, keepdims=True)
         params.covariance /= normalization
         assert params.covariance.shape == (*independent, D, D), params.covariance.shape

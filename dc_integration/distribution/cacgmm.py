@@ -1,17 +1,18 @@
 from dataclasses import dataclass, field
 
 import numpy as np
-from .complex_angular_central_gaussian import (
+from dc_integration.distribution.complex_angular_central_gaussian import (
     ComplexAngularCentralGaussianParameters,
     ComplexAngularCentralGaussian,
 )
-from .util import (
+from dc_integration.distribution.util import (
     _unit_norm,
+    _Parameter,
 )
 
 
 @dataclass
-class ComplexAngularCentralGaussianMixtureModelParameters:
+class ComplexAngularCentralGaussianMixtureModelParameters(_Parameter):
     cacg: ComplexAngularCentralGaussianParameters \
         = field(default_factory=ComplexAngularCentralGaussianParameters)
     mixture_weight: np.array = None
@@ -23,23 +24,23 @@ class ComplexAngularCentralGaussianMixtureModelParameters:
         """Predict class affiliation posteriors from given model.
 
         Args:
-            Y: Normalized observations with shape (..., T, D).
+            Y: Normalized observations with shape (..., D, T).
             souce_activity_mask: shape (..., K, T)
         Returns: Affiliations with shape (..., K, T) and quadratic format
             with the same shape.
         """
-        *independent, T, D = Y.shape
+        *independent, D, T = Y.shape
         K = self.mixture_weight.shape[-1]
-        D = Y.shape[-1]
 
         quadratic_form = np.abs(
             np.einsum(
-                '...td,...kde,...te->...kt',
+                '...dt,...kde,...et->...kt',
                 Y.conj(),
                 self.cacg.precision,
                 Y,
             )
         ) + self.eps
+
         assert quadratic_form.shape == (*independent, K, T), quadratic_form.shape
 
         affiliation = - D * np.log(quadratic_form)
@@ -72,7 +73,8 @@ class ComplexAngularCentralGaussianMixtureModelParameters:
             Y: Normalized observations with shape (..., T, D).
         Returns: Affiliations with shape (..., K, T).
         """
-        return self._predict(Y)[0]
+        Y2 = np.ascontiguousarray(np.swapaxes(Y, -2, -1))
+        return self._predict(Y2)[0]
 
 
 class ComplexAngularCentralGaussianMixtureModel:
@@ -99,11 +101,27 @@ class ComplexAngularCentralGaussianMixtureModel:
         Args:
             Y: Normalized observations with shape (..., T, D).
             initialization: Shape (..., K, T).
+                affiliation or ComplexAngularCentralGaussianMixtureModelParameters.
+                Note: this model is special, when affiliation is given,
+                quadratic_form is initialized as one and the algoriithm starts
+                with the M-step.
+                When the Parameters (TODO) is given, the algorithm starts with
+                the E-Step.
             souce_activity_mask: Shape (..., K, T)
                 A binary mask that indicate is a source is active or not at a
                 time point. Example about a voice activity detection determines
                 sections where only noise is active, then this mask can set the
                 activity of all speakers at that time point to zero.
+
+        Thie following two examples are equal, both have 20 iterations, but the
+        second splits them in two times 10 iteration:
+
+        >> Model = ComplexAngularCentralGaussianMixtureModel()
+        >> model = Model.fit(Y, init_affiliation, iterations = 20)
+
+        >> Model = ComplexAngularCentralGaussianMixtureModel()
+        >> model = Model.fit(Y, init_affiliation, iterations = 10)
+        >> model = Model.fit(Y, model, iterations = 10)  # ToDo
         """
 
         *independent, T, D = Y.shape
@@ -121,9 +139,12 @@ class ComplexAngularCentralGaussianMixtureModel:
             eps_style='where'
         )
 
-        Y_for_psd = np.ascontiguousarray(np.swapaxes(Y, -2, -1))[..., None, :, :]
-        # Y_for_psd: Shape (..., 1, T, K)
-        Y_for_pdf = np.ascontiguousarray(Y)
+        # Y_for_pdf = np.ascontiguousarray(Y)
+        # Y_for_psd = np.ascontiguousarray(np.swapaxes(Y, -2, -1))[..., None, :, :]
+
+        Y_for_pdf = np.ascontiguousarray(np.swapaxes(Y, -2, -1))
+        Y_for_psd = Y_for_pdf[..., None, :, :]
+        # Y_for_psd: Shape (..., 1, T, D)
 
         params = ComplexAngularCentralGaussianMixtureModelParameters(
             eps=self.eps
@@ -148,11 +169,12 @@ class ComplexAngularCentralGaussianMixtureModel:
             if i > 0:
                 # Equation 12
                 params.affiliation, quadratic_form = params._predict(
-                    Y_for_pdf, source_activity_mask=source_activity_mask
+                    Y_for_pdf,
+                    source_activity_mask=source_activity_mask,
                 )
 
             params.mixture_weight = np.mean(params.affiliation, axis=-1)
-            assert params.mixture_weight.shape == (*independent, K), params.mixture_weight.shape
+            assert params.mixture_weight.shape == (*independent, K), (params.mixture_weight.shape, (*independent, K), params.affiliation.shape)
 
             del params.cacg
             params.cacg = cacg_model._fit(
