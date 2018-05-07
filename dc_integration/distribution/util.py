@@ -176,3 +176,17 @@ def stack_parameters(parameters: typing.List[_Parameter]):
 
         setattr(out, k, data)
     return out
+
+
+def force_hermitian(matrix):
+    """
+
+    >>> A = np.array([[1+2j, 3+5j], [7+11j, 13+17j]])
+    >>> force_hermitian(A)
+    array([[ 1.+0.j,  5.-3.j],
+           [ 5.+3.j, 13.+0.j]])
+    >>> force_hermitian(force_hermitian(A))
+    array([[ 1.+0.j,  5.-3.j],
+           [ 5.+3.j, 13.+0.j]])
+    """
+    return (matrix + np.swapaxes(matrix.conj(), -1, -2)) / 2
