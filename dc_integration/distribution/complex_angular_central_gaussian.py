@@ -69,7 +69,7 @@ class ComplexAngularCentralGaussian:
         assert params.covariance.shape == (*independent, D, D), params.covariance.shape
 
         if hermitize:
-            params.covariance = force_hermitian(self.covariance)
+            params.covariance = force_hermitian(params.covariance)
 
         if trace_norm:
             params.covariance /= np.einsum(
