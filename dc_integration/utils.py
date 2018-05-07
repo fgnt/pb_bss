@@ -1,5 +1,5 @@
 import numpy as np
-
+import scipy.linalg
 
 def _normalize(op):
     op = op.replace(',', '')
@@ -65,19 +65,53 @@ def reshape(array, operation):
     return _only_reshape(array, source, target)
 
 
-def get_pca(target_psd_matrix):
+def get_pca(target_psd_matrix, use_scipy=False):
+    """
+
+    >>> M = np.array([[2, 0], [0, 1]])
+    >>> get_pca(M, use_scipy=True)
+    (array([1., 0.]), array(2.))
+    >>> get_pca(M, use_scipy=False)
+    (array([1., 0.]), array(2.))
+
+    >>> M = np.array([[2, 0, 0], [0, 0, 0], [0, 0, 0]])
+    >>> get_pca(M, use_scipy=True)
+    (array([1., 0., 0.]), array(2.))
+    >>> get_pca(M, use_scipy=False)
+    (array([1., 0., 0.]), array(2.))
+
+
+    """
+    D = target_psd_matrix.shape[-1]
+
     # Save the shape of target_psd_matrix
     shape = target_psd_matrix.shape
 
     # Reduce independent dims to 1 independent dim
     target_psd_matrix = np.reshape(target_psd_matrix, (-1,) + shape[-2:])
 
-    # Calculate eigenvals/vecs
-    eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
-    # Select eigenvec for max eigenval. Eigenvals are sorted in ascending order.
-    beamforming_vector = eigenvecs[..., -1]
-    eigenvalues = eigenvals[..., -1]
-    # Reconstruct original shape
+    if use_scipy:
+        beamforming_vector = []
+        eigenvalues = []
+        for f in range(target_psd_matrix.shape[0]):
+            eigenvals, eigenvecs = scipy.linalg.eigh(
+                target_psd_matrix[-1], eigvals=(D-1, D-1)
+            )
+            eigenval, = eigenvals
+            eigenvec, = eigenvecs.T
+            beamforming_vector.append(eigenvec)
+            eigenvalues.append(eigenval)
+
+        beamforming_vector = np.array(beamforming_vector)
+        eigenvalues = np.array(eigenvalues)
+    else:
+        # Calculate eigenvals/vecs
+        eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
+        # Select eigenvec for max eigenval. Eigenvals are sorted in ascending order.
+        beamforming_vector = eigenvecs[..., -1]
+        eigenvalues = eigenvals[..., -1]
+        # Reconstruct original shape
+
     beamforming_vector = np.reshape(beamforming_vector, shape[:-1])
     eigenvalues = np.reshape(eigenvalues, shape[:-2])
 
