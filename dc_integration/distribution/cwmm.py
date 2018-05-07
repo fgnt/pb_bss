@@ -35,10 +35,13 @@ class ComplexWatsonMixtureModelParameters(_Parameter):
             np.ascontiguousarray(self.complex_watson.mode[..., None, :]),
             self.complex_watson.concentration[..., None]
         )
+        affiliation = np.maximum(affiliation, self.eps)
         if source_activity_mask is not None:
             affiliation *= source_activity_mask
-        affiliation /= np.sum(affiliation, axis=-2, keepdims=True) + self.eps
-        affiliation = np.clip(affiliation, self.eps, 1 - self.eps)
+        affiliation /= np.maximum(
+            np.sum(affiliation, axis=-2, keepdims=True),
+            self.eps,
+        )
         return np.ascontiguousarray(affiliation)
 
     def predict(self, Y):
