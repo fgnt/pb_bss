@@ -2,7 +2,8 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from dc_integration.distribution.util import _Parameter
+from dc_integration.distribution.util import _Parameter, force_hermitian
+
 
 @dataclass
 class ComplexAngularCentralGaussianParameters(_Parameter):
@@ -40,6 +41,9 @@ class ComplexAngularCentralGaussian:
             saliency: Weight for each observation (..., K, T)
         Returns:
 
+        ToDo: Merge ComplexGaussian with ComplexAngularCentralGaussian.
+              Both have the same _fit
+
         """
         assert Y.ndim == saliency.ndim + 1, (Y.shape, saliency.ndim)
         *independent, D, T = Y.shape
@@ -65,11 +69,7 @@ class ComplexAngularCentralGaussian:
         assert params.covariance.shape == (*independent, D, D), params.covariance.shape
 
         if hermitize:
-            params.covariance = \
-                (
-                        params.covariance
-                        + np.swapaxes(params.covariance.conj(), -1, -2)
-                ) / 2
+            params.covariance = force_hermitian(self.covariance)
 
         if trace_norm:
             params.covariance /= np.einsum(
@@ -84,8 +84,7 @@ class ComplexAngularCentralGaussian:
         )
         diagonal = np.einsum('de,...d->...de', np.eye(D), eigenvals)
         params.covariance = np.einsum(
-            '...wx,...xy,...zy->...wz', eigenvecs, diagonal,
-            eigenvecs.conj()
+            '...wx,...xy,...zy->...wz', eigenvecs, diagonal, eigenvecs.conj()
         )
         params.determinant = np.prod(eigenvals, axis=-1)
         inverse_diagonal = np.einsum('de,...d->...de', np.eye(D),
