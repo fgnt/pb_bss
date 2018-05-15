@@ -13,8 +13,8 @@ from dc_integration.distribution.util import (
 
 @dataclass
 class ComplexWatsonParameters(_Parameter):
-    mode: np.array = None
-    concentration: np.array = None
+    mode: np.array = None  # Shape (..., D)
+    concentration: np.array = None  # Shape (...)
 
 
 class ComplexWatson:

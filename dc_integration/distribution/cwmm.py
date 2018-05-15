@@ -35,13 +35,13 @@ class ComplexWatsonMixtureModelParameters(_Parameter):
             np.ascontiguousarray(self.complex_watson.mode[..., None, :]),
             self.complex_watson.concentration[..., None]
         )
-        affiliation = np.maximum(affiliation, self.eps)
         if source_activity_mask is not None:
             affiliation *= source_activity_mask
         affiliation /= np.maximum(
             np.sum(affiliation, axis=-2, keepdims=True),
             self.eps,
         )
+        affiliation = np.maximum(affiliation, self.eps)
         return np.ascontiguousarray(affiliation)
 
     def predict(self, Y):
@@ -65,10 +65,13 @@ class ComplexWatsonMixtureModel:
     # phase_norm = staticmethod(_phase_norm)
     # frequency_norm = staticmethod(_frequency_norm)
 
-    def __init__(self, pbar=False):
+    Parameters = staticmethod(ComplexWatsonMixtureModelParameters)
+
+    def __init__(self, eps=1e-10, pbar=False):
         """
         """
         self.pbar = pbar
+        self.eps = eps
 
     def fit(
             self,
@@ -77,7 +80,6 @@ class ComplexWatsonMixtureModel:
             source_activity_mask=None,
             iterations=100,
             max_concentration=100,
-            eps=1e-10,
     ) -> ComplexWatsonMixtureModelParameters:
         """ EM for CWMMs with any number of independent dimensions.
 
@@ -94,11 +96,17 @@ class ComplexWatsonMixtureModel:
 
         *independent, T, D = Y.shape
         independent = tuple(independent)
-        K = initialization.shape[-2]
-        assert K < 20, (K, 'Sure?')
+
         assert D < 20, (D, 'Sure?')
-        assert initialization.shape[-1] == T, (initialization.shape, T)
-        assert initialization.shape[:-2] == independent, (initialization.shape, independent)
+
+        if isinstance(initialization, self.Parameters):
+            K = initialization.mixture_weights.shape[-1]
+            assert K < 20, (K, 'Sure?')
+        else:
+            K = initialization.shape[-2]
+            assert K < 20, (K, 'Sure?')
+            assert initialization.shape[-1] == T, (initialization.shape, T)
+            assert initialization.shape[:-2] == independent, (initialization.shape, independent)
 
         Y = _unit_norm(
             Y,
@@ -110,16 +118,24 @@ class ComplexWatsonMixtureModel:
         Y_normalized_for_pdf = np.ascontiguousarray(Y)
         Y_normalized_for_psd = np.ascontiguousarray(np.swapaxes(Y, -2, -1))
 
-        params = ComplexWatsonMixtureModelParameters(eps=eps)
+        if isinstance(initialization, self.Parameters):
+            params = initialization
+        else:
+            params = self.Parameters(eps=self.eps)
+            params.affiliation = np.copy(initialization)  # Shape (..., K, T)
+
         cw = ComplexWatson(D, max_concentration=max_concentration)
 
-        params.affiliation = np.copy(initialization)
+        if isinstance(initialization, self.Parameters):
+            range_iterations = range(1, 1+iterations)
+        else:
+            range_iterations = range(iterations)
 
         if self.pbar:
             import tqdm
-            range_iterations = tqdm.tqdm(range(iterations), 'cWMM Iteration')
+            range_iterations = tqdm.tqdm(range_iterations, 'cWMM Iteration')
         else:
-            range_iterations = range(iterations)
+            range_iterations = range_iterations
 
         for i in range_iterations:
             # E step

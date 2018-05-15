@@ -81,6 +81,8 @@ class ComplexAngularCentralGaussianMixtureModel:
     """Ito 2016."""
     unit_norm = staticmethod(_unit_norm)
 
+    Parameters = staticmethod(ComplexAngularCentralGaussianMixtureModelParameters)
+
     def __init__(self, eps=1e-10, visual_debug=False, pbar=False):
         self.eps = eps
         self.visual_debug = visual_debug  # ToDo
@@ -126,11 +128,17 @@ class ComplexAngularCentralGaussianMixtureModel:
 
         *independent, T, D = Y.shape
         independent = tuple(independent)
-        K = initialization.shape[-2]
-        assert K < 20, (K, 'Sure?')
+
         assert D < 20, (D, 'Sure?')
-        assert initialization.shape[-1] == T, (initialization.shape, T)
-        assert initialization.shape[:-2] == independent, (initialization.shape, independent)
+
+        if isinstance(initialization, self.Parameters):
+            K = initialization.mixture_weight.shape[-1]
+            assert K < 20, (K, 'Sure?')
+        else:
+            K = initialization.shape[-2]
+            assert K < 20, (K, 'Sure?')
+            assert initialization.shape[-1] == T, (initialization.shape, T)
+            assert initialization.shape[:-2] == independent, (initialization.shape, independent)
 
         Y = _unit_norm(
             Y,
@@ -146,23 +154,32 @@ class ComplexAngularCentralGaussianMixtureModel:
         Y_for_psd = Y_for_pdf[..., None, :, :]
         # Y_for_psd: Shape (..., 1, T, D)
 
-        params = ComplexAngularCentralGaussianMixtureModelParameters(
-            eps=self.eps
-        )
-        cacg_model = ComplexAngularCentralGaussian()
+        if isinstance(initialization, self.Parameters):
+            params = initialization
+        else:
+            params = self.Parameters(eps=self.eps)
+            params.affiliation = np.copy(initialization)  # Shape (..., K, T)
+            quadratic_form = np.ones_like(params.affiliation)  # Shape (..., K, T)
 
-        params.affiliation = np.copy(initialization)  # Shape (..., K, T)
-        quadratic_form = np.ones_like(params.affiliation)  # Shape (..., K, T)
+        # params = ComplexAngularCentralGaussianMixtureModelParameters(
+        #     eps=self.eps
+        # )
+        cacg_model = ComplexAngularCentralGaussian()
 
         if source_activity_mask is not None:
             assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
             assert source_activity_mask.shape == params.affiliation.shape, (source_activity_mask.shape, params.affiliation.shape)
 
-        if self.pbar:
-            import tqdm
-            range_iterations = tqdm.tqdm(range(iterations), 'cACGMM Iteration')
+        if isinstance(initialization, self.Parameters):
+            range_iterations = range(1, 1+iterations)
         else:
             range_iterations = range(iterations)
+
+        if self.pbar:
+            import tqdm
+            range_iterations = tqdm.tqdm(range_iterations, 'cACGMM Iteration')
+        else:
+            range_iterations = range_iterations
 
         for i in range_iterations:
             # E step
