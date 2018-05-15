@@ -3,6 +3,65 @@ import typing
 import numpy as np
 
 
+def get_model_class_from_parameter(parameter):
+    """
+    >>> from IPython.lib.pretty import pprint
+    >>> from dc_integration.distribution.cacgmm import (
+    ...     ComplexAngularCentralGaussianParameters,
+    ... )
+    >>> get_model_class_from_parameter(ComplexAngularCentralGaussianParameters).__name__
+    'ComplexAngularCentralGaussian'
+    >>> get_model_class_from_parameter(ComplexAngularCentralGaussianParameters()).__name__
+    'ComplexAngularCentralGaussian'
+
+    """
+    from dc_integration import distribution
+
+    if not hasattr(parameter, '__name__'):
+        parameter = parameter.__class__
+
+    name = parameter.__name__
+    assert 'Parameters' in name, name
+    name = name.replace('Parameters', '')
+
+    return getattr(distribution, name)
+
+
+def parameter_from_dict(parameter_class_or_str, d: dict):
+    """
+
+    >>> from IPython.lib.pretty import pprint
+    >>> from dc_integration.distribution.cacgmm import (
+    ...     ComplexAngularCentralGaussianParameters,
+    ...     ComplexAngularCentralGaussianMixtureModelParameters,
+    ... )
+    >>> model = ComplexAngularCentralGaussianParameters(covariance=1)
+    >>> model
+    ComplexAngularCentralGaussianParameters(covariance=1, precision=None, determinant=None)
+    >>> d = model.to_dict()
+    >>> name = model.__class__.__name__
+    >>> pprint(name)
+    'ComplexAngularCentralGaussianParameters'
+    >>> pprint(d)
+    {'covariance': 1, 'precision': None, 'determinant': None}
+    >>> parameter_from_dict(name, d)
+    ComplexAngularCentralGaussianParameters(covariance=1, precision=None, determinant=None)
+    >>> parameter_from_dict(ComplexAngularCentralGaussianParameters, d)
+    ComplexAngularCentralGaussianParameters(covariance=1, precision=None, determinant=None)
+
+    """
+    if isinstance(parameter_class_or_str, str):
+        from dc_integration import distribution
+        # mapping = {
+        #     k: getattr(distribution, k)
+        #     for k in dir(distribution)
+        # }
+        # parameter_class_or_str: _Parameter = mapping[parameter_class_or_str]
+        parameter_class_or_str = getattr(distribution, parameter_class_or_str)
+
+    return parameter_class_or_str.from_dict(d)
+
+
 class _Parameter:
     def to_dict(self):
         """
@@ -27,14 +86,14 @@ class _Parameter:
 
          >>> import jsonpickle, json
          >>> pprint(json.loads(jsonpickle.dumps(model)))
-        {'py/object': 'dc_integration.distribution.cacgmm.ComplexAngularCentralGaussianMixtureModelParameters',
-         'affiliation': None,
-         'cacg': {'py/object': 'dc_integration.distribution.complex_angular_central_gaussian.ComplexAngularCentralGaussianParameters',
-          'covariance': None,
-          'determinant': None,
-          'precision': None},
-         'eps': 1e-10,
-         'mixture_weight': None}
+         {'py/object': 'dc_integration.distribution.cacgmm.ComplexAngularCentralGaussianMixtureModelParameters',
+          'affiliation': None,
+          'cacg': {'py/object': 'dc_integration.distribution.complex_angular_central_gaussian.ComplexAngularCentralGaussianParameters',
+           'covariance': None,
+           'determinant': None,
+           'precision': None},
+          'eps': 1e-10,
+          'mixture_weight': None}
          >>>
         """
         ret = {
@@ -81,6 +140,36 @@ class _Parameter:
         """
         assert cls.__dataclass_fields__.keys() == d.keys(), (cls.__dataclass_fields__.keys(), d.keys())
         return cls(**d)
+
+    def __getattr__(self, name):
+        """
+        >>> from IPython.lib.pretty import pprint
+        >>> from dc_integration.distribution.cacgmm import (
+        ...     ComplexAngularCentralGaussianParameters,
+        ...     ComplexAngularCentralGaussianMixtureModelParameters,
+        ... )
+        >>> model = ComplexAngularCentralGaussianParameters()
+        >>> model.covariances
+        Traceback (most recent call last):
+        ...
+        AttributeError: 'ComplexAngularCentralGaussianParameters' object has no attribute 'covariances'.
+        Close matches: ['covariance']
+        >>> model.abc
+        Traceback (most recent call last):
+        ...
+        AttributeError: 'ComplexAngularCentralGaussianParameters' object has no attribute 'abc'.
+        Close matches: ['covariance', 'precision', 'determinant']
+        """
+
+        import difflib
+        similar = difflib.get_close_matches(name, self.__dataclass_fields__.keys())
+        if len(similar) == 0:
+            similar = list(self.__dataclass_fields__.keys())
+
+        raise AttributeError(
+            f'{self.__class__.__name__!r} object has no attribute {name!r}.\n'
+            f'Close matches: {similar}'
+        )
 
 
 def _unit_norm(signal, *, axis=-1, eps=1e-4, eps_style='plus'):
