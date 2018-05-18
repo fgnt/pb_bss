@@ -58,9 +58,15 @@ class ComplexAngularCentralGaussian:
         mask = saliency[..., None, :]
         assert mask.shape == (*independent, 1, T), (mask.shape, (*independent, 1, T))
 
+        # params.covariance = D * np.einsum(
+        #     '...dt,...et->...de',
+        #     (saliency / quadratic_form)[..., None, :] * Y,
+        #     Y.conj()
+        # )
         params.covariance = D * np.einsum(
-            '...dt,...et->...de',
-            (saliency / quadratic_form)[..., None, :] * Y,
+            '...t,...dt,...et->...de',
+            (saliency / quadratic_form),
+            Y,
             Y.conj()
         )
 

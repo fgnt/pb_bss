@@ -168,7 +168,8 @@ class ComplexAngularCentralGaussianMixtureModel:
 
         if source_activity_mask is not None:
             assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
-            assert source_activity_mask.shape == params.affiliation.shape, (source_activity_mask.shape, params.affiliation.shape)
+            if isinstance(params.affiliation, np.ndarray):
+                assert source_activity_mask.shape == params.affiliation.shape, (source_activity_mask.shape, params.affiliation.shape)
 
         if isinstance(initialization, self.Parameters):
             range_iterations = range(1, 1+iterations)
@@ -185,6 +186,7 @@ class ComplexAngularCentralGaussianMixtureModel:
             # E step
             if i > 0:
                 # Equation 12
+                del params.affiliation
                 params.affiliation, quadratic_form = params._predict(
                     Y_for_pdf,
                     source_activity_mask=source_activity_mask,
@@ -202,6 +204,7 @@ class ComplexAngularCentralGaussianMixtureModel:
                 trace_norm=trace_norm,
                 eigenvalue_floor=eigenvalue_floor,
             )
+            del quadratic_form
         return params
 
             # if self.visual_debug:
