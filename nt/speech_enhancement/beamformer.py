@@ -544,7 +544,8 @@ def pca_mvdr_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
 
     return output.T
 
-def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, eps=1e-5):
+def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, ref_channel,
+                           eps=1e-5):
     """
     Returns the MVDR beamforming vector described in [Souden10].
 
@@ -552,6 +553,8 @@ def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, eps=1e-5):
         with shape (..., bins, sensors, sensors)
     :param noise_psd_matrix: Noise PSD matrix
         with shape (..., bins, sensors, sensors)
+    :param ref_channel:
+    :param eps:
     :return: Set of beamforming vectors with shape (..., bins, sensors)
     """
 
@@ -587,7 +590,7 @@ def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, eps=1e-5):
                 f, target_psd_matrix[f, :, :],
                 noise_psd_matrix[f, :, :]))
     denominator = np.trace(numerator, axis1=-1, axis2=-2)
-    beamforming_vector = numerator[:, 0] / np.expand_dims(denominator + eps, axis=-1)
+    beamforming_vector = numerator[:, ref_channel] / np.expand_dims(denominator + eps, axis=-1)
     beamforming_vector = beamforming_vector.reshape(shape[:-1])
     return beamforming_vector
 
