@@ -544,7 +544,7 @@ def pca_mvdr_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
 
     return output.T
 
-def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, ref_channel,
+def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, ref_channel=0,
                            eps=1e-5):
     """
     Returns the MVDR beamforming vector described in [Souden10].
