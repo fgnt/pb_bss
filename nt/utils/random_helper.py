@@ -12,7 +12,7 @@ def _force_correct_shape(f):
     def wrapper(*shape, **kwargs):
         if not shape:
             shape = (1,)
-        elif isinstance(shape[0], tuple):
+        elif isinstance(shape[0], (tuple, list)):
             shape = shape[0]
 
         return f(*shape, **kwargs)
