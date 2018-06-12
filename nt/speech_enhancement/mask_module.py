@@ -329,9 +329,9 @@ But this destroys the signal, which is complex.
 
 def lorenz_mask(
         signal: np.ndarray,
-        sensor_axis: Optional[int]=None,
-        frequency_axis: int=-2,
-        time_axis: int=-1,
+        *,
+        sensor_axis=None,
+        axis=(-2, -1),
         lorenz_fraction: float=0.98,
         weight: float=0.999,
 ) -> np.ndarray:
@@ -344,8 +344,7 @@ def lorenz_mask(
     Args:
         signal: Complex valued stft signal.
         sensor_axis:
-        time_axis:
-        frequency_axis:
+        axis: time_axis and/or frequency_axis
         lorenz_fraction: Fraction of observations which are rated down
         weight: Governs the influence of the mask
 
@@ -353,32 +352,104 @@ def lorenz_mask(
 
     """
     signal = np.asarray(signal)
-    np.testing.assert_equal(frequency_axis, -2, 'Not yet implemented.')
-    np.testing.assert_equal(time_axis, -1, 'Not yet implemented.')
 
-    power = abs_square(signal)
+    power = np.abs(signal)**2
     if sensor_axis is not None:
         power = power.sum(axis=sensor_axis, keepdims=True)
 
-    shape = power.shape
-    dtype = power.real.dtype
+    if not isinstance(axis, (tuple, list)):
+        axis = (axis,)
 
     # Only works, when last two dimensions are frequency and time.
-    power = np.reshape(power, (-1, np.prod(shape[-2:])))
-    mask = np.zeros_like(power, dtype=dtype)
+    tmp_axis = tuple([-i - 1 for i in range(len(axis))])
+
+    power = np.moveaxis(power, axis, tmp_axis)
+    shape = power.shape
+    working_shape = tuple([
+        np.prod(shape[:-len(tmp_axis)], dtype=np.int64),
+        np.prod(shape[-len(tmp_axis):]),
+    ])
+
+    power = np.reshape(power, working_shape)
+
+    mask = np.zeros_like(power, dtype=power.real.dtype)
 
     def get_mask(power):
         sorted_power = np.sort(power, axis=None)[::-1]
         lorenz_function = np.cumsum(sorted_power) / np.sum(sorted_power)
         threshold = np.min(sorted_power[lorenz_function < lorenz_fraction])
         _mask = power > threshold
-        _mask = 0.5 + weight * (_mask - 0.5)
         return _mask
 
     for i in range(power.shape[0]):
         mask[i, :] = get_mask(power[i])
 
-    return mask.reshape(shape)
+    mask = 0.5 + weight * (mask - 0.5)
+
+    return np.moveaxis(mask.reshape(shape), tmp_axis, axis)
+
+
+def quantil_mask(
+        signal: np.ndarray,
+        quantil=[0.1, -0.9],
+        *,
+        sensor_axis=None,
+        axis=(-2),
+        weight: float=0.999,
+) -> np.ndarray:
+    """
+
+    Args:
+        signal:
+        quantil: pos for speech, negative for noise
+        sensor_axis:
+        axis: Suggestion: time axis, Alternative time and frequency axis
+        weight:
+
+    Returns:
+        Mask of shape [*quantil.shape, *signal.shape]
+
+    """
+    signal = np.abs(signal)
+
+    if isinstance(quantil, (tuple, list)):
+        return np.array([quantil_mask(signal=signal, sensor_axis=sensor_axis, axis=axis, quantil=q, weight=weight) for q in quantil])
+
+    if sensor_axis is not None:
+        signal = signal.sum(axis=sensor_axis, keepdims=True)
+
+    if not isinstance(axis, (tuple, list)):
+        axis = (axis,)
+
+    # Convert signal to 2D with [independent, sample axis]
+    tmp_axis = tuple([-i - 1 for i in range(len(axis))])
+    signal = np.moveaxis(signal, axis, tmp_axis)
+    shape = signal.shape
+    working_shape = tuple(
+        [np.prod(shape[:-len(tmp_axis)]), np.prod(shape[-len(tmp_axis):])])
+    signal = np.reshape(signal, working_shape)
+
+    if quantil >= 0:
+        threshold = np.percentile(signal, q=(1 - quantil)*100, axis=-1)
+    else:
+        threshold = np.percentile(signal, q=abs(quantil)*100, axis=-1)
+
+    mask = np.zeros_like(signal)
+    for i in range(mask.shape[0]):
+        if quantil >= 0:
+            mask[i, :] = signal[i, :] > threshold[i]
+        else:
+            mask[i, :] = signal[i, :] < threshold[i]
+
+    # Drop this line?
+    mask = 0.5 + weight * (mask - 0.5)
+
+    # Restore original shape
+    mask = np.moveaxis(mask.reshape(shape), tmp_axis, axis)
+
+    if sensor_axis is not None:
+        mask = np.squeeze(mask, axis=sensor_axis)
+    return mask
 
 
 def biased_binary_mask(
