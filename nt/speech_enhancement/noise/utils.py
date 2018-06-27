@@ -61,4 +61,3 @@ def set_snr(X, N, snr, current_snr=None, *, axis=None, inplace=True):
         N *= factor
     else:
         return X, N * factor
-
