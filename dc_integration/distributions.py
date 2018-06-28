@@ -11,6 +11,7 @@ from dc_integration.utils import reshape
 from dc_integration.utils import get_pca
 from dc_integration.utils import get_power_spectral_density_matrix
 from dc_integration.utils import get_stft_center_frequencies
+from dc_integration.utils import deprecated
 
 try:
     from nt.visualization import plot, facet_grid, context_manager
@@ -18,6 +19,11 @@ except ImportError:
     warnings.warn('Visual debugging not possible.')
 
 
+DEPRECATION_MESSAGE = (
+        'Most functionality moved to the dc_integration.distribution module.'
+)
+
+@deprecated(DEPRECATION_MESSAGE)
 def _unit_norm(signal):
     """Unit normalization.
 
@@ -29,6 +35,7 @@ def _unit_norm(signal):
     return signal / (np.linalg.norm(signal, axis=-1, keepdims=True) + 1e-4)
 
 
+@deprecated(DEPRECATION_MESSAGE)
 def _phase_norm(signal, reference_channel=0):
     """Unit normalization.
 
@@ -41,6 +48,7 @@ def _phase_norm(signal, reference_channel=0):
     return signal * np.exp(-1j * angles)
 
 
+@deprecated(DEPRECATION_MESSAGE)
 def _frequency_norm(
         signal,
         max_sensor_distance=None, shrink_factor=1.2,
@@ -107,6 +115,7 @@ class ComplexWatson:
     """
 
     @staticmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def pdf(x, loc, scale):
         """ Calculates pdf function.
 
@@ -120,6 +129,7 @@ class ComplexWatson:
         return np.exp(ComplexWatson.log_pdf(x, loc, scale))
 
     @staticmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def log_pdf(x, loc, scale):
         """ Calculates logarithm of pdf function.
 
@@ -141,6 +151,7 @@ class ComplexWatson:
         return result
 
     @staticmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def log_norm_low_concentration(scale, dimension):
         """ Calculates logarithm of pdf function.
         Good at very low concentrations but starts to drop of at 20.
@@ -160,6 +171,7 @@ class ComplexWatson:
         ).reshape(shape)
 
     @staticmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def log_norm_medium_concentration(scale, dimension):
         """ Calculates logarithm of pdf function.
         Almost complete range of interest and dimension below 8.
@@ -186,6 +198,7 @@ class ComplexWatson:
         ).reshape(shape)
 
     @staticmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def log_norm_high_concentration(scale, dimension):
         """ Calculates logarithm of pdf function.
         High concentration above 10 and dimension below 8.
@@ -201,12 +214,14 @@ class ComplexWatson:
 
     log_norm = log_norm_medium_concentration
 
+    @deprecated(DEPRECATION_MESSAGE)
     def __init__(self, dimension, max_concentration=100, spline_markers=100):
         self.dimension = dimension
         self.max_concentration = max_concentration
         self.spline_markers = spline_markers
         self.spline = self._get_spline()
 
+    @deprecated(DEPRECATION_MESSAGE)
     def _get_spline(self):
         """Defines a qubic spline to fit concentration parameter."""
         x = np.logspace(
@@ -222,6 +237,7 @@ class ComplexWatson:
             fill_value=(0, self.max_concentration)
         )
 
+    @deprecated(DEPRECATION_MESSAGE)
     def hypergeometric_ratio_inverse(self, eigenvalues):
         """ This is twice as slow as interpolation with Tran Vu's C-code."""
         return self.spline(eigenvalues)
@@ -233,6 +249,7 @@ class ComplexWatsonMixtureModel:
     phase_norm = staticmethod(_phase_norm)
     frequency_norm = staticmethod(_frequency_norm)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def __init__(self, pi=None, W=None, kappa=None):
         """Initializes empty instance variables.
 
@@ -245,6 +262,7 @@ class ComplexWatsonMixtureModel:
         self.W = np.empty((), dtype=np.float) if W is None else W
         self.kappa = np.empty((), dtype=np.float) if kappa is None else kappa
 
+    @deprecated(DEPRECATION_MESSAGE)
     def fit(
             self, Y_normalized, initialization,
             iterations=100, max_concentration=100
@@ -284,6 +302,7 @@ class ComplexWatsonMixtureModel:
             self.W, eigenvalues = get_pca(Phi)
             self.kappa = cw.hypergeometric_ratio_inverse(eigenvalues)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def predict(self, Y_normalized):
         """Predict class affiliation posteriors from given model.
 
@@ -316,6 +335,7 @@ class ComplexGaussianMixtureModel:
     At least 4 channels are necessary for proper mask results.
     """
 
+    @deprecated(DEPRECATION_MESSAGE)
     def __init__(
             self, use_mixture_weights=False,
             eps=1e-10, visual_debug=False
@@ -336,6 +356,7 @@ class ComplexGaussianMixtureModel:
         if self.use_mixture_weights:
             self.pi = np.empty((), dtype=np.float)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def fit(
             self, Y, initialization, iterations=100,
             hermitize=True, trace_norm=True, eigenvalue_floor=1e-10,
@@ -420,6 +441,7 @@ class ComplexGaussianMixtureModel:
                     plt.plot(self.pi)
                     plt.show()
 
+    @deprecated(DEPRECATION_MESSAGE)
     def _predict(self, Y, inverse='inv'):
         D = Y.shape[-1]
 
@@ -455,6 +477,7 @@ class ComplexGaussianMixtureModel:
 
         return affiliations, power
 
+    @deprecated(DEPRECATION_MESSAGE)
     def predict(self, Y, inverse='inv'):
         """Predict class affiliation posteriors from given model.
 
@@ -476,14 +499,17 @@ class VonMisesFisher:
     """
 
     @classmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def norm(cls, kappa, D):
         return np.exp(cls.log_norm(kappa, D))
 
     @classmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def pdf(cls, x, mu, kappa):
         return np.exp(cls.log_pdf(x, mu, kappa))
 
     @classmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def log_norm(cls, kappa, D):
         kappa = np.clip(kappa, 1e-10, np.inf)
         return (
@@ -492,6 +518,7 @@ class VonMisesFisher:
         )
 
     @classmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def log_pdf(cls, x, mu, kappa):
         """ Logarithm of probability density function.
 
@@ -512,6 +539,7 @@ class VonMisesFisher:
         return result
 
     @classmethod
+    @deprecated(DEPRECATION_MESSAGE)
     def fit(
             cls, x, weights=None,
             min_concentration=0, max_concentration=500
@@ -543,6 +571,7 @@ class ComplexAngularCentralGaussianMixtureModel:
     """Ito 2016."""
     unit_norm = staticmethod(_unit_norm)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def __init__(self, eps=1e-10, visual_debug=False):
         self.eps = eps
         self.visual_debug = visual_debug
@@ -551,6 +580,7 @@ class ComplexAngularCentralGaussianMixtureModel:
         self.determinant = np.empty((), dtype=np.float)
         self.pi = np.empty((), dtype=np.float)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def fit(
             self, Y, initialization, iterations=100,
             hermitize=True, trace_norm=True, eigenvalue_floor=1e-10
@@ -634,6 +664,7 @@ class ComplexAngularCentralGaussianMixtureModel:
                     plt.plot(self.pi)
                     plt.show()
 
+    @deprecated(DEPRECATION_MESSAGE)
     def _predict(self, Y):
         """Predict class affiliation posteriors from given model.
 
@@ -664,6 +695,7 @@ class ComplexAngularCentralGaussianMixtureModel:
 
         return affiliations, quadratic_form
 
+    @deprecated(DEPRECATION_MESSAGE)
     def predict(self, Y):
         """Predict class affiliation posteriors from given model.
 
@@ -678,6 +710,7 @@ class VonMisesFisherMixtureModel:
     """The vMFMM can be used to cluster the embeddings."""
     unit_norm = staticmethod(_unit_norm)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def __init__(self, eps=1e-10, visual_debug=False):
         self.eps = eps
         self.visual_debug = visual_debug
@@ -685,6 +718,7 @@ class VonMisesFisherMixtureModel:
         self.kappa = None
         self.pi = None
 
+    @deprecated(DEPRECATION_MESSAGE)
     def fit(
             self, x, initialization,
             iterations=100, min_concentration=0, max_concentration=500
@@ -720,6 +754,7 @@ class VonMisesFisherMixtureModel:
 
         return affiliations
 
+    @deprecated(DEPRECATION_MESSAGE)
     def predict(self, x):
         """Predict class affiliation posteriors from given model.
 
@@ -747,6 +782,7 @@ class VonMisesFisherComplexWatsonMixtureModel:
     phase_norm = staticmethod(_phase_norm)
     frequency_norm = staticmethod(_frequency_norm)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def __init__(self, *, spatial_score, embedding_score):
         self.spatial_score = spatial_score
         self.embedding_score = embedding_score
@@ -756,6 +792,7 @@ class VonMisesFisherComplexWatsonMixtureModel:
         self.W = np.empty((), dtype=np.float)
         self.kappa_cw = np.empty((), dtype=np.float)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def fit(
             self, Y_normalized, embedding, initialization, iterations=100,
             max_concentration_cw=100, max_concentration_vmf=500
@@ -797,6 +834,7 @@ class VonMisesFisherComplexWatsonMixtureModel:
                 max_concentration=max_concentration_vmf
             )
 
+    @deprecated(DEPRECATION_MESSAGE)
     def predict(self, Y_normalized, embedding):
         """Predict class affiliation posteriors from given model.
 
@@ -830,6 +868,7 @@ class VonMisesFisherComplexGaussianMixtureModel:
     """Hybrid model."""
     unit_norm = staticmethod(_unit_norm)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def __init__(
             self, *, spatial_score, embedding_score,
             eps=1e-10, visual_debug=False
@@ -845,6 +884,7 @@ class VonMisesFisherComplexGaussianMixtureModel:
         self.precision = np.empty((), dtype=np.float)
         self.determinant = np.empty((), dtype=np.float)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def fit(
             self, Y, embedding, initialization, iterations=100,
             min_concentration_vmf=0, max_concentration_vmf=500,
@@ -937,6 +977,7 @@ class VonMisesFisherComplexGaussianMixtureModel:
                 max_concentration=max_concentration_vmf
             )
 
+    @deprecated(DEPRECATION_MESSAGE)
     def _predict(self, Y, embedding, inverse='inv'):
         D = Y.shape[-1]
         K = self.covariance.shape[-3]
@@ -987,6 +1028,7 @@ class VonMisesFisherComplexGaussianMixtureModel:
 
         return affiliations, power
 
+    @deprecated(DEPRECATION_MESSAGE)
     def predict(self, Y, embedding, inverse='inv'):
         """Predict class affiliation posteriors from given model.
 
@@ -1002,6 +1044,7 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
     """Hybrid model."""
     unit_norm = staticmethod(_unit_norm)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def __init__(
             self, *, spatial_score, embedding_score,
             eps=1e-10, visual_debug=False
@@ -1017,6 +1060,7 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
         self.determinant = np.empty((), dtype=np.float)
         self.pi = np.empty((), dtype=np.float)
 
+    @deprecated(DEPRECATION_MESSAGE)
     def fit(
             self, Y, embedding, initialization, iterations=100,
             min_concentration_vmf=0, max_concentration_vmf=500,
@@ -1102,6 +1146,7 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
                 max_concentration=max_concentration_vmf
             )
 
+    @deprecated(DEPRECATION_MESSAGE)
     def _predict(self, Y, embedding):
         D = Y.shape[-1]
         K = self.covariance.shape[-3]
@@ -1137,6 +1182,7 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
 
         return affiliations, power
 
+    @deprecated(DEPRECATION_MESSAGE)
     def predict(self, Y, embedding):
         """Predict class affiliation posteriors from given model.
 
@@ -1148,6 +1194,7 @@ class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
         return self._predict(Y, embedding)[0]
 
 
+@deprecated(DEPRECATION_MESSAGE)
 def _plot_condition_number(matrix):
     """Allows matrices with shape (F, K)."""
     with context_manager(figure_size=(24, 3)):
@@ -1157,6 +1204,7 @@ def _plot_condition_number(matrix):
         plt.show()
 
 
+@deprecated(DEPRECATION_MESSAGE)
 def _plot_affiliations(*affiliation_list):
     """Each argument must have shape (F, K, T)."""
     with context_manager():
