@@ -8,7 +8,7 @@ from dc_integration.utils import (
     get_power_spectral_density_matrix,
     get_pca,
 )
-from dc_integration.distribution.util import (
+from dc_integration.distribution.utils import (
     _unit_norm,
     _Parameter,
 )

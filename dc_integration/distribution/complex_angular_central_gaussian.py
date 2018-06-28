@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from dc_integration.distribution.util import _Parameter, force_hermitian
+from dc_integration.distribution.utils import _Parameter, force_hermitian
 
 
 @dataclass

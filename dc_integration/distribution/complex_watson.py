@@ -6,9 +6,7 @@ from scipy.special import hyp1f1
 
 import numpy as np
 
-from dc_integration.distribution.util import (
-    _Parameter,
-)
+from dc_integration.distribution.utils import _Parameter
 
 
 @dataclass

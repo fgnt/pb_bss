@@ -5,7 +5,7 @@ from dc_integration.distribution.complex_angular_central_gaussian import (
     ComplexAngularCentralGaussianParameters,
     ComplexAngularCentralGaussian,
 )
-from dc_integration.distribution.util import (
+from dc_integration.distribution.utils import (
     _unit_norm,
     _Parameter,
 )
@@ -25,7 +25,7 @@ class ComplexAngularCentralGaussianMixtureModelParameters(_Parameter):
 
         Args:
             Y: Normalized observations with shape (..., D, T).
-            souce_activity_mask: shape (..., K, T)
+            source_activity_mask: shape (..., K, T)
         Returns: Affiliations with shape (..., K, T) and quadratic format
             with the same shape.
         """
@@ -101,7 +101,7 @@ class ComplexAngularCentralGaussianMixtureModel:
         """Fit a cACGMM.
 
         Args:
-            Y: Normalized observations with shape (..., T, D).
+            Y: Observations with shape (..., T, D). Do not need to be normalized.
             initialization: Shape (..., K, T).
                 affiliation or ComplexAngularCentralGaussianMixtureModelParameters.
                 Note: this model is special, when affiliation is given,
@@ -109,21 +109,21 @@ class ComplexAngularCentralGaussianMixtureModel:
                 with the M-step.
                 When the Parameters (TODO) is given, the algorithm starts with
                 the E-Step.
-            souce_activity_mask: Shape (..., K, T)
-                A binary mask that indicate is a source is active or not at a
+            source_activity_mask: Shape (..., K, T)
+                A binary mask that indicates if a source is active or not at a
                 time point. Example about a voice activity detection determines
                 sections where only noise is active, then this mask can set the
                 activity of all speakers at that time point to zero.
 
-        Thie following two examples are equal, both have 20 iterations, but the
+        The following two examples are equal, both have 20 iterations, but the
         second splits them in two times 10 iteration:
 
         >> Model = ComplexAngularCentralGaussianMixtureModel()
-        >> model = Model.fit(Y, init_affiliation, iterations = 20)
+        >> model = Model.fit(Y, init_affiliation, iterations=20)
 
         >> Model = ComplexAngularCentralGaussianMixtureModel()
-        >> model = Model.fit(Y, init_affiliation, iterations = 10)
-        >> model = Model.fit(Y, model, iterations = 10)  # ToDo
+        >> model = Model.fit(Y, init_affiliation, iterations=10)
+        >> model = Model.fit(Y, model, iterations=10)  # ToDo
         """
 
         *independent, T, D = Y.shape
