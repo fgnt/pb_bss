@@ -1,6 +1,3 @@
-import itertools
-import tempfile
-import scipy
 import numpy as np
 
 
