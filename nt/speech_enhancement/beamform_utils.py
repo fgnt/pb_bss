@@ -1,6 +1,6 @@
 import numpy
+import numpy as np
 from nt.transform.module_stft import get_stft_center_frequencies
-from numpy.linalg import norm
 
 
 def _angle_to_rotation_matrix(rotation_angles):
@@ -32,11 +32,11 @@ def get_steering_vector(
     center_frequencies = get_stft_center_frequencies(stft_size, sample_rate)
     steering_vector = numpy.exp(
         -2j * numpy.pi *
-        center_frequencies[numpy.newaxis, numpy.newaxis, :] *
-        time_difference_of_arrival[:, :, numpy.newaxis]
+        center_frequencies *
+        time_difference_of_arrival[..., numpy.newaxis]
     )
     if normalize:
-        steering_vector /= norm(steering_vector, axis=1, keepdims=True)
+        steering_vector /= np.linalg.norm(steering_vector, axis=-2, keepdims=True)
     return steering_vector
 
 
@@ -63,14 +63,14 @@ def get_farfield_time_difference_of_arrival(
         source_angles,
         sensor_positions,
         reference_channel=1,
-        sound_velocity=343
+        sound_velocity=343.,
 ):
     """ Calculates the far field time difference of arrival
 
     :param source_angles: Impinging angle of the planar waves (assumes an
         infinite distance between source and sensor array)
     :type source_angles: 2xK matrix of azimuth and elevation angles.
-    :param sensor_positions: Sensor positions
+    :param sensor_positions: Sensor positions in radians
     :type sensor_positions: 3xM matrix, where M is the number of sensors and
         3 are the cartesian dimensions
     :param reference_channel: Reference microphone starting from index=0.
