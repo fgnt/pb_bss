@@ -105,7 +105,7 @@ class ComplexAngularCentralGaussianMixtureModel:
             initialization: Shape (..., K, T).
                 affiliation or ComplexAngularCentralGaussianMixtureModelParameters.
                 Note: this model is special, when affiliation is given,
-                quadratic_form is initialized as one and the algoriithm starts
+                quadratic_form is initialized as one and the algorithm starts
                 with the M-step.
                 When the Parameters (TODO) is given, the algorithm starts with
                 the E-Step.
