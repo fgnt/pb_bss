@@ -99,11 +99,6 @@ class GMMTrainer:
             )
             affiliation = self._e_step(x, weight=weight, gaussian=gaussian)
 
-            # import matplotlib.pyplot as plt
-            # f, ax = plt.subplots(1, 1, figsize=(2, 2))
-            # ax.scatter(x[:, 0], x[:, 1], c=affiliation[0, :])
-            # plt.show()
-
         return GMM(weight=weight, gaussian=gaussian)
 
     def _m_step(self, x, affiliation, saliency, weight_type, covariance_type):
