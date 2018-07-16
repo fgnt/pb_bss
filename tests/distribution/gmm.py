@@ -1,0 +1,51 @@
+import numpy as np
+from numpy.testing import assert_allclose
+import unittest
+from dc_integration.distribution import gmm
+
+
+class TestGaussian(unittest.TestCase):
+    def test_gmm(self):
+        samples = 10000
+        mean = np.ones((3,))
+        covariance = 2 * np.eye(3)
+        x = np.random.multivariate_normal(mean, covariance, size=(samples,))
+        model = gmm.GaussianTrainer().fit(x)
+        assert_allclose(model.mean, mean, atol=0.1)
+        assert_allclose(model.covariance, covariance, atol=0.1)
+
+        samples = 1000
+        weight = np.array([0.3, 0.7])
+        num_classes = weight.shape[0]
+        labels = np.random.choice(range(num_classes), size=(samples,), p=weight)
+        mean = np.array([[-1, -1], [1, 1]])
+        dimension = mean.shape[-1]
+        covariance = np.tile(0.25 * np.eye(dimension), (2, 1, 1))
+
+        x = np.zeros((samples, dimension))
+        x[labels == 0, :] = np.random.multivariate_normal(
+            mean[0, :], covariance[0, :, :], size=(np.sum(labels == 0),)
+        )
+        x[labels == 1, :] = np.random.multivariate_normal(
+            mean[1, :], covariance[0, :, :], size=(np.sum(labels == 1),)
+        )
+
+        model = gmm.GMMTrainer().fit(x, num_classes=2)
+
+        # Permutation invariant testing
+        import itertools
+        permutations = list(itertools.permutations(range(2)))
+        best_permutation = 0
+        best_cost = np.inf
+        for permutation in permutations:
+            cost = np.sum((model.gaussian.mean[permutation, :] - mean) ** 2)
+            if cost < best_cost:
+                best_permutation = permutation
+                best_cost = cost
+
+        assert_allclose(
+            model.gaussian.mean[best_permutation, :], mean, atol=0.2
+        )
+        assert_allclose(
+            model.gaussian.covariance[best_permutation, :], covariance, atol=0.2
+        )

@@ -40,11 +40,6 @@ class Gaussian:
                 + self.log_det_precision_cholesky[..., None]
                 - 1 / 2 * np.einsum('...nd,...nd->...n', white_x, white_x)
         )
-        # return (
-        #         - 1 / 2 * D * np.log(2 * np.pi)
-        #         - 1/2 * np.log(np.linalg.det(self.covariance))[..., None]
-        #         - 1 / 2 * np.einsum('nd,dn->n', difference, np.linalg.solve(self.covariance, difference.transpose(1, 0)))
-        # )
 
 
 @dataclass
@@ -66,9 +61,6 @@ class SphericalGaussian:
 
 
 class GaussianTrainer:
-    def __init__(self, eps=1e-10):
-        self.eps = eps
-
     def fit(self, x, saliency=None, covariance_type="full"):
         """
 
@@ -92,10 +84,15 @@ class GaussianTrainer:
 
         if saliency is None:
             denominator = np.array(x.shape[-2])
+            mean = np.einsum("...nd->...d", x)
         else:
-            denominator = np.einsum("...n->...", saliency) + self.eps
+            denominator = np.maximum(
+                np.einsum("...n->...", saliency),
+                np.finfo(x.dtype).tiny
+            )
+            mean = np.einsum("...n,...nd->...d", saliency, x)
+        mean /= denominator[..., None]
 
-        mean = np.einsum("...nd->...d", x) / denominator[..., None]
         difference = x - mean[..., None, :]
 
         if covariance_type == "full":
@@ -118,6 +115,5 @@ class GaussianTrainer:
         else:
             operation = "...n," + operation
             covariance = np.einsum(operation, saliency, difference, difference)
-
         covariance /= denominator
         return model_cls(mean=mean, covariance=covariance)

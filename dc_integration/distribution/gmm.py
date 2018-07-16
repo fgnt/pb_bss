@@ -107,18 +107,13 @@ class GMMTrainer:
         return GMM(weight=weight, gaussian=gaussian)
 
     def _m_step(self, x, affiliation, saliency, weight_type, covariance_type):
-        # masked_affiliations = affiliation * saliency[..., None, :]
-        # weight = np.einsum("...kn->...k", masked_affiliations)
-        # weight /= np.einsum('...n->...', saliency)[..., None]
-
-        weight = np.mean(affiliation, axis=-1)
+        masked_affiliations = affiliation * saliency[..., None, :]
+        weight = np.einsum("...kn->...k", masked_affiliations)
+        weight /= np.einsum('...n->...', saliency)[..., None]
 
         gaussian = GaussianTrainer().fit(  # TODO: Change to _fit
-            x, affiliation, covariance_type=covariance_type
+            x, masked_affiliations, covariance_type=covariance_type
         )
-        # gaussian = GaussianTrainer().fit(  # TODO: Change to _fit
-        #     x, masked_affiliations, covariance_type=covariance_type
-        # )
 
         return weight, gaussian
 
@@ -132,7 +127,11 @@ class GMMTrainer:
         affiliation += gaussian.log_pdf(x)
         log_joint_pdf = affiliation
         affiliation = np.exp(affiliation)
-        affiliation /= np.einsum("...kn->...n", affiliation)[..., None, :] + self.eps
+        denominator = np.maximum(
+            np.einsum("...kn->...n", affiliation)[..., None, :],
+            np.finfo(x.dtype).tiny
+        )
+        affiliation /= denominator
 
         log_likelihood = np.einsum('...kn,...kn->', affiliation, log_joint_pdf)
         self.log_likelihood_history.append(log_likelihood)
