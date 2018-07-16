@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 import numpy as np
 from sklearn.mixture.gaussian_mixture import _compute_precision_cholesky
 from sklearn.mixture.gaussian_mixture import _compute_log_det_cholesky
+from dc_integration.utils import is_broadcast_compatible
 
 
 @dataclass
@@ -9,14 +10,14 @@ class Gaussian:
     mean: np.array  # (..., D)
     covariance: np.array  # (..., D, D)
     precision_cholesky: np.array = field(init=False)  # (..., D, D)
-    log_det_precision: np.array = field(init=False)  # (...,)
+    log_det_precision_cholesky: np.array = field(init=False)  # (...,)
 
     def __post_init__(self):
         D = self.mean.shape[-1]
         c = np.reshape(self.covariance, (-1, D, D))
         pc = _compute_precision_cholesky(c, 'full')
         self.precision_cholesky = np.reshape(pc, self.covariance.shape)
-        self.log_det_precision = _compute_log_det_cholesky(pc, 'full', D)
+        self.log_det_precision_cholesky = _compute_log_det_cholesky(pc, 'full', D)
 
     def log_pdf(self, x):
         """Gets used by e.g. the GMM.
@@ -27,6 +28,7 @@ class Gaussian:
         Returns:
 
         """
+        D = self.mean.shape[-1]
         difference = x - self.mean[..., None, :]
         white_x = np.einsum(
             '...dD,...nD->...nd',
@@ -34,9 +36,15 @@ class Gaussian:
             difference
         )
         return (
-                - 1 / 2 * np.log(2 * np.pi) + self.log_det_precision
+                - 1 / 2 * D * np.log(2 * np.pi)
+                + self.log_det_precision_cholesky[..., None]
                 - 1 / 2 * np.einsum('...nd,...nd->...n', white_x, white_x)
         )
+        # return (
+        #         - 1 / 2 * D * np.log(2 * np.pi)
+        #         - 1/2 * np.log(np.linalg.det(self.covariance))[..., None]
+        #         - 1 / 2 * np.einsum('nd,dn->n', difference, np.linalg.solve(self.covariance, difference.transpose(1, 0)))
+        # )
 
 
 @dataclass
@@ -58,6 +66,9 @@ class SphericalGaussian:
 
 
 class GaussianTrainer:
+    def __init__(self, eps=1e-10):
+        self.eps = eps
+
     def fit(self, x, saliency=None, covariance_type="full"):
         """
 
@@ -70,6 +81,10 @@ class GaussianTrainer:
 
         """
         assert np.isrealobj(x), x.dtype
+        if saliency is not None:
+            assert is_broadcast_compatible(x.shape[:-1], saliency.shape), (
+                x.shape, saliency.shape
+            )
         return self._fit(x, saliency=saliency, covariance_type=covariance_type)
 
     def _fit(self, x, saliency, covariance_type):
@@ -78,7 +93,7 @@ class GaussianTrainer:
         if saliency is None:
             denominator = np.array(x.shape[-2])
         else:
-            denominator = np.sum("...n->...", saliency)
+            denominator = np.einsum("...n->...", saliency) + self.eps
 
         mean = np.einsum("...nd->...d", x) / denominator[..., None]
         difference = x - mean[..., None, :]
