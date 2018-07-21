@@ -73,7 +73,7 @@ class ComplexAngularCentralGaussian:
         return determinant, precision
 
     def log_pdf(self, x):
-        """Gets used by. e.g. the cACGMM.
+        """
 
         Args:
             x: Shape (..., N, D)
@@ -84,7 +84,7 @@ class ComplexAngularCentralGaussian:
         raise NotImplementedError
 
     def _log_pdf(self, x):
-        """
+        """Gets used by. e.g. the cACGMM.
         TODO: quadratic_form might be useful by itself
 
         Args:
@@ -177,7 +177,8 @@ class ComplexAngularCentralGaussianTrainer:
                 saliency.shape,
             )
 
-        *independent, N, D = x.shape
+        D = x.shape[-1]
+        *independent, N = saliency.shape
 
         # TODO: I did not understand the need for this yet.
         # independent = list(independent)
@@ -199,7 +200,7 @@ class ComplexAngularCentralGaussianTrainer:
         if saliency is None:
             denominator = np.array(x.shape[-2])
         else:
-            denominator = np.einsum("...n->...", saliency)
+            denominator = np.einsum("...n->...", saliency)[..., None, None]
 
         covariance /= denominator
         assert covariance.shape == (*independent, D, D), covariance.shape
