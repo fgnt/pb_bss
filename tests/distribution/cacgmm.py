@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 import unittest
-from dc_integration.distribution import cacgmm
+from dc_integration.distribution import CACGMMTrainer
 from dc_integration.distribution import ComplexAngularCentralGaussian
 import itertools
 
@@ -30,7 +30,7 @@ class TestCACGMM(unittest.TestCase):
             )
             x[labels == l, :] = cacg.sample(size=(np.sum(labels == l),))
 
-        model = cacgmm.CACGMMTrainer().fit(x, num_classes=2)
+        model = CACGMMTrainer().fit(x, num_classes=2)
 
         # Permutation invariant testing
         permutations = list(itertools.permutations(range(2)))

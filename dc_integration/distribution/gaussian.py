@@ -161,7 +161,7 @@ class GaussianTrainer:
             model_cls = DiagonalGaussian
         elif covariance_type == "spherical":
             operation = "...nd,...nd->..."
-            model_cls = DiagonalGaussian
+            model_cls = SphericalGaussian
             denominator = denominator * dimension
         else:
             raise ValueError(f"Unknown covariance type '{covariance_type}'.")

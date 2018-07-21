@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 import unittest
-from dc_integration.distribution import gmm
+from dc_integration.distribution import GMMTrainer
 import itertools
 
 
@@ -23,7 +23,7 @@ class TestGMM(unittest.TestCase):
             mean[1, :], covariance[0, :, :], size=(np.sum(labels == 1),)
         )
 
-        model = gmm.GMMTrainer().fit(x, num_classes=2)
+        model = GMMTrainer().fit(x, num_classes=2)
 
         # Permutation invariant testing
         permutations = list(itertools.permutations(range(2)))

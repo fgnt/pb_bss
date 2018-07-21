@@ -11,19 +11,16 @@ parameters and provides at least a predict function.
 
 ...
 """
+from .gaussian import (
+    Gaussian,
+    DiagonalGaussian,
+    SphericalGaussian,
+    GaussianTrainer,
+)
+from .gmm import GMM, GMMTrainer
+from .circular_symmetric_gaussian import CircularSymmetricGaussian
 from .complex_angular_central_gaussian import (
     ComplexAngularCentralGaussian,
-    ComplexAngularCentralGaussianParameters,
+    ComplexAngularCentralGaussianTrainer,
 )
-from .cacgmm import (
-    ComplexAngularCentralGaussianMixtureModel,
-    ComplexAngularCentralGaussianMixtureModelParameters,
-)
-from .complex_watson import (
-    ComplexWatson,
-    ComplexWatsonParameters,
-)
-from .cwmm import (
-    ComplexWatsonMixtureModel,
-    ComplexWatsonMixtureModelParameters,
-)
+from .cacgmm import CACGMM, CACGMMTrainer

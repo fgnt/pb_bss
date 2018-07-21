@@ -1,7 +1,9 @@
+from operator import xor
+
 import numpy as np
 from dataclasses import dataclass
-from operator import xor
-from dc_integration.distribution.gaussian import Gaussian, GaussianTrainer
+
+from dc_integration.distribution import Gaussian, GaussianTrainer
 
 
 @dataclass
@@ -10,7 +12,19 @@ class GMM:
     gaussian: Gaussian
 
     def predict(self, x):
-        raise NotImplementedError
+        *independent, num_observations, _ = x.shape
+        num_classes = self.weight.shape[-1]
+        affiliation_shape = (*independent, num_classes, num_observations)
+        affiliation = np.zeros(affiliation_shape)
+        affiliation += np.log(self.weight)[..., :, None]
+        affiliation += self.gaussian.log_pdf(x)
+        affiliation = np.exp(affiliation)
+        denominator = np.maximum(
+            np.einsum("...kn->...n", affiliation)[..., None, :],
+            np.finfo(x.dtype).tiny,
+        )
+        affiliation /= denominator
+        return affiliation
 
 
 class GMMTrainer:
@@ -51,8 +65,9 @@ class GMMTrainer:
             *independent, num_observations, _ = x.shape
             affiliation_shape = (*independent, num_classes, num_observations)
             initialization = np.random.uniform(size=affiliation_shape)
-            initialization /= \
-                np.einsum("...kn->...n", initialization)[..., None, :]
+            initialization /= np.einsum("...kn->...n", initialization)[
+                ..., None, :
+            ]
 
         if saliency is None:
             saliency = np.ones_like(initialization[..., 0, :])
@@ -65,53 +80,27 @@ class GMMTrainer:
             covariance_type=covariance_type,
         )
 
-    def _fit(
-        self,
-        x,
-        initialization,
-        iterations,
-        saliency,
-        covariance_type,
-    ):
+    def _fit(self, x, initialization, iterations, saliency, covariance_type):
         affiliation = initialization  # TODO: Do we need np.copy here?
-        for _ in range(iterations):
-            weight, gaussian = self._m_step(
+        for iteration in range(iterations):
+            model = self._m_step(
                 x,
                 affiliation=affiliation,
                 saliency=saliency,
                 covariance_type=covariance_type,
             )
-            affiliation = self._e_step(x, weight=weight, gaussian=gaussian)
 
-        return GMM(weight=weight, gaussian=gaussian)
+            if iteration < iterations - 1:
+                affiliation = model.predict(x)
+
+        return model
 
     def _m_step(self, x, affiliation, saliency, covariance_type):
         masked_affiliations = affiliation * saliency[..., None, :]
         weight = np.einsum("...kn->...k", masked_affiliations)
-        weight /= np.einsum('...n->...', saliency)[..., None]
+        weight /= np.einsum("...n->...", saliency)[..., None]
 
         gaussian = GaussianTrainer()._fit(
             x=x, saliency=masked_affiliations, covariance_type=covariance_type
         )
-
-        return weight, gaussian
-
-    def _e_step(self, x, weight, gaussian):
-        # TODO: Can be moved into the parameter class, since it is predict.
-        *independent, num_observations, _ = x.shape
-        num_classes = weight.shape[-1]
-        affiliation_shape = (*independent, num_classes, num_observations)
-        affiliation = np.zeros(affiliation_shape)
-        affiliation += np.log(weight)[..., :, None]
-        affiliation += gaussian.log_pdf(x)
-        log_joint_pdf = affiliation
-        affiliation = np.exp(affiliation)
-        denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
-            np.finfo(x.dtype).tiny
-        )
-        affiliation /= denominator
-
-        log_likelihood = np.einsum('...kn,...kn->', affiliation, log_joint_pdf)
-        self.log_likelihood_history.append(log_likelihood)
-        return affiliation
+        return GMM(weight=weight, gaussian=gaussian)
