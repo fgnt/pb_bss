@@ -6,19 +6,11 @@ from dc_integration.distribution.gaussian import Gaussian, GaussianTrainer
 
 @dataclass
 class GMM:
-    weight: np.array = None  # (..., K)
-    gaussian: Gaussian = None
+    weight: np.array  # (..., K)
+    gaussian: Gaussian
 
     def predict(self, x):
-        pass
-
-
-@dataclass
-class WeightFreeGMM:
-    gaussian: Gaussian = None
-
-    def predict(self, x):
-        pass
+        raise NotImplementedError
 
 
 class GMMTrainer:
@@ -33,7 +25,6 @@ class GMMTrainer:
         num_classes=None,
         iterations=100,
         saliency=None,
-        weight_type="...k",
         covariance_type="full",
     ):
         """
@@ -44,7 +35,6 @@ class GMMTrainer:
             num_classes: Scalar >0
             iterations: Scalar >0
             saliency: Importance weighting for each observation, shape (..., N)
-            weight_type: Either '...k', or None
             covariance_type: Either 'full', 'diagonal', or 'spherical'
 
         Returns:
@@ -67,15 +57,11 @@ class GMMTrainer:
         if saliency is None:
             saliency = np.ones_like(initialization[..., 0, :])
 
-        if not weight_type == "...k":
-            raise NotImplementedError(weight_type)
-
         return self._fit(
             x,
             initialization=initialization,
             iterations=iterations,
             saliency=saliency,
-            weight_type=weight_type,
             covariance_type=covariance_type,
         )
 
@@ -85,7 +71,6 @@ class GMMTrainer:
         initialization,
         iterations,
         saliency,
-        weight_type,
         covariance_type,
     ):
         affiliation = initialization  # TODO: Do we need np.copy here?
@@ -94,20 +79,19 @@ class GMMTrainer:
                 x,
                 affiliation=affiliation,
                 saliency=saliency,
-                weight_type=weight_type,
                 covariance_type=covariance_type,
             )
             affiliation = self._e_step(x, weight=weight, gaussian=gaussian)
 
         return GMM(weight=weight, gaussian=gaussian)
 
-    def _m_step(self, x, affiliation, saliency, weight_type, covariance_type):
+    def _m_step(self, x, affiliation, saliency, covariance_type):
         masked_affiliations = affiliation * saliency[..., None, :]
         weight = np.einsum("...kn->...k", masked_affiliations)
         weight /= np.einsum('...n->...', saliency)[..., None]
 
-        gaussian = GaussianTrainer().fit(  # TODO: Change to _fit
-            x, masked_affiliations, covariance_type=covariance_type
+        gaussian = GaussianTrainer()._fit(
+            x=x, saliency=masked_affiliations, covariance_type=covariance_type
         )
 
         return weight, gaussian
