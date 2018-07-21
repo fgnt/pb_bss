@@ -46,18 +46,74 @@ class Gaussian:
 class DiagonalGaussian:
     mean: np.array  # (..., D)
     covariance: np.array  # (..., D)
+    precision_cholesky: np.array = field(init=False)  # (..., D)
+    log_det_precision_cholesky: np.array = field(init=False)  # (...,)
+
+    def __post_init__(self):
+        D = self.mean.shape[-1]
+        c = np.reshape(self.covariance, (-1, D))
+        pc = _compute_precision_cholesky(c, 'diag')
+        self.precision_cholesky = np.reshape(pc, self.covariance.shape)
+        self.log_det_precision_cholesky = _compute_log_det_cholesky(pc, 'diag', D)
 
     def log_pdf(self, x):
-        raise NotImplementedError
+        """Gets used by e.g. the GMM.
+
+        Args:
+            x: Shape (..., N, D)
+
+        Returns:
+
+        """
+        D = self.mean.shape[-1]
+        difference = x - self.mean[..., None, :]
+        white_x = np.einsum(
+            '...dD,...nD->...nd',
+            self.precision_cholesky,
+            difference
+        )
+        return (
+                - 1 / 2 * D * np.log(2 * np.pi)
+                + self.log_det_precision_cholesky[..., None]
+                - 1 / 2 * np.einsum('...nd,...nd->...n', white_x, white_x)
+        )
 
 
 @dataclass
 class SphericalGaussian:
     mean: np.array  # (..., D)
     covariance: np.array  # (...,)
+    precision_cholesky: np.array = field(init=False)  # (...,)
+    log_det_precision_cholesky: np.array = field(init=False)  # (...,)
+
+    def __post_init__(self):
+        D = self.mean.shape[-1]
+        c = np.reshape(self.covariance, (-1,))
+        pc = _compute_precision_cholesky(c, 'diag')
+        self.precision_cholesky = np.reshape(pc, self.covariance.shape)
+        self.log_det_precision_cholesky = _compute_log_det_cholesky(pc, 'spherical', D)
 
     def log_pdf(self, x):
-        raise NotImplementedError
+        """Gets used by e.g. the GMM.
+
+        Args:
+            x: Shape (..., N, D)
+
+        Returns:
+
+        """
+        D = self.mean.shape[-1]
+        difference = x - self.mean[..., None, :]
+        white_x = np.einsum(
+            '...,...nd->...nd',
+            self.precision_cholesky,
+            difference
+        )
+        return (
+                - 1 / 2 * D * np.log(2 * np.pi)
+                + self.log_det_precision_cholesky[..., None]
+                - 1 / 2 * np.einsum('...nd,...nd->...n', white_x, white_x)
+        )
 
 
 class GaussianTrainer:
