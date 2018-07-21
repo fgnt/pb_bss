@@ -1,14 +1,37 @@
+"""
+References:
+    David E. Tyler
+    Statistical analysis for the angular central Gaussian distribution on the
+    sphere
+    1987
+
+    N. Ito, S. Araki, T. Nakatani
+    Complex angular central Gaussian mixture model for directional statistics in
+    mask-based microphone array signal processing
+    2016
+    https://www.eurasip.org/Proceedings/Eusipco/Eusipco2016/papers/1570256519.pdf
+"""
+
 from dataclasses import dataclass
 
 import numpy as np
 from dc_integration.utils import is_broadcast_compatible
 from dc_integration.distribution.utils import _Parameter, force_hermitian
+from dc_integration.distribution.circular_symmetric_gaussian import (
+    CircularSymmetricGaussian
+)
 
 
 @dataclass
 class ComplexAngularCentralGaussian:
     covariance: np.array  # (..., D, D)
-    eigenvalue_floor: float
+    eigenvalue_floor: float = None
+
+    def sample(self, size):
+        csg = CircularSymmetricGaussian(covariance=self.covariance)
+        x = csg.sample(size=size)
+        x /= np.linalg.norm(x, axis=-1, keepdims=True)
+        return x
 
     @property
     def determinant_and_precision(self):
@@ -22,10 +45,14 @@ class ComplexAngularCentralGaussian:
         D = self.covariance.shape[-1]
         eigenvals, eigenvecs = np.linalg.eigh(self.covariance)
         eigenvals = eigenvals.real
-        eigenvals = np.maximum(
-            eigenvals,
-            np.max(eigenvals, axis=-1, keepdims=True) * self.eigenvalue_floor,
-        )
+
+        # TODO: Do we always want (automatic) flooring?
+        if self.eigenvalue_floor is not None:
+            eigenvals = np.maximum(
+                eigenvals,
+                np.max(eigenvals, axis=-1, keepdims=True)
+                * self.eigenvalue_floor,
+            )
 
         # Does not seem to be used anywhere
         # diagonal = np.einsum("de,...d->...de", np.eye(D), eigenvals)
