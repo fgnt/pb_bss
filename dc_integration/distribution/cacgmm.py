@@ -17,8 +17,7 @@ class CACGMM:
     def predict(self, x):
         assert np.iscomplexobj(x), x.dtype
         x /= np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True),
-            np.finfo(x.dtype).tiny
+            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
         affiliation, quadratic_form = self._predict(x)
         return affiliation
@@ -42,15 +41,15 @@ class CACGMM:
 
 class CACGMMTrainer:
     def fit(
-            self,
-            x,
-            initialization=None,
-            num_classes=None,
-            iterations=100,
-            saliency=None,
-            hermitize=True,
-            trace_norm=True,
-            eigenvalue_floor=1e-10,
+        self,
+        x,
+        initialization=None,
+        num_classes=None,
+        iterations=100,
+        saliency=None,
+        hermitize=True,
+        trace_norm=True,
+        eigenvalue_floor=1e-10,
     ):
         """
 
@@ -72,9 +71,9 @@ class CACGMMTrainer:
             "Exactly one of the two inputs has to be None: "
             f"{initialization is None} xor {num_classes is None}"
         )
+        assert np.iscomplexobj(x), x.dtype
         x /= np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True),
-            np.finfo(x.dtype).tiny
+            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
 
         if initialization is None and num_classes is not None:
@@ -82,8 +81,8 @@ class CACGMMTrainer:
             affiliation_shape = (*independent, num_classes, num_observations)
             initialization = np.random.uniform(size=affiliation_shape)
             initialization /= np.einsum("...kn->...n", initialization)[
-                              ..., None, :
-                              ]
+                ..., None, :
+            ]
 
         if saliency is None:
             saliency = np.ones_like(initialization[..., 0, :])
@@ -107,14 +106,14 @@ class CACGMMTrainer:
         return model
 
     def _m_step(
-            self,
-            x,
-            quadratic_form,
-            affiliation,
-            saliency,
-            hermitize,
-            trace_norm,
-            eigenvalue_floor,
+        self,
+        x,
+        quadratic_form,
+        affiliation,
+        saliency,
+        hermitize,
+        trace_norm,
+        eigenvalue_floor,
     ):
         masked_affiliations = affiliation * saliency[..., None, :]
         weight = np.einsum("...kn->...k", masked_affiliations)
@@ -129,6 +128,7 @@ class CACGMMTrainer:
             eigenvalue_floor=eigenvalue_floor,
         )
         return CACGMM(weight=weight, cacg=cacg)
+
 
 # @dataclass
 # class ComplexAngularCentralGaussianMixtureModelParameters(_Parameter):
