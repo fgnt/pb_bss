@@ -17,3 +17,10 @@ class TestBroadcastCompatibility(unittest.TestCase):
         self.check_false((1, 2, 3), (1, 2, 2))
         self.check_false((1, 2, 3), (1, 2, 3, 4))
         self.check_false((1,), (2,), (3,))
+
+    def test_different_number_of_dimensions(self):
+        self.check_true((2, 3), (3,))
+        self.check_false((2, 3), (2,))
+
+        self.check_true((1, 2, 3), (2, 3), (3,))
+        self.check_false((1, 2, 3), (1, 2), (1,))
