@@ -81,7 +81,11 @@ class ComplexAngularCentralGaussian:
         Returns:
 
         """
-        raise NotImplementedError
+        x /= np.maximum(
+            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
+        )
+        log_pdf, _ = self._log_pdf(x)
+        return log_pdf
 
     def _log_pdf(self, x):
         """Gets used by. e.g. the cACGMM.
@@ -93,6 +97,10 @@ class ComplexAngularCentralGaussian:
         Returns:
 
         """
+        assert is_broadcast_compatible(
+            x.shape[:-2], self.covariance.shape[:-2]
+        ), (x.shape, self.covariance.shape)
+
         D = x.shape[-1]
         determinant, precision = self.determinant_and_precision
         quadratic_form = np.maximum(
@@ -118,14 +126,23 @@ class ComplexAngularCentralGaussianTrainer:
         eigenvalue_floor=1e-10,
         iterations=10,
     ):
-        # raise NotImplementedError(
-        #     "needs an iteration for the parameter estimation, because "
-        #     "quadratic_form depends on covariance and covariance depends on "
-        #     "quadratic_form. "
-        #     "Until now nobody needs `fit`, therefore it is not implemented. "
-        #     "It should be implemented, since it yields an easy test case."
-        # )
+        """
+
+        Args:
+            x: Should be normalized to unit norm. We normalize it anyway again.
+            saliency:
+            hermitize:
+            trace_norm:
+            eigenvalue_floor:
+            iterations:
+
+        Returns:
+
+        """
         *independent, N, D = x.shape
+        x /= np.maximum(
+            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
+        )
 
         if saliency is None:
             quadratic_form = np.ones(*independent, N)
@@ -176,6 +193,19 @@ class ComplexAngularCentralGaussianTrainer:
                 x.shape,
                 saliency.shape,
             )
+
+        assert is_broadcast_compatible(x.shape[:-2], saliency.shape[:-1]), (
+            x.shape,
+            saliency.shape,
+        )
+        assert is_broadcast_compatible(x.shape[:-2], saliency.shape[:-1]), (
+            x.shape,
+            saliency.shape,
+        )
+        assert is_broadcast_compatible(x.shape[:-2], saliency.shape[:-1]), (
+            x.shape,
+            saliency.shape,
+        )
 
         D = x.shape[-1]
         *independent, N = saliency.shape

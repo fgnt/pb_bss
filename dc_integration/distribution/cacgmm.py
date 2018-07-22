@@ -16,7 +16,10 @@ class CACGMM:
 
     def predict(self, x):
         assert np.iscomplexobj(x), x.dtype
-
+        x /= np.maximum(
+            np.linalg.norm(x, axis=-1, keepdims=True),
+            np.finfo(x.dtype).tiny
+        )
         affiliation, quadratic_form = self._predict(x)
         return affiliation
 
@@ -26,12 +29,12 @@ class CACGMM:
         affiliation_shape = (*independent, num_classes, num_observations)
         affiliation = np.zeros(affiliation_shape)
         affiliation += np.log(self.weight)[..., :, None]
-        log_pdf, quadratic_form = self.cacg._log_pdf(x)
+        log_pdf, quadratic_form = self.cacg._log_pdf(x[..., None, :, :])
         affiliation += log_pdf
         affiliation = np.exp(affiliation)
         denominator = np.maximum(
             np.einsum("...kn->...n", affiliation)[..., None, :],
-            np.finfo(x.dtype).tiny,
+            np.finfo(affiliation.dtype).tiny,
         )
         affiliation /= denominator
         return affiliation, quadratic_form
@@ -68,6 +71,10 @@ class CACGMMTrainer:
             "Incompatible input combination. "
             "Exactly one of the two inputs has to be None: "
             f"{initialization is None} xor {num_classes is None}"
+        )
+        x /= np.maximum(
+            np.linalg.norm(x, axis=-1, keepdims=True),
+            np.finfo(x.dtype).tiny
         )
 
         if initialization is None and num_classes is not None:
@@ -114,7 +121,7 @@ class CACGMMTrainer:
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
-            x=x,
+            x=x[..., None, :, :],
             saliency=masked_affiliations,
             quadratic_form=quadratic_form,
             hermitize=hermitize,
