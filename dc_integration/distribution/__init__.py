@@ -24,3 +24,4 @@ from .complex_angular_central_gaussian import (
     ComplexAngularCentralGaussianTrainer,
 )
 from .cacgmm import CACGMM, CACGMMTrainer
+from .gcacgmm import GCACGMM, GCACGMMTrainer
