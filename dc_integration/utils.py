@@ -261,11 +261,13 @@ def get_stft_center_frequencies(size=1024, sample_rate=16000):
     return frequency_index * sample_rate / size
 
 
-# https://stackoverflow.com/a/24769712/911441
-def is_broadcast_compatible(shape1, shape2):
-    for a, b in zip(shape1[::-1], shape2[::-1]):
-        if a == 1 or b == 1 or a == b:
-            pass
-        else:
-            return False
-    return True
+def is_broadcast_compatible(*shapes):
+    if len(shapes) < 2:
+        return True
+    else:
+        for dim in zip(*[shape[::-1] for shape in shapes]):
+            if len(set(dim).union({1})) <= 2:
+                pass
+            else:
+                return False
+        return True
