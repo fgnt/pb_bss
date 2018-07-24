@@ -54,12 +54,6 @@ class ComplexAngularCentralGaussian:
                 * self.eigenvalue_floor,
             )
 
-        # Does not seem to be used anywhere
-        # diagonal = np.einsum("de,...d->...de", np.eye(D), eigenvals)
-        # covariance = np.einsum(
-        #     "...wx,...xy,...zy->...wz", eigenvecs, diagonal, eigenvecs.conj()
-        # )
-
         determinant = np.prod(eigenvals, axis=-1)
         inverse_diagonal = np.einsum(
             "de,...d->...de", np.eye(D), 1 / eigenvals
@@ -186,52 +180,28 @@ class ComplexAngularCentralGaussianTrainer:
         """
         assert np.iscomplexobj(x), x.dtype
 
-        if saliency is None:
-            saliency = np.ones_like(quadratic_form)
-        else:
-            assert is_broadcast_compatible(x.shape[:-1], saliency.shape), (
-                x.shape,
-                saliency.shape,
-            )
-
-        assert is_broadcast_compatible(x.shape[:-2], saliency.shape[:-1]), (
-            x.shape,
-            saliency.shape,
-        )
-        assert is_broadcast_compatible(x.shape[:-2], saliency.shape[:-1]), (
-            x.shape,
-            saliency.shape,
-        )
-        assert is_broadcast_compatible(x.shape[:-2], saliency.shape[:-1]), (
-            x.shape,
-            saliency.shape,
-        )
+        assert is_broadcast_compatible(
+            x.shape[:-2], quadratic_form.shape[:-1]
+        ), (x.shape, quadratic_form.shape)
+        assert is_broadcast_compatible(
+            x.shape[:-2], quadratic_form.shape[:-1]
+        ), (x.shape, quadratic_form.shape)
+        assert is_broadcast_compatible(
+            x.shape[:-2], quadratic_form.shape[:-1]
+        ), (x.shape, quadratic_form.shape)
 
         D = x.shape[-1]
-        *independent, N = saliency.shape
-
-        # TODO: I did not understand the need for this yet.
-        # independent = list(independent)
-        # Special case for mixture model
-        # independent[-1] = saliency.shape[-2]
-        # K = saliency.shape[-2]
-
-        # TODO: I did not understand the need for this yet.
-        # mask = saliency[..., None, :]
-        # assert mask.shape == (*independent, 1, T), (
-        #     mask.shape,
-        #     (*independent, 1, T),
-        # )
-
-        covariance = D * np.einsum(
-            "...n,...nd,...nD->...dD", (saliency / quadratic_form), x, x.conj()
-        )
+        *independent, N = quadratic_form.shape
 
         if saliency is None:
+            saliency = 1
             denominator = np.array(x.shape[-2])
         else:
             denominator = np.einsum("...n->...", saliency)[..., None, None]
 
+        covariance = D * np.einsum(
+            "...n,...nd,...nD->...dD", (saliency / quadratic_form), x, x.conj()
+        )
         covariance /= denominator
         assert covariance.shape == (*independent, D, D), covariance.shape
 
@@ -244,107 +214,3 @@ class ComplexAngularCentralGaussianTrainer:
         return ComplexAngularCentralGaussian(
             covariance=covariance, eigenvalue_floor=eigenvalue_floor
         )
-
-
-@dataclass
-class ComplexAngularCentralGaussianParameters(_Parameter):
-    covariance: np.array = None
-    precision: np.array = None
-    determinant: np.array = None
-
-
-class ComplexAngularCentralGaussian_deprecated:
-    def _fit(
-        self,
-        Y,
-        saliency,
-        quadratic_form,
-        hermitize=True,
-        trace_norm=True,
-        eigenvalue_floor=1e-10,
-    ) -> ComplexAngularCentralGaussianParameters:
-        """
-        Attention: Y has swapped dimensions.
-
-        Note:
-            `fit` needs an iteration for the parameter estimation, becasue
-            quadratic_form depends on covariance and covariance depends on
-            quadratic_form.
-            Until now nobody need fit, therefore it is not implemented.
-
-        Args:
-            Y: Complex observation with shape (..., D, T)
-            saliency: Weight for each observation (..., T)
-
-        In case of mixture model:
-            Y: Complex observation with shape (..., 1, D, T)
-            saliency: Weight for each observation (..., K, T)
-        Returns:
-
-        ToDo: Merge ComplexGaussian with ComplexAngularCentralGaussian.
-              Both have the same _fit
-
-        """
-        assert Y.ndim == saliency.ndim + 1, (Y.shape, saliency.ndim)
-        *independent, D, T = Y.shape
-        independent = list(independent)
-
-        # Special case for mixture model
-        independent[-1] = saliency.shape[-2]
-        # K = saliency.shape[-2]
-
-        params = ComplexAngularCentralGaussianParameters()
-
-        mask = saliency[..., None, :]
-        assert mask.shape == (*independent, 1, T), (
-            mask.shape,
-            (*independent, 1, T),
-        )
-
-        # params.covariance = D * np.einsum(
-        #     '...dt,...et->...de',
-        #     (saliency / quadratic_form)[..., None, :] * Y,
-        #     Y.conj()
-        # )
-        params.covariance = D * np.einsum(
-            "...t,...dt,...et->...de", (saliency / quadratic_form), Y, Y.conj()
-        )
-
-        normalization = np.sum(mask, axis=-1, keepdims=True)
-        params.covariance /= normalization
-        assert params.covariance.shape == (
-            *independent,
-            D,
-            D,
-        ), params.covariance.shape
-
-        if hermitize:
-            params.covariance = force_hermitian(params.covariance)
-
-        if trace_norm:
-            params.covariance /= np.einsum("...dd", params.covariance)[
-                ..., None, None
-            ]
-
-        eigenvals, eigenvecs = np.linalg.eigh(params.covariance)
-        eigenvals = eigenvals.real
-        eigenvals = np.maximum(
-            eigenvals,
-            np.max(eigenvals, axis=-1, keepdims=True) * eigenvalue_floor,
-        )
-        diagonal = np.einsum("de,...d->...de", np.eye(D), eigenvals)
-        params.covariance = np.einsum(
-            "...wx,...xy,...zy->...wz", eigenvecs, diagonal, eigenvecs.conj()
-        )
-        params.determinant = np.prod(eigenvals, axis=-1)
-        inverse_diagonal = np.einsum(
-            "de,...d->...de", np.eye(D), 1 / eigenvals
-        )
-        params.precision = np.einsum(
-            "...wx,...xy,...zy->...wz",
-            eigenvecs,
-            inverse_diagonal,
-            eigenvecs.conj(),
-        )
-
-        return params
