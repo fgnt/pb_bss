@@ -52,12 +52,12 @@ class GCACGMM:
             np.reshape(gaussian_log_pdf, (num_classes, F, T)), (1, 0, 2)
         )
 
-        affiliation_shape = (F, num_classes, T)
-        affiliation = np.zeros(affiliation_shape)
-        affiliation += np.log(self.weight)[..., :, None]
-        affiliation += cacg_log_pdf
-        affiliation += gaussian_log_pdf
-        affiliation = np.exp(affiliation)
+        affiliation = (
+            np.log(self.weight)[..., :, None]
+            + cacg_log_pdf
+            + gaussian_log_pdf
+        )
+        np.exp(affiliation, out=affiliation)
         denominator = np.maximum(
             np.einsum("...kn->...n", affiliation)[..., None, :],
             np.finfo(affiliation.dtype).tiny,

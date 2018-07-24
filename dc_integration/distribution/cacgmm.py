@@ -24,13 +24,14 @@ class CACGMM:
 
     def _predict(self, x):
         *independent, num_observations, _ = x.shape
-        num_classes = self.weight.shape[-1]
-        affiliation_shape = (*independent, num_classes, num_observations)
-        affiliation = np.zeros(affiliation_shape)
-        affiliation += np.log(self.weight)[..., :, None]
+
         log_pdf, quadratic_form = self.cacg._log_pdf(x[..., None, :, :])
-        affiliation += log_pdf
-        affiliation = np.exp(affiliation)
+
+        affiliation = (
+            np.log(self.weight)[..., :, None]
+            + log_pdf
+        )
+        np.exp(affiliation, out=affiliation)
         denominator = np.maximum(
             np.einsum("...kn->...n", affiliation)[..., None, :],
             np.finfo(affiliation.dtype).tiny,
