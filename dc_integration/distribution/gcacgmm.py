@@ -35,7 +35,7 @@ class GCACGMM:
             np.linalg.norm(observation, axis=-1, keepdims=True),
             np.finfo(observation.dtype).tiny,
         )
-        affiliation, quadratic_form = self._predict(observation)
+        affiliation, quadratic_form = self._predict(observation, embedding)
         return affiliation
 
     def _predict(self, observation, embedding):
@@ -158,15 +158,20 @@ class GCACGMMTrainer:
     ):
         F, T, D = observation.shape
         _, _, E = embedding.shape
+        _, K, _ = affiliation.shape
 
         masked_affiliations = affiliation * saliency[..., None, :]
         weight = np.einsum("...kn->...k", masked_affiliations)
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
+        masked_affiliations_ = np.reshape(
+            np.transpose(masked_affiliations, (1, 0, 2)),
+            (K, F * T)
+        )  # 'fkt->k,ft'
         gaussian = GaussianTrainer()._fit(
             x=embedding_,
-            saliency=masked_affiliations,
+            saliency=masked_affiliations_,
             covariance_type=covariance_type,
         )
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
