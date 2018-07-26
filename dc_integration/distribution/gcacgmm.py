@@ -31,7 +31,7 @@ class GCACGMM:
     def predict(self, observation, embedding):
         assert np.iscomplexobj(observation), observation.dtype
         assert np.isrealobj(embedding), embedding.dtype
-        observation /= np.maximum(
+        observation = observation / np.maximum(
             np.linalg.norm(observation, axis=-1, keepdims=True),
             np.finfo(observation.dtype).tiny,
         )
@@ -104,7 +104,7 @@ class GCACGMMTrainer:
         )
         assert np.iscomplexobj(observation), observation.dtype
         assert np.isrealobj(embedding), embedding.dtype
-        observation /= np.maximum(
+        observation = observation / np.maximum(
             np.linalg.norm(observation, axis=-1, keepdims=True),
             np.finfo(observation.dtype).tiny,
         )

@@ -75,7 +75,7 @@ class ComplexAngularCentralGaussian:
         Returns:
 
         """
-        x /= np.maximum(
+        x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
         log_pdf, _ = self._log_pdf(x)
@@ -134,7 +134,7 @@ class ComplexAngularCentralGaussianTrainer:
 
         """
         *independent, N, D = x.shape
-        x /= np.maximum(
+        x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
 

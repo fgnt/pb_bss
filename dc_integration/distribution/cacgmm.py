@@ -16,7 +16,7 @@ class CACGMM:
 
     def predict(self, x):
         assert np.iscomplexobj(x), x.dtype
-        x /= np.maximum(
+        x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
         affiliation, quadratic_form = self._predict(x)
@@ -73,7 +73,7 @@ class CACGMMTrainer:
             f"{initialization is None} xor {num_classes is None}"
         )
         assert np.iscomplexobj(x), x.dtype
-        x /= np.maximum(
+        x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
 
