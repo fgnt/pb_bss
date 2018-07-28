@@ -31,6 +31,7 @@ class CACGMM:
             np.log(self.weight)[..., :, None]
             + log_pdf
         )
+        affiliation -= np.max(affiliation, axis=-2)
         np.exp(affiliation, out=affiliation)
         denominator = np.maximum(
             np.einsum("...kn->...n", affiliation)[..., None, :],

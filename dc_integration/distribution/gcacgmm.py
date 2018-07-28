@@ -57,6 +57,7 @@ class GCACGMM:
             + cacg_log_pdf
             + gaussian_log_pdf
         )
+        affiliation -= np.max(affiliation, axis=-2)
         np.exp(affiliation, out=affiliation)
         denominator = np.maximum(
             np.einsum("...kn->...n", affiliation)[..., None, :],
