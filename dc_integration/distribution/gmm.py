@@ -18,7 +18,7 @@ class GMM:
             np.log(self.weight)[..., :, None]
             + self.gaussian.log_pdf(x)
         )
-        affiliation -= np.max(affiliation, axis=-2)
+        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
         np.exp(affiliation, out=affiliation)
         denominator = np.maximum(
             np.einsum("...kn->...n", affiliation)[..., None, :],
