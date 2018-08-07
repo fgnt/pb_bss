@@ -62,7 +62,7 @@ def parameter_from_dict(parameter_class_or_str, d: dict):
     return parameter_class_or_str.from_dict(d)
 
 
-class _Parameter:
+class _ProbabilisticModel:
     def to_dict(self):
         """
         >>> from IPython.lib.pretty import pprint

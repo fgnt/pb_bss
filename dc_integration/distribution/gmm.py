@@ -4,10 +4,11 @@ import numpy as np
 from dataclasses import dataclass
 
 from dc_integration.distribution import Gaussian, GaussianTrainer
+from dc_integration.distribution.utils import _ProbabilisticModel
 
 
 @dataclass
-class GMM:
+class GMM(_ProbabilisticModel):
     weight: np.array  # (..., K)
     gaussian: Gaussian
 

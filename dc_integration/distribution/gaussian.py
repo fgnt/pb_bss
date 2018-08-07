@@ -3,10 +3,11 @@ import numpy as np
 from sklearn.mixture.gaussian_mixture import _compute_precision_cholesky
 from sklearn.mixture.gaussian_mixture import _compute_log_det_cholesky
 from dc_integration.utils import is_broadcast_compatible
+from dc_integration.distribution.utils import _ProbabilisticModel
 
 
 @dataclass
-class Gaussian:
+class Gaussian(_ProbabilisticModel):
     mean: np.array  # (..., D)
     covariance: np.array  # (..., D, D)
     precision_cholesky: np.array = field(init=False)  # (..., D, D)
@@ -43,7 +44,7 @@ class Gaussian:
 
 
 @dataclass
-class DiagonalGaussian:
+class DiagonalGaussian(_ProbabilisticModel):
     mean: np.array  # (..., D)
     covariance: np.array  # (..., D)
     precision_cholesky: np.array = field(init=False)  # (..., D)
@@ -80,7 +81,7 @@ class DiagonalGaussian:
 
 
 @dataclass
-class SphericalGaussian:
+class SphericalGaussian(_ProbabilisticModel):
     mean: np.array  # (..., D)
     covariance: np.array  # (...,)
     precision_cholesky: np.array = field(init=False)  # (...,)

@@ -2,6 +2,7 @@ from operator import xor
 
 import numpy as np
 from dataclasses import dataclass
+from dc_integration.distribution.utils import _ProbabilisticModel
 
 from dc_integration.distribution import (
     ComplexAngularCentralGaussian,
@@ -10,7 +11,7 @@ from dc_integration.distribution import (
 
 
 @dataclass
-class CACGMM:
+class CACGMM(_ProbabilisticModel):
     weight: np.array  # (..., K)
     cacg: ComplexAngularCentralGaussian
 

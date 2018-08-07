@@ -20,10 +20,11 @@ from dc_integration.distribution import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
 )
+from dc_integration.distribution.utils import _ProbabilisticModel
 
 
 @dataclass
-class GCACGMM:
+class GCACGMM(_ProbabilisticModel):
     weight: np.array  # (K,)
     gaussian: Any  # Gaussian, DiagonalGaussian, or SphericalGaussian
     cacg: ComplexAngularCentralGaussian

@@ -16,14 +16,15 @@ from dataclasses import dataclass
 
 import numpy as np
 from dc_integration.utils import is_broadcast_compatible
-from dc_integration.distribution.utils import _Parameter, force_hermitian
+from dc_integration.distribution.utils import force_hermitian
+from dc_integration.distribution.utils import _ProbabilisticModel
 from dc_integration.distribution.circular_symmetric_gaussian import (
     CircularSymmetricGaussian
 )
 
 
 @dataclass
-class ComplexAngularCentralGaussian:
+class ComplexAngularCentralGaussian(_ProbabilisticModel):
     covariance: np.array  # (..., D, D)
     eigenvalue_floor: float = None
 

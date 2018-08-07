@@ -10,10 +10,11 @@ References:
 from dataclasses import dataclass
 
 import numpy as np
+from dc_integration.distribution.utils import _ProbabilisticModel
 
 
 @dataclass
-class CircularSymmetricGaussian:
+class CircularSymmetricGaussian(_ProbabilisticModel):
     covariance: np.array  # (..., D, D)
 
     def sample(self, size):
