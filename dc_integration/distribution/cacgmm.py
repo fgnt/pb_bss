@@ -73,25 +73,43 @@ class CACGMMTrainer:
             "Exactly one of the two inputs has to be None: "
             f"{initialization is None} xor {num_classes is None}"
         )
+
         assert np.iscomplexobj(x), x.dtype
         x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
 
-        if initialization is None and num_classes is not None:
-            *independent, num_observations, _ = x.shape
-            affiliation_shape = (*independent, num_classes, num_observations)
-            initialization = np.random.uniform(size=affiliation_shape)
-            initialization /= np.einsum("...kn->...n", initialization)[
-                ..., None, :
-            ]
+        assert iterations > 0, iterations
+
+        model = None
+
+        *independent, num_observations, _ = x.shape
+        affiliation_shape = (*independent, num_classes, num_observations)
+        if initialization is None:
+            assert num_classes is not None
+            affiliation = np.random.uniform(size=affiliation_shape)
+            affiliation /= np.einsum("...kn->...n", affiliation)[..., None, :]
+            quadratic_form = np.ones(affiliation_shape, dtype=x.real.dtype)
+        elif isinstance(initialization, np.ndarray):
+            assert initialization.shape == affiliation_shape, (
+                initialization.shape, affiliation_shape
+            )
+            affiliation = initialization
+            quadratic_form = np.ones(affiliation_shape, dtype=x.real.dtype)
+        elif isinstance(initialization, CACGMM):
+            model = initialization
+        else:
+            raise TypeError('No sufficient initialization.')
 
         if saliency is None:
-            saliency = np.ones_like(initialization[..., 0, :])
+            # TODO: Maybe `*independent` allocates too much.
+            # TODO: Saliency should be allowed to be None.
+            saliency = np.ones((*independent, num_observations), dtype=x.real.dtype)
 
-        quadratic_form = np.ones_like(initialization)
-        affiliation = initialization
         for iteration in range(iterations):
+            if model is not None:
+                affiliation, quadratic_form = model._predict(x)
+
             model = self._m_step(
                 x,
                 quadratic_form,
@@ -101,9 +119,6 @@ class CACGMMTrainer:
                 trace_norm=trace_norm,
                 eigenvalue_floor=eigenvalue_floor,
             )
-
-            if iteration < iterations - 1:
-                affiliation, quadratic_form = model._predict(x)
 
         return model
 
