@@ -3,16 +3,48 @@ from dataclasses import dataclass
 import numpy as np
 
 from dc_integration.distribution.utils import _Parameter, force_hermitian
+from dc_integration.distribution.circular_symmetric_gaussian import CircularSymmetricGaussian
 
+
+def sample_complex_angular_central_gaussian(
+        size,
+        covariance,
+):
+    csg = CircularSymmetricGaussian(covariance=covariance)
+    x = csg.sample(size=size)
+    x /= np.linalg.norm(x, axis=-1, keepdims=True)
+    return x
 
 @dataclass
 class ComplexAngularCentralGaussianParameters(_Parameter):
-    covariance: np.array = None
-    precision: np.array = None
+    # covariance: np.array = None
+    # precision: np.array = None
+    covariance_eigenvectors: np.array = None
+    covariance_eigenvalues: np.array = None
     determinant: np.array = None
+    log_determinant: np.array = None
+
+    @property
+    def covariance(self):
+        return np.einsum(
+            '...wx,...x,...zx->...wz',
+            self.covariance_eigenvectors,
+            self.covariance_eigenvalues,
+            self.covariance_eigenvectors.conj(),
+            optimize='greedy',
+        )
+
+    def sample(self, size):
+        csg = CircularSymmetricGaussian(covariance=self.covariance)
+        x = csg.sample(size=size)
+        x /= np.linalg.norm(x, axis=-1, keepdims=True)
+        return x
 
 
 class ComplexAngularCentralGaussian:
+
+    def __init__(self, use_pinv=False):
+        self.use_pinv = use_pinv
 
     def _fit(
             self,
@@ -22,6 +54,7 @@ class ComplexAngularCentralGaussian:
             hermitize=True,
             trace_norm=True,
             eigenvalue_floor=1e-10,
+            calculate_covariance=False,
     ) -> ComplexAngularCentralGaussianParameters:
         """
         Attention: Y has swapped dimensions.
@@ -45,6 +78,14 @@ class ComplexAngularCentralGaussian:
               Both have the same _fit
 
         """
+
+        # def finite_check(arr):
+        #     return np.all(np.isfinite(arr))
+
+        # assert finite_check(saliency), saliency
+        # assert finite_check(quadratic_form), quadratic_form
+        # assert finite_check(Y), Y
+
         assert Y.ndim == saliency.ndim + 1, (Y.shape, saliency.ndim)
         *independent, D, T = Y.shape
         independent = list(independent)
@@ -63,41 +104,72 @@ class ComplexAngularCentralGaussian:
         #     (saliency / quadratic_form)[..., None, :] * Y,
         #     Y.conj()
         # )
-        params.covariance = D * np.einsum(
+        covariance = D * np.einsum(
             '...t,...dt,...et->...de',
+            # '....dt,...et->...de',
             (saliency / quadratic_form),
             Y,
-            Y.conj()
+            Y.conj(),
+            optimize='greedy',
         )
+        # assert False
+        # assert finite_check(params.covariance), params.covariance
 
         normalization = np.sum(mask, axis=-1, keepdims=True)
-        params.covariance /= normalization
-        assert params.covariance.shape == (*independent, D, D), params.covariance.shape
+        covariance /= normalization
+        assert covariance.shape == (*independent, D, D), covariance.shape
 
         if hermitize:
-            params.covariance = force_hermitian(params.covariance)
+            covariance = force_hermitian(covariance)
 
         if trace_norm:
-            params.covariance /= np.einsum(
-                '...dd', params.covariance
+            covariance /= np.einsum(
+                '...dd', covariance
             )[..., None, None]
 
-        eigenvals, eigenvecs = np.linalg.eigh(params.covariance)
+        # if self.use_pinv:
+        #     if calculate_covariance:
+        #         params.covariance = covariance
+        #     params.precision = np.linalg.pinv(covariance)
+        #     params.determinant = 1 / np.linalg.det(params.precision)
+        #     params.log_determinant = -np.linalg.slogdet(params.precision)[1]
+        # else:
+        try:
+            eigenvals, eigenvecs = np.linalg.eigh(covariance)
+        except np.linalg.LinAlgError:
+            eigenvals, eigenvecs = np.linalg.eig(covariance)
         eigenvals = eigenvals.real
+
+        eigenvals = eigenvals / np.amax(eigenvals, axis=-1, keepdims=True)
+
         eigenvals = np.maximum(
             eigenvals,
-            np.max(eigenvals, axis=-1, keepdims=True) * eigenvalue_floor
+            eigenvalue_floor
         )
-        diagonal = np.einsum('de,...d->...de', np.eye(D), eigenvals)
-        params.covariance = np.einsum(
-            '...wx,...xy,...zy->...wz', eigenvecs, diagonal, eigenvecs.conj()
-        )
-        params.determinant = np.prod(eigenvals, axis=-1)
-        inverse_diagonal = np.einsum('de,...d->...de', np.eye(D),
-                                     1 / eigenvals)
-        params.precision = np.einsum(
-            '...wx,...xy,...zy->...wz', eigenvecs, inverse_diagonal,
-            eigenvecs.conj()
-        )
+
+        if calculate_covariance:
+            # diagonal = np.einsum('de,...d->...de', np.eye(D), eigenvals)
+            params.covariance = np.einsum(
+                '...wx,...x,...zx->...wz',
+                eigenvecs,
+                eigenvals,
+                eigenvecs.conj(),
+                optimize='greedy',
+            )
+        # params.determinant = np.prod(eigenvals, axis=-1)
+        params.log_determinant = np.sum(np.log(eigenvals), axis=-1)
+
+        params.covariance_eigenvectors = eigenvecs
+        params.covariance_eigenvalues = eigenvals
+
+        # inverse_diagonal = np.einsum('de,...d->...de', np.eye(D),
+        #                              1 / eigenvals)
+        # params.precision = np.einsum(
+        #     '...wx,...x,...zx->...wz',
+        #     eigenvecs,
+        #     1 / eigenvals,
+        #     eigenvecs.conj(),
+        #     optimize='greedy',
+        # )
 
         return params

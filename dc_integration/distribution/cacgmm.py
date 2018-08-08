@@ -19,6 +19,7 @@ class ComplexAngularCentralGaussianMixtureModelParameters(_Parameter):
     affiliation: np.array = None
 
     eps: float = 1e-10
+    stable: bool = False
 
     def _predict(self, Y, source_activity_mask=None):
         """Predict class affiliation posteriors from given model.
@@ -28,26 +29,79 @@ class ComplexAngularCentralGaussianMixtureModelParameters(_Parameter):
             source_activity_mask: shape (..., K, T)
         Returns: Affiliations with shape (..., K, T) and quadratic format
             with the same shape.
+
+        >>> params = ComplexAngularCentralGaussianMixtureModelParameters()
+        >>> params.cacg.precision = np.array([[[1, 0.1], [0.1, 0.5]], [[0.5, 0.1], [0.1, 1]]])
+        >>> params.cacg.log_determinant = np.linalg.slogdet(np.linalg.inv(params.cacg.precision))[1]
+        >>> params.mixture_weight = np.array([0.6, 0.4])
+        >>> Y = np.array([[1, 0], [0.5, 0.6], [0, 1]])
+        >>> params.predict(Y)
+        array([[0.27272727, 0.64981495, 0.85714286],
+               [0.72727273, 0.35018505, 0.14285714]])
+        >>> params.stable = True
+        >>> params.predict(Y)
+        array([[0.27272727, 0.64981495, 0.85714286],
+               [0.72727273, 0.35018505, 0.14285714]])
+
         """
+
         *independent, D, T = Y.shape
         K = self.mixture_weight.shape[-1]
 
-        quadratic_form = np.abs(
-            np.einsum(
-                '...dt,...kde,...et->...kt',
-                Y.conj(),
-                self.cacg.precision,
-                Y,
-            )
-        ) + self.eps
+        # Y: ..., D, T
+        # self.cacg.covariance_eigenvectors: (..., K, D, D)
+        # self.cacg.covariance_eigenvalues: (..., K, D)
+        # precision: covariance_eigenvectors @ covariance_eigenvalues @ covariance_eigenvectors
+
+        # tmp = np.einsum(
+        #     '...dt,...kde->...ket',
+        #     Y.conj(),
+        #     self.cacg.covariance_eigenvectors,
+        # )
+        quadratic_form = np.maximum(
+            np.abs(
+                np.einsum(
+                    '...dt,...kde,...ke,...kge,...gt->...kt',
+                    Y.conj(),
+                    self.cacg.covariance_eigenvectors,
+                    1 / self.cacg.covariance_eigenvalues,
+                    self.cacg.covariance_eigenvectors.conj(),
+                    Y,
+                    optimize='optimal',
+                )
+            ),
+            np.finfo(Y.dtype).tiny,
+        )
+
+        # quadratic_form2 = np.abs(
+        #     np.einsum(
+        #         '...dt,...kde,...et->...kt',
+        #         Y.conj(),
+        #         self.cacg.precision,
+        #         Y,
+        #         optimize='greedy',
+        #     )
+        # )# + self.eps
+
+        # import cbj
+        # cbj.testing.assert_allclose(quadratic_form2, quadratic_form, rtol=1e-10, atol=1e-10)
+        #
+        # quadratic_form = quadratic_form2 + self.eps
+
+
+        # np.squeeze(np.swapaxes(self.cacg.precision @ Y[..., None, :, :], -2, -1)[..., None, :] @ np.swapaxes(Y, -1, -2)[..., None, :, :, None], (-1, -2))
 
         assert quadratic_form.shape == (*independent, K, T), quadratic_form.shape
 
         affiliation = - D * np.log(quadratic_form)
-        affiliation -= np.log(self.cacg.determinant)[..., None]
-        affiliation = np.exp(affiliation)
-        affiliation *= self.mixture_weight[..., None]
+        # affiliation -= np.log(self.cacg.determinant)[..., None]
+        affiliation -= self.cacg.log_determinant[..., None]
+        affiliation += np.log(self.mixture_weight)[..., :, None]
+        if self.stable:
+            affiliation -= np.amax(affiliation, axis=-2, keepdims=True)
 
+        affiliation = np.exp(affiliation)
+        # affiliation *= self.mixture_weight[..., None]
         if source_activity_mask is not None:
             affiliation *= source_activity_mask
 
@@ -58,8 +112,12 @@ class ComplexAngularCentralGaussianMixtureModelParameters(_Parameter):
         # >>> affiliations = np.clip(affiliations, self.eps, 1 - self.eps)
         # >>> affiliations /= np.sum(affiliations, axis=-2, keepdims=True) + self.eps
         # is better
+        # assert np.all(np.isfinite(affiliation))
 
-        affiliation /= np.sum(affiliation, axis=-2, keepdims=True) + self.eps
+        affiliation /= np.maximum(
+            np.sum(affiliation, axis=-2, keepdims=True),
+            np.finfo(affiliation.dtype).tiny,
+        )  # + self.eps
         affiliation = np.clip(affiliation, self.eps, 1 - self.eps)
 
         # if self.visual_debug:
@@ -83,10 +141,19 @@ class ComplexAngularCentralGaussianMixtureModel:
 
     Parameters = staticmethod(ComplexAngularCentralGaussianMixtureModelParameters)
 
-    def __init__(self, eps=1e-10, visual_debug=False, pbar=False):
+    def __init__(
+            self,
+            eps=1e-10,
+            use_pinv=False,
+            visual_debug=False,
+            pbar=False,
+            stable=False,
+    ):
         self.eps = eps
         self.visual_debug = visual_debug  # ToDo
         self.pbar = pbar
+        self.use_pinv = use_pinv
+        self.stable = stable
 
     def fit(
             self,
@@ -125,11 +192,10 @@ class ComplexAngularCentralGaussianMixtureModel:
         >> model = Model.fit(Y, init_affiliation, iterations=10)
         >> model = Model.fit(Y, model, iterations=10)  # ToDo
         """
-
         *independent, T, D = Y.shape
         independent = tuple(independent)
 
-        assert D < 20, (D, 'Sure?')
+        assert D < 30, (D, 'Sure?')
 
         if isinstance(initialization, self.Parameters):
             K = initialization.mixture_weight.shape[-1]
@@ -144,7 +210,7 @@ class ComplexAngularCentralGaussianMixtureModel:
             Y,
             axis=-1,
             eps=1e-10,
-            eps_style='where'
+            eps_style='where',
         )
 
         # Y_for_pdf = np.ascontiguousarray(Y)
@@ -156,18 +222,21 @@ class ComplexAngularCentralGaussianMixtureModel:
 
         if isinstance(initialization, self.Parameters):
             params = initialization
+            params.stable = self.stable
         else:
-            params = self.Parameters(eps=self.eps)
+            params = self.Parameters(eps=self.eps, stable=self.stable)
             params.affiliation = np.copy(initialization)  # Shape (..., K, T)
             quadratic_form = np.ones_like(params.affiliation)  # Shape (..., K, T)
 
         # params = ComplexAngularCentralGaussianMixtureModelParameters(
         #     eps=self.eps
         # )
-        cacg_model = ComplexAngularCentralGaussian()
+        cacg_model = ComplexAngularCentralGaussian(use_pinv=self.use_pinv)
 
         if source_activity_mask is not None:
             assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
+            assert source_activity_mask.shape[-2:] == (K, T), (source_activity_mask.shape, independent, K, T)
+
             if isinstance(params.affiliation, np.ndarray):
                 assert source_activity_mask.shape == params.affiliation.shape, (source_activity_mask.shape, params.affiliation.shape)
 
@@ -186,11 +255,13 @@ class ComplexAngularCentralGaussianMixtureModel:
             # E step
             if i > 0:
                 # Equation 12
-                del params.affiliation
+                # old_affiliation = params.affiliation
                 params.affiliation, quadratic_form = params._predict(
                     Y_for_pdf,
                     source_activity_mask=source_activity_mask,
                 )
+                # avg_change = np.mean(np.abs(params.affiliation - old_affiliation))
+                # print('Converged', avg_change)
 
             params.mixture_weight = np.mean(params.affiliation, axis=-1)
             assert params.mixture_weight.shape == (*independent, K), (params.mixture_weight.shape, (*independent, K), params.affiliation.shape)
