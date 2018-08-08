@@ -208,7 +208,7 @@ def _unit_norm(signal, *, axis=-1, eps=1e-4, eps_style='plus'):
     return signal / norm
 
 
-def stack_parameters(parameters: typing.List[_Parameter]):
+def stack_parameters(parameters: typing.List[_ProbabilisticModel]):
     """
 
         >>> from IPython.lib.pretty import pprint
