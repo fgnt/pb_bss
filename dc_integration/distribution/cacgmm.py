@@ -85,13 +85,15 @@ class CACGMMTrainer:
         model = None
 
         *independent, num_observations, _ = x.shape
-        affiliation_shape = (*independent, num_classes, num_observations)
         if initialization is None:
             assert num_classes is not None
+            affiliation_shape = (*independent, num_classes, num_observations)
             affiliation = np.random.uniform(size=affiliation_shape)
             affiliation /= np.einsum("...kn->...n", affiliation)[..., None, :]
             quadratic_form = np.ones(affiliation_shape, dtype=x.real.dtype)
         elif isinstance(initialization, np.ndarray):
+            num_classes = initialization.shape[-2]
+            affiliation_shape = (*independent, num_classes, num_observations)
             assert initialization.shape == affiliation_shape, (
                 initialization.shape, affiliation_shape
             )
@@ -105,7 +107,10 @@ class CACGMMTrainer:
         if saliency is None:
             # TODO: Maybe `*independent` allocates too much.
             # TODO: Saliency should be allowed to be None.
-            saliency = np.ones((*independent, num_observations), dtype=x.real.dtype)
+            saliency = np.ones(
+                (*independent, num_observations),
+                dtype=x.real.dtype
+            )
 
         for iteration in range(iterations):
             if model is not None:
