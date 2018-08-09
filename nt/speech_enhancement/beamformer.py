@@ -544,8 +544,13 @@ def pca_mvdr_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
 
     return output.T
 
-def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, ref_channel=0,
-                           eps=1e-5):
+
+def get_mvdr_vector_souden_old(
+        target_psd_matrix,
+        noise_psd_matrix,
+        ref_channel=0,
+        eps=1e-5,
+):
     """
     Returns the MVDR beamforming vector described in [Souden10].
 
@@ -594,3 +599,78 @@ def get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix, ref_channel=0,
     beamforming_vector = beamforming_vector.reshape(shape[:-1])
     return beamforming_vector
 
+
+def get_mvdr_vector_souden(
+        target_psd_matrix,
+        noise_psd_matrix,
+        ref_channel=None,
+        eps=None,
+        return_ref_channel=False
+):
+    """
+    Returns the MVDR beamforming vector described in [Souden2010MVDR].
+    The implementation is based on the description of [Erdogan2016MVDR].
+
+    The ref_channel is selected based of an SNR estimate.
+
+    The eps ensures that the SNR estimation for the ref_channel works
+    as long target_psd_matrix and noise_psd_matrix do not contain inf or nan.
+    Also zero matrices work. The default eps is the smallest non zero value.
+
+    Note: the frequency dimension is necessary for the ref_channel estimation.
+
+    :param target_psd_matrix: Target PSD matrix
+        with shape (..., bins, sensors, sensors)
+    :param noise_psd_matrix: Noise PSD matrix
+        with shape (..., bins, sensors, sensors)
+    :param ref_channel:
+    :param return_ref_channel:
+    :param eps: If None use the smallest number bigger than zero.
+    :return: Set of beamforming vectors with shape (bins, sensors)
+
+    Returns:
+
+    @article{Souden2010MVDR,
+      title={On optimal frequency-domain multichannel linear filtering for noise reduction},
+      author={Souden, Mehrez and Benesty, Jacob and Affes, Sofi{\`e}ne},
+      journal={IEEE Transactions on audio, speech, and language processing},
+      volume={18},
+      number={2},
+      pages={260--276},
+      year={2010},
+      publisher={IEEE}
+    }
+    @inproceedings{Erdogan2016MVDR,
+      title={Improved MVDR Beamforming Using Single-Channel Mask Prediction Networks.},
+      author={Erdogan, Hakan and Hershey, John R and Watanabe, Shinji and Mandel, Michael I and Le Roux, Jonathan},
+      booktitle={Interspeech},
+      pages={1981--1985},
+      year={2016}
+    }
+
+    """
+    from nt.math.solve import stable_solve
+
+    phi = stable_solve(noise_psd_matrix, target_psd_matrix)
+    lambda_ = np.trace(phi, axis1=-1, axis2=-2)[..., None, None]
+    if eps is None:
+        eps = np.finfo(lambda_.dtype).tiny
+    mat = phi / np.maximum(lambda_.real, eps)
+
+    if ref_channel is None:
+        SNR = np.einsum(
+            '...FdR,...FdD,...FDR->...R', mat.conj(), target_psd_matrix, mat
+        ) / np.maximum(np.einsum(
+            '...FdR,...FdD,...FDR->...R', mat.conj(), noise_psd_matrix, mat
+        ), eps)
+        # Raises an exception when np.inf and/or np.NaN was in target_psd_matrix
+        # or noise_psd_matrix
+        assert np.all(np.isfinite(SNR)), SNR
+        ref_channel = np.argmax(SNR.real)
+
+    beamformer = mat[:, :, ref_channel]
+
+    if return_ref_channel:
+        return beamformer, ref_channel
+    else:
+        return beamformer
