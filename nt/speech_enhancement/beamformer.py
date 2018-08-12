@@ -8,6 +8,8 @@ That results i.e. in the following possible shapes:
     mask: Shape (F, K, T).
     PSD: Shape (F, D, D).
 
+# TODO: These shape hints do not fit together. If mask has K, PSD needs it, too.
+
 The functions themselves are written more generic, though.
 """
 
@@ -18,6 +20,8 @@ from numpy.linalg import solve
 from scipy.linalg import eig
 from scipy.linalg import eigh
 from nt.math.correlation import covariance  # as shortcut!
+from nt.math.solve import stable_solve
+
 
 try:
     from .cythonized.get_gev_vector import _c_get_gev_vector
@@ -649,8 +653,6 @@ def get_mvdr_vector_souden(
     }
 
     """
-    from nt.math.solve import stable_solve
-
     phi = stable_solve(noise_psd_matrix, target_psd_matrix)
     lambda_ = np.trace(phi, axis1=-1, axis2=-2)[..., None, None]
     if eps is None:
@@ -669,6 +671,72 @@ def get_mvdr_vector_souden(
         ref_channel = np.argmax(SNR.real)
 
     beamformer = mat[:, :, ref_channel]
+
+    if return_ref_channel:
+        return beamformer, ref_channel
+    else:
+        return beamformer
+
+
+def get_lcmv_vector_souden(
+        target_psd_matrix,
+        interference_psd_matrix,
+        noise_psd_matrix,
+        ref_channel=None,
+        eps=None,
+        return_ref_channel=False
+):
+    """
+    In "A Study of the LCMV and MVDR Noise Reduction Filters" Mehrez Souden
+    elaborates an alternative formulation for the LCMV beamformer in the
+    appendix for a rank one interference matrix.
+
+    Therefore, this algorithm is only valid, when the interference PSD matrix
+    is approximately rank one, or (in other words) only 2 speakers are present
+    in total.
+
+    Args:
+        target_psd_matrix:
+        interference_psd_matrix:
+        noise_psd_matrix:
+        ref_channel:
+        eps:
+        return_ref_channel:
+
+    Returns:
+
+    """
+    phi_in = stable_solve(noise_psd_matrix, interference_psd_matrix)
+    phi_xn = stable_solve(noise_psd_matrix, target_psd_matrix)
+
+    D = phi_in.shape[-1]
+
+    # Equation 5, 6
+    gamma_in = np.trace(phi_in, axis1=-1, axis2=-2)[..., None, None]
+    gamma_xn = np.trace(phi_xn, axis1=-1, axis2=-2)[..., None, None]
+
+    # Can be written in a single einsum call, here separate for clarity
+    # Equation 11
+    gamma = gamma_in * gamma_xn - np.trace(
+        np.einsum('...ab,...bc->...ac', phi_in, phi_xn)
+    )[..., None, None]
+    # Possibly:
+    # gamma = gamma_in * gamma_xn - np.einsum('...ab,...ba->...', phi_in, phi_xn)
+
+    eye = np.eye(D)[(phi_in.ndim - 2) * [None] + [...]]
+
+    # TODO: Should be determined automatically (per speaker)?
+    ref_channel = 0
+
+    # Equation 51, first fraction
+    if eps is None:
+        eps = np.finfo(gamma.dtype).tiny
+    mat = gamma_in * eye - phi_in / np.maximum(gamma.real, eps)
+
+    # Equation 51
+    # Faster, when we select the ref_channel before matrix multiplication.
+    beamformer = np.einsum('...ab,...bc->...ac', mat, phi_xn)[..., ref_channel]
+    # beamformer = np.einsum('...ab,...b->...a', mat, phi_xn[..., ref_channel])
 
     if return_ref_channel:
         return beamformer, ref_channel
