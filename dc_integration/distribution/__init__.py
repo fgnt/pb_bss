@@ -18,7 +18,8 @@ from .gaussian import (
     GaussianTrainer,
 )
 from .gmm import GMM, GMMTrainer
-from .circular_symmetric_gaussian import CircularSymmetricGaussian
+from .von_mises_fisher import VonMisesFisher, VonMisesFisherTrainer
+from .complex_circular_symmetric_gaussian import ComplexCircularSymmetricGaussian
 from .complex_angular_central_gaussian import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
