@@ -18,8 +18,8 @@ import numpy as np
 from dc_integration.utils import is_broadcast_compatible
 from dc_integration.distribution.utils import force_hermitian
 from dc_integration.distribution.utils import _ProbabilisticModel
-from dc_integration.distribution.circular_symmetric_gaussian import (
-    CircularSymmetricGaussian
+from dc_integration.distribution.complex_circular_symmetric_gaussian import (
+    ComplexCircularSymmetricGaussian
 )
 
 
@@ -29,7 +29,7 @@ class ComplexAngularCentralGaussian(_ProbabilisticModel):
     eigenvalue_floor: float = None
 
     def sample(self, size):
-        csg = CircularSymmetricGaussian(covariance=self.covariance)
+        csg = ComplexCircularSymmetricGaussian(covariance=self.covariance)
         x = csg.sample(size=size)
         x /= np.linalg.norm(x, axis=-1, keepdims=True)
         return x

@@ -14,7 +14,7 @@ from dc_integration.distribution.utils import _ProbabilisticModel
 
 
 @dataclass
-class CircularSymmetricGaussian(_ProbabilisticModel):
+class ComplexCircularSymmetricGaussian(_ProbabilisticModel):
     covariance: np.array  # (..., D, D)
 
     def sample(self, size):
