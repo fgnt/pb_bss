@@ -166,24 +166,24 @@ class GCACGMMTrainer:
         _, _, E = embedding.shape
         _, K, _ = affiliation.shape
 
-        masked_affiliations = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliations)
+        masked_affiliation = affiliation * saliency[..., None, :]
+        weight = np.einsum("...kn->...k", masked_affiliation)
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
-        masked_affiliations_ = np.reshape(
-            np.transpose(masked_affiliations, (1, 0, 2)),
+        masked_affiliation_ = np.reshape(
+            np.transpose(masked_affiliation, (1, 0, 2)),
             (K, F * T)
         )  # 'fkt->k,ft'
         vmf = VonMisesFisherTrainer()._fit(
             x=embedding_,
-            saliency=masked_affiliations_,
+            saliency=masked_affiliation_,
             min_concentration=min_concentration,
             max_concentration=max_concentration
         )
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
             x=observation[..., None, :, :],
-            saliency=masked_affiliations,
+            saliency=masked_affiliation,
             quadratic_form=quadratic_form,
             hermitize=hermitize,
             trace_norm=trace_norm,

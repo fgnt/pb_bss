@@ -9,6 +9,7 @@ from dc_integration.distribution import (
 
 class TestComplexWatson(unittest.TestCase):
     def test_complex_watson_shapes(self):
+        # TODO: Sample from the correct distribution please
         covariance = np.array(
             [[10, 1 + 1j, 1 + 1j], [1 - 1j, 5, 1], [1 - 1j, 1, 2]]
         )

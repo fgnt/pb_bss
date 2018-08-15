@@ -138,13 +138,13 @@ class CACGMMTrainer:
         trace_norm,
         eigenvalue_floor,
     ):
-        masked_affiliations = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliations)
+        masked_affiliation = affiliation * saliency[..., None, :]
+        weight = np.einsum("...kn->...k", masked_affiliation)
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
             x=x[..., None, :, :],
-            saliency=masked_affiliations,
+            saliency=masked_affiliation,
             quadratic_form=quadratic_form,
             hermitize=hermitize,
             trace_norm=trace_norm,

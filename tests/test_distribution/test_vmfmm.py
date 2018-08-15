@@ -7,6 +7,7 @@ import itertools
 
 class TestGMM(unittest.TestCase):
     def test_vmfmm_shapes(self):
+        # TODO: Sample from the correct distribution please
         samples = 1000
         weight = np.array([0.3, 0.7])
         num_classes = weight.shape[0]

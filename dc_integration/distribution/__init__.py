@@ -28,3 +28,4 @@ from .complex_watson import ComplexWatson, ComplexWatsonTrainer
 from .vmfmm import VMFMM, VMFMMTrainer
 from .cacgmm import CACGMM, CACGMMTrainer
 from .gcacgmm import GCACGMM, GCACGMMTrainer
+from .cwmm import CWMM, CWMMTrainer

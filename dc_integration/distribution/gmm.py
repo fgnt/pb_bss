@@ -62,6 +62,7 @@ class GMMTrainer:
             "Exactly one of the two inputs has to be None: "
             f"{initialization is None} xor {num_classes is None}"
         )
+        assert np.isrealobj(x), x.dtype
 
         if initialization is None and num_classes is not None:
             *independent, num_observations, _ = x.shape
@@ -98,11 +99,11 @@ class GMMTrainer:
         return model
 
     def _m_step(self, x, affiliation, saliency, covariance_type):
-        masked_affiliations = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliations)
+        masked_affiliation = affiliation * saliency[..., None, :]
+        weight = np.einsum("...kn->...k", masked_affiliation)
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         gaussian = GaussianTrainer()._fit(
-            x=x, saliency=masked_affiliations, covariance_type=covariance_type
+            x=x, saliency=masked_affiliation, covariance_type=covariance_type
         )
         return GMM(weight=weight, gaussian=gaussian)

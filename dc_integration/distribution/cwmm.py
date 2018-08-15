@@ -1,83 +1,79 @@
+from operator import xor
+
 from dataclasses import dataclass
-from dataclasses import field
 
 import numpy as np
-from .complex_watson import ComplexWatsonParameters, ComplexWatson
+from .complex_watson import ComplexWatson, ComplexWatsonTrainer
 
-from dc_integration.utils import (
-    get_power_spectral_density_matrix,
-    get_pca,
-)
 from dc_integration.distribution.utils import _ProbabilisticModel
+from cached_property import cached_property
 
 
 @dataclass
-class ComplexWatsonMixtureModelParameters(_ProbabilisticModel):
-    complex_watson: ComplexWatsonParameters \
-        = field(default_factory=ComplexWatsonParameters)
-    mixture_weights: np.array = None
-    affiliation: np.array = None
+class CWMM(_ProbabilisticModel):
+    weight: np.array  # (..., K)
+    complex_watson: ComplexWatson
 
-    eps: float = 1e-10
-
-    def _predict(self, Y, source_activity_mask=None):
+    def predict(self, x):
         """Predict class affiliation posteriors from given model.
 
         Args:
-            Y: Normalized mix with shape (..., T, D).
+            x: Observations with shape (..., N, D).
+                Observations are expected to are unit norm normalized.
         Returns: Affiliations with shape (..., K, T).
         """
-        affiliation = self.mixture_weights[..., None] * ComplexWatson.pdf(
-            Y[..., None, :, :],
-            np.ascontiguousarray(self.complex_watson.mode[..., None, :]),
-            self.complex_watson.concentration[..., None]
+        assert np.iscomplexobj(x), x.dtype
+        x = x / np.maximum(
+            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
-        if source_activity_mask is not None:
-            affiliation *= source_activity_mask
-        affiliation /= np.maximum(
-            np.sum(affiliation, axis=-2, keepdims=True),
-            self.eps,
-        )
-        affiliation = np.maximum(affiliation, self.eps)
-        return np.ascontiguousarray(affiliation)
+        return self._predict(x)
 
-    def predict(self, Y):
+    def _predict(self, x):
+        """Predict class affiliation posteriors from given model.
 
-        *independent, T, D = Y.shape
-        assert D < 20, (D, 'Sure?')
-
-        Y = _unit_norm(
-            Y,
-            axis=-1,
-            eps=1e-10,
-            eps_style='where'
-        )
-
-        return self._predict(Y)
-
-
-class ComplexWatsonMixtureModel:
-    """Collects all functions related to the cWMM."""
-    # unit_norm = staticmethod(_unit_norm)
-    # phase_norm = staticmethod(_phase_norm)
-    # frequency_norm = staticmethod(_frequency_norm)
-
-    Parameters = staticmethod(ComplexWatsonMixtureModelParameters)
-
-    def __init__(self, eps=1e-10, pbar=False):
+        Args:
+            x: Observations with shape (..., N, D).
+                Observations are expected to are unit norm normalized.
+        Returns: Affiliations with shape (..., K, T).
         """
+        log_pdf = self.complex_watson.pdf(x[..., None, :, :])
+
+        affiliation = np.log(self.weight)[..., :, None] + log_pdf
+        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
+        np.exp(affiliation, out=affiliation)
+        denominator = np.maximum(
+            np.einsum("...kn->...n", affiliation)[..., None, :],
+            np.finfo(affiliation.dtype).tiny,
+        )
+        affiliation /= denominator
+        return affiliation
+
+
+class CWMMTrainer:
+    def __init__(
+        self, dimension=None, max_concentration=100, spline_markers=100
+    ):
         """
-        self.pbar = pbar
-        self.eps = eps
+
+        Args:
+            dimension: Feature dimension. If you do not provide this when
+                initializing the trainer, it will be inferred when the fit
+                function is called.
+            max_concentration: For numerical stability reasons.
+            spline_markers:
+        """
+        self.dimension = dimension
+        self.max_concentration = max_concentration
+        self.spline_markers = spline_markers
 
     def fit(
             self,
-            Y,
-            initialization,
-            source_activity_mask=None,
+            x,
+            initialization=None,
+            num_classes=None,
             iterations=100,
-            max_concentration=100,
-    ) -> ComplexWatsonMixtureModelParameters:
+            saliency=None,
+    ) -> CWMM:
         """ EM for CWMMs with any number of independent dimensions.
 
         Does not support sequence lengths.
@@ -85,73 +81,73 @@ class ComplexWatsonMixtureModel:
         only accepts affiliations (masks) as initialization.
 
         Args:
-            Y_normalized: Mix with shape (..., T, D).
+            x: Mix with shape (..., T, D).
             initialization: Shape (..., K, T)
-            iterations: Most of the time 10 iterations are acceptable.
-            max_concentration: For numerical stability reasons.
+            num_classes: Scalar >0
+            iterations: Scalar >0
         """
-
-        *independent, T, D = Y.shape
-        independent = tuple(independent)
-
-        assert D < 20, (D, 'Sure?')
-
-        if isinstance(initialization, self.Parameters):
-            K = initialization.mixture_weights.shape[-1]
-            assert K < 20, (K, 'Sure?')
-        else:
-            K = initialization.shape[-2]
-            assert K < 20, (K, 'Sure?')
-            assert initialization.shape[-1] == T, (initialization.shape, T)
-            assert initialization.shape[:-2] == independent, (initialization.shape, independent)
-
-        Y = _unit_norm(
-            Y,
-            axis=-1,
-            eps=1e-10,
-            eps_style='where'
+        assert xor(initialization is None, num_classes is None), (
+            "Incompatible input combination. "
+            "Exactly one of the two inputs has to be None: "
+            f"{initialization is None} xor {num_classes is None}"
+        )
+        assert np.iscomplexobj(x), x.dtype
+        x = x / np.maximum(
+            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
 
-        Y_normalized_for_pdf = np.ascontiguousarray(Y)
-        Y_normalized_for_psd = np.ascontiguousarray(np.swapaxes(Y, -2, -1))
+        if initialization is None and num_classes is not None:
+            *independent, num_observations, _ = x.shape
+            affiliation_shape = (*independent, num_classes, num_observations)
+            initialization = np.random.uniform(size=affiliation_shape)
+            initialization /= np.einsum("...kn->...n", initialization)[
+                ..., None, :
+            ]
 
-        if isinstance(initialization, self.Parameters):
-            params = initialization
+        if saliency is None:
+            saliency = np.ones_like(initialization[..., 0, :])
+
+        if self.dimension is None:
+            self.dimension = x.shape[-1]
         else:
-            params = self.Parameters(eps=self.eps)
-            params.affiliation = np.copy(initialization)  # Shape (..., K, T)
-
-        cw = ComplexWatson(D, max_concentration=max_concentration)
-
-        if isinstance(initialization, self.Parameters):
-            range_iterations = range(1, 1+iterations)
-        else:
-            range_iterations = range(iterations)
-
-        if self.pbar:
-            import tqdm
-            range_iterations = tqdm.tqdm(range_iterations, 'cWMM Iteration')
-        else:
-            range_iterations = range_iterations
-
-        for i in range_iterations:
-            # E step
-            if i > 0:
-                params.affiliation = params._predict(
-                    Y_normalized_for_pdf,
-                    source_activity_mask=source_activity_mask,
-                )
-
-            # M step
-            params.mixture_weights = np.mean(params.affiliation, axis=-1)
-
-            Phi = get_power_spectral_density_matrix(
-                Y_normalized_for_psd,
-                np.maximum(params.affiliation, params.eps),
-                sensor_dim=-2, source_dim=-2, time_dim=-1
+            assert self.dimension == x.shape[-1], (
+                "You initialized the trainer with a different dimension than "
+                "you are using to fit a model. Use a new trainer, when you "
+                "change the dimension."
             )
 
-            params.complex_watson.mode, eigenvalues = get_pca(Phi)
-            params.complex_watson.concentration = \
-                cw.hypergeometric_ratio_inverse(eigenvalues)
-        return params
+        return self._fit(
+            x,
+            initialization=initialization,
+            iterations=iterations,
+            saliency=saliency,
+        )
+
+    def _fit(self, x, initialization, iterations, saliency,) -> CWMM:
+        affiliation = initialization  # TODO: Do we need np.copy here?
+        for iteration in range(iterations):
+            model = self._m_step(x, affiliation=affiliation, saliency=saliency)
+
+            if iteration < iterations - 1:
+                affiliation = model.predict(x)
+
+        return model
+
+    @cached_property
+    def complex_watson_trainer(self):
+        return ComplexWatsonTrainer(
+            self.dimension,
+            max_concentration=self.max_concentration,
+            spline_markers=self.spline_markers
+        )
+
+    def _m_step(self, x, affiliation, saliency):
+        masked_affiliation = affiliation * saliency[..., None, :]
+        weight = np.einsum("...kn->...k", masked_affiliation)
+        weight /= np.einsum("...n->...", saliency)[..., None]
+
+        complex_watson = self.complex_watson_trainer._fit(
+            x=x,
+            saliency=masked_affiliation,
+        )
+        return CWMM(weight=weight, complex_watson=complex_watson)

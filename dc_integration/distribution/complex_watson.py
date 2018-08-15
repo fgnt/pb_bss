@@ -50,7 +50,7 @@ class ComplexWatson(_ProbabilisticModel):
 
         Returns:
         """
-        return np.exp(ComplexWatson.log_pdf(x))
+        return np.exp(self.log_pdf(x))
 
     def log_pdf(self, x):
         """ Calculates logarithm of pdf function.
@@ -65,7 +65,7 @@ class ComplexWatson(_ProbabilisticModel):
         result = np.einsum("...d,...d", x, self.mode[..., None, :].conj())
         result = result.real ** 2 + result.imag ** 2
         result *= self.concentration[..., None]
-        result -= self.log_norm()
+        result -= self.log_norm()[..., None]
         return result
 
     @staticmethod
@@ -253,14 +253,13 @@ class ComplexWatsonTrainer:
         x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
+
         if saliency is not None:
             assert is_broadcast_compatible(x.shape[:-1], saliency.shape), (
                 x.shape,
                 saliency.shape,
             )
-        return self._fit(x, saliency=saliency)
 
-    def _fit(self, x, saliency) -> ComplexWatson:
         if self.dimension is None:
             self.dimension = x.shape[-1]
         else:
@@ -270,6 +269,9 @@ class ComplexWatsonTrainer:
                 "change the dimension."
             )
 
+        return self._fit(x, saliency=saliency)
+
+    def _fit(self, x, saliency) -> ComplexWatson:
         if saliency is None:
             covariance = np.einsum(
                 "...nd,...nD->...dD", x, x.conj()

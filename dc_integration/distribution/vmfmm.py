@@ -4,10 +4,11 @@ import numpy as np
 from dataclasses import dataclass
 
 from .von_mises_fisher import VonMisesFisher, VonMisesFisherTrainer
+from dc_integration.distribution.utils import _ProbabilisticModel
 
 
 @dataclass
-class VMFMM:
+class VMFMM(_ProbabilisticModel):
     vmf: VonMisesFisher
     weight: np.array  # (..., K)
 
@@ -67,6 +68,10 @@ class VMFMMTrainer:
             "Incompatible input combination. "
             "Exactly one of the two inputs has to be None: "
             f"{initialization is None} xor {num_classes is None}"
+        )
+        assert np.isrealobj(x), x.dtype
+        x = x / np.maximum(
+            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
 
         if initialization is None and num_classes is not None:

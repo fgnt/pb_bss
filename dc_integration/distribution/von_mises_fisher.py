@@ -131,7 +131,7 @@ class VonMisesFisherTrainer:
         # [Banerjee2005vMF] Equation 2.4
         r = np.einsum("...n,...nd->...d", saliency, x)
         norm = np.linalg.norm(r, axis=-1)
-        mean = r / norm[..., None]
+        mean = r / np.maximum(norm, np.finfo(x.dtype).tiny)[..., None]
 
         # [Banerjee2005vMF] Equation 2.5
         r_bar = norm / np.sum(saliency, axis=-1)
