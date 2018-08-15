@@ -184,12 +184,6 @@ class ComplexAngularCentralGaussianTrainer:
         assert is_broadcast_compatible(
             x.shape[:-2], quadratic_form.shape[:-1]
         ), (x.shape, quadratic_form.shape)
-        assert is_broadcast_compatible(
-            x.shape[:-2], quadratic_form.shape[:-1]
-        ), (x.shape, quadratic_form.shape)
-        assert is_broadcast_compatible(
-            x.shape[:-2], quadratic_form.shape[:-1]
-        ), (x.shape, quadratic_form.shape)
 
         D = x.shape[-1]
         *independent, N = quadratic_form.shape

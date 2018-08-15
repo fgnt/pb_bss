@@ -147,7 +147,7 @@ class CWMMTrainer:
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         complex_watson = self.complex_watson_trainer._fit(
-            x=x,
+            x=x[..., None, :, :],
             saliency=masked_affiliation,
         )
         return CWMM(weight=weight, complex_watson=complex_watson)

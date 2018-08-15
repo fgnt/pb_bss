@@ -126,7 +126,7 @@ class VMFMMTrainer:
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         vmf = VonMisesFisherTrainer()._fit(
-            x=x,
+            x=x[..., None, :, :],
             saliency=masked_affiliation,
             min_concentration=min_concentration,
             max_concentration=max_concentration,
