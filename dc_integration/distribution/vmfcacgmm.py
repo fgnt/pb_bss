@@ -1,163 +1,192 @@
+"""von-Mises-Fisher complex-Angular-Centric-Gaussian mixture model
+
+This is a specific mixture model to integrate DC and spatial observations. It
+does and will not support independent dimensions.
+
+This also explains, why concrete variable names (i.e. F, T, embedding) are used.
+"""
+from operator import xor
 from dataclasses import dataclass
-from dataclasses import field
 
 import numpy as np
 
+from dc_integration.distribution import VonMisesFisher
+from dc_integration.distribution import VonMisesFisherTrainer
+from dc_integration.distribution import (
+    ComplexAngularCentralGaussian,
+    ComplexAngularCentralGaussianTrainer,
+)
+from dc_integration.distribution.utils import _ProbabilisticModel
+
 
 @dataclass
-class VonMisesFisherComplexAngularCentralGaussianMixtureModelParameters:
-    von_mises_fisher: VonMisesFisherParameters = field(default_factory=VonMisesFisherParameters)
-    complex_angular_central_gaussian: ComplexAngularCentralGaussianParameters = field(default_factory=ComplexAngularCentralGaussianParameters)
-    von_mises_fisher_score: float = None
-    complex_angular_central_gaussian_score: float = None
-    mixture_weights: np.array = None
-    affiliation: np.array = None
+class VMFCACGMM(_ProbabilisticModel):
+    weight: np.array  # (K,)
+    vmf: VonMisesFisher
+    cacg: ComplexAngularCentralGaussian
+
+    def predict(self, observation, embedding):
+        assert np.iscomplexobj(observation), observation.dtype
+        assert np.isrealobj(embedding), embedding.dtype
+        observation = observation / np.maximum(
+            np.linalg.norm(observation, axis=-1, keepdims=True),
+            np.finfo(observation.dtype).tiny,
+        )
+        embedding = embedding / np.maximum(
+            np.linalg.norm(embedding, axis=-1, keepdims=True),
+            np.finfo(embedding.dtype).tiny
+        )
+        affiliation, quadratic_form = self._predict(observation, embedding)
+        return affiliation
+
+    def _predict(self, observation, embedding):
+        F, T, D = observation.shape
+        _, _, E = embedding.shape
+        num_classes = self.weight.shape[-1]
+
+        observation_ = observation[..., None, :, :]
+        cacg_log_pdf, quadratic_form = self.cacg._log_pdf(observation_)
+
+        embedding_ = np.reshape(embedding, (1, F * T, E))
+        vmf_log_pdf = self.vmf.log_pdf(embedding_)
+        vmf_log_pdf = np.transpose(
+            np.reshape(vmf_log_pdf, (num_classes, F, T)), (1, 0, 2)
+        )
+
+        affiliation = (
+            np.log(self.weight)[..., :, None]
+            + cacg_log_pdf
+            + vmf_log_pdf
+        )
+        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
+        np.exp(affiliation, out=affiliation)
+        denominator = np.maximum(
+            np.einsum("...kn->...n", affiliation)[..., None, :],
+            np.finfo(affiliation.dtype).tiny,
+        )
+        affiliation /= denominator
+        return affiliation, quadratic_form
 
 
-class VonMisesFisherComplexAngularCentralGaussianMixtureModel:
-    """Hybrid model."""
-    unit_norm = staticmethod(_unit_norm)
-
-    def __init__(
-            self, *, spatial_score, embedding_score,
-            eps=1e-10, visual_debug=False
-    ):
-        self.spatial_score = spatial_score
-        self.embedding_score = embedding_score
-        self.eps = eps
-        self.visual_debug = visual_debug
-        self.mu = np.empty((), dtype=np.float)
-        self.kappa_vmf = np.empty((), dtype=np.float)
-        self.covariance = np.empty((), dtype=np.complex)
-        self.precision = np.empty((), dtype=np.complex)
-        self.determinant = np.empty((), dtype=np.float)
-        self.pi = np.empty((), dtype=np.float)
-
+class GCACGMMTrainer:
     def fit(
-            self, Y, embedding, initialization, iterations=100,
-            min_concentration_vmf=0, max_concentration_vmf=500,
-            eigenvalue_floor=1e-10
-    ):
-        """Fit a vMFcACGMM.
+        self,
+        observation,
+        embedding,
+        initialization=None,
+        num_classes=None,
+        iterations=100,
+        saliency=None,
+        min_concentration=1e-10,
+        max_concentration=500,
+        hermitize=True,
+        trace_norm=True,
+        eigenvalue_floor=1e-10,
+        covariance_type="spherical",
+    ) -> VMFCACGMM:
+        """
 
         Args:
-            Y: Mix with shape (F, T, D).
-            embedding: Embedding from Deep Clustering with shape (F*T, E).
-            initialization: Shape (F, K, T)
-            iterations: Most of the time 10 iterations are acceptable.
-            min_concentration_vmf: For numerical stability reasons.
-            max_concentration_vmf: For numerical stability reasons.
+            observation: Shape (F, T, D)
+            embedding: Shape (F, T, E)
+            initialization: Affiliations between 0 and 1. Shape (F, K, T)
+            num_classes: Scalar >0
+            iterations: Scalar >0
+            saliency: Importance weighting for each observation, shape (F, T)
+            hermitize:
+            trace_norm:
+            eigenvalue_floor:
+            covariance_type: Either 'full', 'diagonal', or 'spherical'
 
         Returns:
+
         """
-        F, T, D = Y.shape
-        Y_for_psd = np.copy(np.swapaxes(Y, -2, -1), 'C')
-        Y_for_pdf = np.copy(Y, 'C')
-        embedding = np.copy(np.swapaxes(embedding, -2, -1), 'C')
+        assert xor(initialization is None, num_classes is None), (
+            "Incompatible input combination. "
+            "Exactly one of the two inputs has to be None: "
+            f"{initialization is None} xor {num_classes is None}"
+        )
+        assert np.iscomplexobj(observation), observation.dtype
+        assert np.isrealobj(embedding), embedding.dtype
+        observation = observation / np.maximum(
+            np.linalg.norm(observation, axis=-1, keepdims=True),
+            np.finfo(observation.dtype).tiny,
+        )
 
-        # F, K, T = initialization.shape[-3:]
-        affiliations = np.copy(initialization)
-        quadratic_form = np.ones_like(affiliations)
+        F, T, D = observation.shape
+        _, _, E = embedding.shape
 
-        for i in range(iterations):
-            # E step
-            if i > 0:
-                affiliations, quadratic_form = self._predict(Y_for_pdf,
-                                                             embedding)
+        if initialization is None and num_classes is not None:
+            affiliation_shape = (F, num_classes, T)
+            initialization = np.random.uniform(size=affiliation_shape)
+            initialization /= np.einsum("...kt->...t", initialization)[
+                ..., None, :
+            ]
 
-            # M step
-            self.pi = affiliations.mean(axis=-1)
-            assert self.pi.shape == (F, K), self.pi.shape
+        if saliency is None:
+            saliency = np.ones_like(initialization[..., 0, :])
 
-            mask = affiliations[..., None, :]
-            assert mask.shape == (F, K, 1, T), mask.shape
-            self.covariance = D * np.einsum(
-                '...dt,...et->...de',
-                (mask / quadratic_form[..., None, :]) * Y_for_psd,
-                Y_for_psd.conj()
-            )
-            normalization = np.sum(mask, axis=-1, keepdims=True)
-            self.covariance /= normalization
-            assert self.covariance.shape == (F, K, D, D), self.covariance.shape
-
-            # Deconstructs covariance matrix and constrains eigenvalues
-            eigenvals, eigenvecs = np.linalg.eigh(self.covariance)
-            eigenvals = eigenvals.real
-            eigenvals = np.maximum(
-                eigenvals,
-                np.max(eigenvals, axis=-1, keepdims=True) * eigenvalue_floor
-            )
-            diagonal = np.einsum('de,fkd->fkde', np.eye(D), eigenvals)
-            self.covariance = np.einsum(
-                'fkwx,fkxy,fkzy->fkwz', eigenvecs, diagonal, eigenvecs.conj()
-            )
-            self.determinant = np.prod(eigenvals, axis=-1)
-            inverse_diagonal = np.einsum('de,fkd->fkde', np.eye(D),
-                                         1 / eigenvals)
-            self.precision = np.einsum(
-                'fkwx,fkxy,fkzy->fkwz', eigenvecs, inverse_diagonal,
-                eigenvecs.conj()
+        quadratic_form = np.ones_like(initialization)
+        affiliation = initialization
+        for iteration in range(iterations):
+            model = self._m_step(
+                observation,
+                embedding,
+                quadratic_form,
+                affiliation=affiliation,
+                saliency=saliency,
+                min_concentration=min_concentration,
+                max_concentration=max_concentration,
+                hermitize=hermitize,
+                trace_norm=trace_norm,
+                eigenvalue_floor=eigenvalue_floor,
             )
 
-            if self.visual_debug:
-                with context_manager(figure_size=(24, 3)):
-                    plt.plot(np.log10(
-                        np.max(eigenvals, axis=-1)
-                        / np.min(eigenvals, axis=-1)
-                    ))
-                    plt.xlabel('frequency bin')
-                    plt.ylabel('eigenvalue spread')
-                    plt.show()
+            if iteration < iterations - 1:
+                affiliation, quadratic_form = model._predict(
+                    observation=observation, embedding=embedding
+                )
 
-            self.mu, self.kappa_vmf = VonMisesFisher.fit(
-                embedding.T,
-                np.clip(reshape(affiliations, 'fkt->k,t*f'), self.eps,
-                        1 - self.eps),
-                min_concentration=min_concentration_vmf,
-                max_concentration=max_concentration_vmf
-            )
+        return model
 
-    def _predict(self, Y, embedding):
-        D = Y.shape[-1]
-        K = self.covariance.shape[-3]
-        T = Y.shape[-2]
-        F = Y.shape[-3]
+    def _m_step(
+        self,
+        observation,
+        embedding,
+        quadratic_form,
+        affiliation,
+        saliency,
+        min_concentration,
+        max_concentration,
+        hermitize,
+        trace_norm,
+        eigenvalue_floor,
+    ):
+        F, T, D = observation.shape
+        _, _, E = embedding.shape
+        _, K, _ = affiliation.shape
 
-        quadratic_form = np.abs(
-            np.einsum('...td,...kde,...te->...kt', Y.conj(), self.precision, Y)
-        ) + self.eps
-        assert quadratic_form.shape == (F, K, T), quadratic_form.shape
+        masked_affiliations = affiliation * saliency[..., None, :]
+        weight = np.einsum("...kn->...k", masked_affiliations)
+        weight /= np.einsum("...n->...", saliency)[..., None]
 
-        spatial = np.exp(- D * np.log(quadratic_form))
-
-        emb = np.reshape(
-            VonMisesFisher.pdf(
-                embedding[..., None, :, :],
-                self.mu[..., None, :],
-                self.kappa_vmf[..., None]
-            ),
-            (K, T, F)
-        ).transpose(2, 0, 1)
-
-        affiliations = spatial ** self.spatial_score
-        affiliations *= emb ** self.embedding_score
-        affiliations *= self.pi[..., None]
-        affiliations /= np.sum(affiliations, axis=-2, keepdims=True) + self.eps
-
-        if self.visual_debug:
-            # Normalization only necessary for visualization
-            spatial /= np.sum(spatial, axis=-2, keepdims=True) + self.eps
-            emb /= np.sum(emb, axis=-2, keepdims=True) + self.eps
-            _plot_affiliations(spatial, emb, affiliations)
-
-        return affiliations, power
-
-    def predict(self, Y, embedding):
-        """Predict class affiliation posteriors from given model.
-
-        Args:
-            Y: Mix with shape (..., T, D).
-            embedding: Embedding from Deep Clustering with shape (F*T, E).
-        Returns: Affiliations with shape (..., K, T).
-        """
-        return self._predict(Y, embedding)[0]
+        embedding_ = np.reshape(embedding, (1, F * T, E))
+        masked_affiliations_ = np.reshape(
+            np.transpose(masked_affiliations, (1, 0, 2)),
+            (K, F * T)
+        )  # 'fkt->k,ft'
+        vmf = VonMisesFisherTrainer()._fit(
+            x=embedding_,
+            saliency=masked_affiliations_,
+            min_concentration=min_concentration,
+            max_concentration=max_concentration
+        )
+        cacg = ComplexAngularCentralGaussianTrainer()._fit(
+            x=observation[..., None, :, :],
+            saliency=masked_affiliations,
+            quadratic_form=quadratic_form,
+            hermitize=hermitize,
+            trace_norm=trace_norm,
+            eigenvalue_floor=eigenvalue_floor,
+        )
+        return VMFCACGMM(weight=weight, vmf=vmf, cacg=cacg)
