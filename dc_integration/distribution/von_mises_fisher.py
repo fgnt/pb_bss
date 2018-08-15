@@ -70,14 +70,12 @@ class VonMisesFisher(_ProbabilisticModel):
 
         Returns: Log-probability density with properly broadcasted shape.
         """
-        assert x.ndim == self.mean.ndim
-        assert x.ndim - 1 == self.concentration.ndim
         x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
-        result = np.einsum("...d,...d", x, self.mean)
-        result *= self.concentration
-        result -= self.log_norm()
+        result = np.einsum("...d,...d", x, self.mean[..., None, :])
+        result *= self.concentration[..., None]
+        result -= self.log_norm()[..., None]
         return result
 
     def pdf(self, x):
