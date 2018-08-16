@@ -36,7 +36,7 @@ class CWMM(_ProbabilisticModel):
                 Observations are expected to are unit norm normalized.
         Returns: Affiliations with shape (..., K, T).
         """
-        log_pdf = self.complex_watson.pdf(x[..., None, :, :])
+        log_pdf = self.complex_watson.log_pdf(x[..., None, :, :])
 
         affiliation = np.log(self.weight)[..., :, None] + log_pdf
         affiliation -= np.max(affiliation, axis=-2, keepdims=True)
@@ -92,6 +92,7 @@ class CWMMTrainer:
             f"{initialization is None} xor {num_classes is None}"
         )
         assert np.iscomplexobj(x), x.dtype
+        assert x.shape[-1] > 1
         x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )

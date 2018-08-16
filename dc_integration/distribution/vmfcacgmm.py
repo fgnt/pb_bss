@@ -68,7 +68,7 @@ class VMFCACGMM(_ProbabilisticModel):
         return affiliation, quadratic_form
 
 
-class GCACGMMTrainer:
+class VMFCACGMMTrainer:
     def fit(
         self,
         observation,
@@ -82,7 +82,6 @@ class GCACGMMTrainer:
         hermitize=True,
         trace_norm=True,
         eigenvalue_floor=1e-10,
-        covariance_type="spherical",
     ) -> VMFCACGMM:
         """
 
@@ -108,6 +107,7 @@ class GCACGMMTrainer:
         )
         assert np.iscomplexobj(observation), observation.dtype
         assert np.isrealobj(embedding), embedding.dtype
+        assert observation.shape[-1] > 1
         observation = observation / np.maximum(
             np.linalg.norm(observation, axis=-1, keepdims=True),
             np.finfo(observation.dtype).tiny,

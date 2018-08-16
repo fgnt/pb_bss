@@ -106,6 +106,7 @@ class GCACGMMTrainer:
         )
         assert np.iscomplexobj(observation), observation.dtype
         assert np.isrealobj(embedding), embedding.dtype
+        assert observation.shape[-1] > 1
         observation = observation / np.maximum(
             np.linalg.norm(observation, axis=-1, keepdims=True),
             np.finfo(observation.dtype).tiny,

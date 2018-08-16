@@ -135,6 +135,8 @@ class ComplexAngularCentralGaussianTrainer:
 
         """
         *independent, N, D = x.shape
+        assert np.iscomplexobj(x), x.dtype
+        assert x.shape[-1] > 1
         x = x / np.maximum(
             np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
         )
