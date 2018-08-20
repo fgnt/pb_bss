@@ -17,7 +17,7 @@ from .gaussian import (
     SphericalGaussian,
     GaussianTrainer,
 )
-from .gmm import GMM, GMMTrainer
+from .gmm import GMM, GMMTrainer, BinaryGMM, BinaryGMMTrainer
 from .von_mises_fisher import VonMisesFisher, VonMisesFisherTrainer
 from .complex_circular_symmetric_gaussian import ComplexCircularSymmetricGaussian
 from .complex_angular_central_gaussian import (
@@ -26,6 +26,7 @@ from .complex_angular_central_gaussian import (
 )
 from .complex_watson import ComplexWatson, ComplexWatsonTrainer
 from .vmfmm import VMFMM, VMFMMTrainer
+from .vmfcacgmm import VMFCACGMM, VMFCACGMMTrainer
 from .cacgmm import CACGMM, CACGMMTrainer
 from .gcacgmm import GCACGMM, GCACGMMTrainer
 from .cwmm import CWMM, CWMMTrainer

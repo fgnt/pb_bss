@@ -2,9 +2,11 @@ from operator import xor
 
 import numpy as np
 from dataclasses import dataclass
+from sklearn.cluster import KMeans
 
 from dc_integration.distribution import Gaussian, GaussianTrainer
 from dc_integration.distribution.utils import _ProbabilisticModel
+from dc_integration.utils import labels_to_one_hot
 
 
 @dataclass
@@ -107,3 +109,62 @@ class GMMTrainer:
             x=x, saliency=masked_affiliation, covariance_type=covariance_type
         )
         return GMM(weight=weight, gaussian=gaussian)
+
+
+@dataclass
+class BinaryGMM(_ProbabilisticModel):
+    kmeans: KMeans  # from sklearn
+
+    def predict(self, x):
+        """
+
+        Args:
+            x: Shape (N, D)
+
+        Returns: Affiliation with shape (K, N)
+
+        """
+        N, D = x.shape
+
+        labels = self.kmeans.predict(x)
+        affiliations = labels_to_one_hot(
+            labels, self.kmeans.n_clusters, axis=-2, keepdims=False
+        )
+        assert affiliations.shape == (self.kmeans.n_clusters, N)
+        return affiliations
+
+
+class BinaryGMMTrainer:
+    """
+    This is a specific wrapper of sklearn's kmeans for Deep Clustering
+    embeddings. This explains the variable names and also the fixed shape for
+    the embeddings.
+
+
+
+    Returns:
+    """
+    def fit(
+        self,
+        x,
+        num_classes,
+        saliency=None
+    ):
+        """
+
+        Args:
+            x: Shape (N, D)
+            num_classes: Scalar >0
+            saliency: Importance weighting for each observation, shape (N,)
+                Saliency has to be boolean.
+
+        """
+        N, D = x.shape
+        if saliency is not None:
+            assert saliency.dtype == np.bool, (
+                'Only boolean saliency supported. '
+                f'Current dtype: {saliency.dtype}.'
+            )
+            assert saliency.shape == (N,)
+            x = x[saliency, :]
+        return BinaryGMM(kmeans=KMeans(n_clusters=num_classes).fit(x))

@@ -11,7 +11,7 @@ setuptools.setup(
 
     packages=setuptools.find_packages(),
 
-    install_requires=['dataclasses'],
+    install_requires=['dataclasses', 'matplotlib'],
 
     classifiers=[
         'Programming Language :: Python :: 3.6',
