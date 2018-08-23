@@ -82,6 +82,7 @@ class VMFCACGMMTrainer:
         hermitize=True,
         trace_norm=True,
         eigenvalue_floor=1e-10,
+        affiliation_eps=1e-10
     ) -> VMFCACGMM:
         """
 
@@ -92,10 +93,12 @@ class VMFCACGMMTrainer:
             num_classes: Scalar >0
             iterations: Scalar >0
             saliency: Importance weighting for each observation, shape (F, T)
+            min_concentration:
+            max_concentration:
             hermitize:
             trace_norm:
             eigenvalue_floor:
-            covariance_type: Either 'full', 'diagonal', or 'spherical'
+            affiliation_eps: Used in M-step to clip saliency.
 
         Returns:
 
@@ -133,7 +136,9 @@ class VMFCACGMMTrainer:
                 observation,
                 embedding,
                 quadratic_form,
-                affiliation=affiliation,
+                affiliation=np.clip(
+                    affiliation, affiliation_eps, 1 - affiliation_eps
+                ),
                 saliency=saliency,
                 min_concentration=min_concentration,
                 max_concentration=max_concentration,
