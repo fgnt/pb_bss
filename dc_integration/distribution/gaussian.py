@@ -150,6 +150,10 @@ class GaussianTrainer:
             mean = np.einsum("...n,...nd->...d", saliency, x)
         mean /= denominator[..., None]
 
+        # Try to subtract mean later. Compare:
+        # https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/mixture/gaussian_mixture.py#L143
+        # https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/mixture/gaussian_mixture.py#L200
+        # https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/mixture/gaussian_mixture.py#L226
         difference = x - mean[..., None, :]
 
         if covariance_type == "full":
