@@ -125,10 +125,12 @@ class BinaryGMM(_ProbabilisticModel):
 
         """
         N, D = x.shape
+        assert np.isrealobj(x), x.dtype
 
         labels = self.kmeans.predict(x)
         affiliations = labels_to_one_hot(
-            labels, self.kmeans.n_clusters, axis=-2, keepdims=False
+            labels, self.kmeans.n_clusters, axis=-2, keepdims=False,
+            dtype=x.dtype
         )
         assert affiliations.shape == (self.kmeans.n_clusters, N)
         return affiliations
