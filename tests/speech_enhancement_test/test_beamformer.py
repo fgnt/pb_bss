@@ -59,7 +59,7 @@ class TestBeamformerWrapper(unittest.TestCase):
 
 class TestBeamformerWrapperWithoutIndependent(TestBeamformerWrapper):
     K, F, D = 2, 3, 6
-    shape_psd = (D, D)
+    shape_psd = (1, D, D)
 
 
 class TestBeamformerWrapperWithSpeakers(TestBeamformerWrapper):
