@@ -316,3 +316,35 @@ def labels_to_one_hot(
     zeros = np.moveaxis(zeros, 0, axis)
 
     return zeros
+
+
+def unsqueeze(array, axis):
+    """
+
+    >>> unsqueeze(np.ones((2, 3)), (-3, -1)).shape
+    (2, 1, 3, 1)
+
+    >>> unsqueeze(13, (-2, -1)).shape
+    (1, 1)
+
+    Args:
+        array:
+        axis:
+
+    Returns:
+
+    """
+    array = np.array(array)
+    shape = list(np.shape(array))
+    future_ndim = len(shape) + len(axis)
+
+    try:
+        np.empty((future_ndim,))[list(axis)]
+    except IndexError as e:
+        raise IndexError(np.shape(array), shape, axis) from e
+
+    axis = [a % future_ndim for a in axis]
+    for p in sorted(axis):
+        shape.insert(p, 1)
+
+    return np.reshape(array, shape)

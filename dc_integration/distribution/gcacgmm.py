@@ -21,11 +21,13 @@ from dc_integration.distribution import (
     ComplexAngularCentralGaussianTrainer,
 )
 from dc_integration.distribution.utils import _ProbabilisticModel
+from dc_integration.utils import unsqueeze
 
 
 @dataclass
 class GCACGMM(_ProbabilisticModel):
-    weight: np.array  # (K,)
+    weight: np.array  # Shape (), (K,), (F, K), (T, K)
+    weight_constant_axis: tuple
     gaussian: Any  # Gaussian, DiagonalGaussian, or SphericalGaussian
     cacg: ComplexAngularCentralGaussian
     spatial_weight: float
@@ -65,19 +67,19 @@ class GCACGMM(_ProbabilisticModel):
         """
         F, T, D = observation.shape
         _, _, E = embedding.shape
-        num_classes = self.weight.shape[-1]
 
         observation_ = observation[..., None, :, :]
         cacg_log_pdf, quadratic_form = self.cacg._log_pdf(observation_)
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
         gaussian_log_pdf = self.gaussian.log_pdf(embedding_)
+        num_classes = gaussian_log_pdf.shape[0]
         gaussian_log_pdf = np.transpose(
             np.reshape(gaussian_log_pdf, (num_classes, F, T)), (1, 0, 2)
         )
 
         affiliation = (
-            np.log(self.weight)[..., :, None]
+            unsqueeze(np.log(self.weight), self.weight_constant_axis)
             + self.spatial_weight * cacg_log_pdf
             + self.spectral_weight * gaussian_log_pdf
         )
@@ -105,6 +107,7 @@ class GCACGMMTrainer:
         eigenvalue_floor=1e-10,
         covariance_type="spherical",
         affiliation_eps=1e-10,
+        weight_constant_axis=(-1,),
         spatial_weight=1.,
         spectral_weight=1.
     ):
@@ -122,6 +125,14 @@ class GCACGMMTrainer:
             eigenvalue_floor:
             covariance_type: Either 'full', 'diagonal', or 'spherical'
             affiliation_eps: Used in M-step to clip saliency.
+            weight_constant_axis: Axis, along which weight is constant. The
+                axis indices are based on affiliation shape. Consequently:
+                (-3, -2, -1) == constant = ''
+                (-3, -1) == 'k'
+                (-1) == vanilla == 'fk'
+                (-3) == 'kt'
+            spatial_weight:
+            spectral_weight:
 
         Returns:
 
@@ -167,6 +178,7 @@ class GCACGMMTrainer:
                 trace_norm=trace_norm,
                 eigenvalue_floor=eigenvalue_floor,
                 covariance_type=covariance_type,
+                weight_constant_axis=weight_constant_axis,
                 spatial_weight=spatial_weight,
                 spectral_weight=spectral_weight
             )
@@ -189,6 +201,7 @@ class GCACGMMTrainer:
         trace_norm,
         eigenvalue_floor,
         covariance_type,
+        weight_constant_axis,
         spatial_weight,
         spectral_weight
     ):
@@ -197,8 +210,15 @@ class GCACGMMTrainer:
         _, K, _ = affiliation.shape
 
         masked_affiliation = affiliation * saliency[..., None, :]
-        weight = np.einsum("fkt->fk", masked_affiliation)
-        weight /= np.einsum("ft->f", saliency)[..., None]
+
+        if -2 in weight_constant_axis:
+            weight = 1 / K
+        else:
+            weight = np.sum(
+                masked_affiliation, axis=weight_constant_axis, keepdims=True
+            )
+            weight /= np.sum(weight, axis=-2, keepdims=True)
+            weight = np.squeeze(weight, axis=weight_constant_axis)
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
         masked_affiliation_ = np.reshape(
@@ -222,6 +242,7 @@ class GCACGMMTrainer:
             weight=weight,
             gaussian=gaussian,
             cacg=cacg,
+            weight_constant_axis=weight_constant_axis,
             spatial_weight=spatial_weight,
             spectral_weight=spectral_weight
         )
