@@ -34,6 +34,13 @@ class TestBeamformerWrapper(unittest.TestCase):
                 self.shape_psd), pos_def_hermitian(
                 self.shape_psd))
         tc.assert_equal(output.shape, self.shape_vector)
+        
+    def test_mvdr_souden_dimensions_with_ref_channel(self):
+        output = get_mvdr_vector_souden(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd), ref_channel=1)
+        tc.assert_equal(output.shape, self.shape_vector)
 
     def test_pca_dimensions(self):
         output = get_pca_vector(uniform(self.shape_psd))
@@ -65,6 +72,10 @@ class TestBeamformerWrapperWithoutIndependent(TestBeamformerWrapper):
 class TestBeamformerWrapperWithSpeakers(TestBeamformerWrapper):
     K, F, D = 2, 3, 6
     shape_psd = (K, F, D, D)
+    
+    def test_mvdr_souden_dimensions(self):
+        with tc.assert_raises(ValueError):
+            super().test_mvdr_souden_dimensions()
 
 
 class TestCythonizedGetGEV(unittest.TestCase):
