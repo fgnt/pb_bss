@@ -622,6 +622,10 @@ def get_mvdr_vector_souden(
     Also zero matrices work. The default eps is the smallest non zero value.
 
     Note: the frequency dimension is necessary for the ref_channel estimation.
+    Note: Currently this function does not support independent dimensions with
+          an estimated ref_channel. There is an open point to discuss:
+          Should the independent dimension be considered in the SNR estimate
+          or not?
 
     :param target_psd_matrix: Target PSD matrix
         with shape (..., bins, sensors, sensors)
@@ -658,8 +662,15 @@ def get_mvdr_vector_souden(
     if eps is None:
         eps = np.finfo(lambda_.dtype).tiny
     mat = phi / np.maximum(lambda_.real, eps)
-
+    
     if ref_channel is None:
+        if phi.ndim != 3:
+            raise ValueError(
+                'Estimating the ref_channel expects currently that the input '
+                'has 3 ndims (frequency x sensors x sensors). '
+                'Considering an independent dim in the SNR estimate is not '
+                'unique.'
+            )
         SNR = np.einsum(
             '...FdR,...FdD,...FDR->...R', mat.conj(), target_psd_matrix, mat
         ) / np.maximum(np.einsum(
@@ -670,7 +681,8 @@ def get_mvdr_vector_souden(
         assert np.all(np.isfinite(SNR)), SNR
         ref_channel = np.argmax(SNR.real)
 
-    beamformer = mat[:, :, ref_channel]
+    assert np.isscalar(ref_channel), ref_channel
+    beamformer = mat[..., ref_channel]
 
     if return_ref_channel:
         return beamformer, ref_channel
