@@ -28,8 +28,20 @@ class GCACGMM(_ProbabilisticModel):
     weight: np.array  # (K,)
     gaussian: Any  # Gaussian, DiagonalGaussian, or SphericalGaussian
     cacg: ComplexAngularCentralGaussian
+    spatial_weight: float
+    spectral_weight: float
 
     def predict(self, observation, embedding):
+        """
+
+        Args:
+            observation: Shape (F, T, D)
+            embedding: Shape (F, T, E)
+
+        Returns:
+            affiliation: Shape (F, K, T)
+
+        """
         assert np.iscomplexobj(observation), observation.dtype
         assert np.isrealobj(embedding), embedding.dtype
         observation = observation / np.maximum(
@@ -40,6 +52,17 @@ class GCACGMM(_ProbabilisticModel):
         return affiliation
 
     def _predict(self, observation, embedding):
+        """
+
+        Args:
+            observation: Shape (F, T, D)
+            embedding: Shape (F, T, E)
+
+        Returns:
+            affiliation: Shape (F, K, T)
+            quadratic_form: Shape (F, K, T)
+
+        """
         F, T, D = observation.shape
         _, _, E = embedding.shape
         num_classes = self.weight.shape[-1]
@@ -55,13 +78,13 @@ class GCACGMM(_ProbabilisticModel):
 
         affiliation = (
             np.log(self.weight)[..., :, None]
-            + cacg_log_pdf
-            + gaussian_log_pdf
+            + self.spatial_weight * cacg_log_pdf
+            + self.spectral_weight * gaussian_log_pdf
         )
         affiliation -= np.max(affiliation, axis=-2, keepdims=True)
         np.exp(affiliation, out=affiliation)
         denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
+            np.einsum("...kt->...t", affiliation)[..., None, :],
             np.finfo(affiliation.dtype).tiny,
         )
         affiliation /= denominator
@@ -81,7 +104,9 @@ class GCACGMMTrainer:
         trace_norm=True,
         eigenvalue_floor=1e-10,
         covariance_type="spherical",
-        affiliation_eps=1e-10
+        affiliation_eps=1e-10,
+        spatial_weight=1.,
+        spectral_weight=1.
     ):
         """
 
@@ -142,6 +167,8 @@ class GCACGMMTrainer:
                 trace_norm=trace_norm,
                 eigenvalue_floor=eigenvalue_floor,
                 covariance_type=covariance_type,
+                spatial_weight=spatial_weight,
+                spectral_weight=spectral_weight
             )
 
             if iteration < iterations - 1:
@@ -162,14 +189,16 @@ class GCACGMMTrainer:
         trace_norm,
         eigenvalue_floor,
         covariance_type,
+        spatial_weight,
+        spectral_weight
     ):
         F, T, D = observation.shape
         _, _, E = embedding.shape
         _, K, _ = affiliation.shape
 
         masked_affiliation = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliation)
-        weight /= np.einsum("...n->...", saliency)[..., None]
+        weight = np.einsum("fkt->fk", masked_affiliation)
+        weight /= np.einsum("ft->f", saliency)[..., None]
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
         masked_affiliation_ = np.reshape(
@@ -189,4 +218,10 @@ class GCACGMMTrainer:
             trace_norm=trace_norm,
             eigenvalue_floor=eigenvalue_floor,
         )
-        return GCACGMM(weight=weight, gaussian=gaussian, cacg=cacg)
+        return GCACGMM(
+            weight=weight,
+            gaussian=gaussian,
+            cacg=cacg,
+            spatial_weight=spatial_weight,
+            spectral_weight=spectral_weight
+        )
