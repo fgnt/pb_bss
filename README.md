@@ -1,4 +1,4 @@
-# Collection of Blind Source Separation (BSS) methods for far-field speech applications
+# Blind Source Separation (BSS) algorithms
 
 This repository covers different EM algorithm to separate different speech sources in multi-channel recordings.
 
