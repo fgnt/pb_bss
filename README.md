@@ -1,6 +1,6 @@
 # Blind Source Separation (BSS) algorithms
 
-This repository covers different EM algorithm to separate different speech sources in multi-channel recordings.
+This repository covers EM algorithms to separate speech sources in multi-channel recordings.
 
 In particular, the repository contains methods to integrate Deep Clustering (a neural network-based source separation algorithm) with a probabilistic spatial mixture model as proposed in the Interspeech paper "Tight integration of spatial and spectral features for BSS with Deep Clustering embeddings" presented at Interspeech 2017 in Stockholm.
 
