@@ -1,14 +1,14 @@
 import numpy as np
 import collections
 import itertools
-from nt.speech_enhancement.noise import get_energy, get_snr
+from nt.speech_enhancement.noise import get_variance_for_zero_mean_signal
 from scipy.special import perm
 
 
-__all__ = ['get_snr', 'input_sxr', 'output_sxr']
+__all__ = ['input_sxr', 'output_sxr']
 
 
-_SXR = collections.namedtuple('SXR', ['sdr', 'sir', 'snr'])
+ResultTuple = collections.namedtuple('SXR', ['sdr', 'sir', 'snr'])
 
 
 def _sxr(S, X):
@@ -19,7 +19,7 @@ def _sxr(S, X):
     :return: SXR
     """
     with np.errstate(divide='ignore'):
-        result = 10 * np.log10(S/X)
+        result = 10 * np.log10(S / X)
     return result
 
 
@@ -46,8 +46,7 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
 
     :return: SDR, SIR, SNR or {'sdr': SDR, 'sir': SIR, 'snr': SNR}
     """
-    # TODO: This is not quite the correct way when utterances have different
-    # len
+    # TODO: Not really the correct way when utterances have different length.
 
     K, D, T = images.shape  # Number of speakers, sensors, samples
 
@@ -55,9 +54,9 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
     assert K < 10, images.shape
     assert D < 30, images.shape
 
-    S = get_energy(images, axis=-1)  # Signal power
+    S = get_variance_for_zero_mean_signal(images, axis=-1)  # Signal power
     I = np.zeros((K, D))  # Interference power
-    N = get_energy(noise, axis=(-2, -1))  # Noise power
+    N = get_variance_for_zero_mean_signal(noise, axis=-1)  # Noise power
 
     for d in range(D):
         for k in range(K):
@@ -66,10 +65,8 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
                 axis=0
             )
 
-    S = np.mean(S, axis=-1)
-    I = np.mean(I, axis=-1)
-
-    N = np.mean(N)
+    # Average out the channel axis
+    S, I, N = [np.mean(power, axis=-1) for power in (S, I, N)]
 
     SDR = _sxr(S, I + N)
     SIR = _sxr(S, I)
@@ -90,7 +87,7 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
         else:
             raise TypeError(return_dict)
     else:
-        return _SXR(SDR, SIR, SNR)
+        return ResultTuple(SDR, SIR, SNR)
 
 
 def output_sxr(image_contribution, noise_contribution, average_sources=True,
@@ -135,14 +132,16 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
     K_source, K_target, samples = image_contribution.shape
 
     # Chech that image_contribution.shape and noise_contribution.shape match
-    assert noise_contribution.shape == (K_target, samples), (image_contribution.shape, noise_contribution.shape)
+    assert noise_contribution.shape == (K_target, samples), (
+        image_contribution.shape, noise_contribution.shape
+    )
 
     # Assume, that the maximum number of speakers is smaller than 10.
     assert K_source < 10, (image_contribution.shape, noise_contribution.shape)
     assert K_target < 10, (image_contribution.shape, noise_contribution.shape)
 
-    S = get_energy(image_contribution, axis=-1)
-    N = get_energy(noise_contribution, axis=-1)
+    S = get_variance_for_zero_mean_signal(image_contribution, axis=-1)
+    N = get_variance_for_zero_mean_signal(noise_contribution, axis=-1)
 
     # We actually do not need to go through all permutations but through
     # all possible selections (picks) of the output sources to find that pick
@@ -150,7 +149,9 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
     all_target_selections = np.array(
         list(itertools.permutations(range(K_target), r=K_source))
     )
-    assert all_target_selections.shape == (perm(K_target, K_source), K_source), (
+    assert all_target_selections.shape == (
+        perm(K_target, K_source), K_source
+    ), (
         all_target_selections.shape, perm(K_target, K_source), K_source
     )
 
@@ -167,6 +168,7 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
 
     SS = np.zeros(K_source)
     II = np.zeros(K_source)
+
     # CB: Use advanced indexing to remove loop?
     for k_source in range(K_source):
         SS[k_source] = S[k_source, selection[k_source]]
@@ -194,4 +196,4 @@ def output_sxr(image_contribution, noise_contribution, average_sources=True,
         else:
             raise TypeError(return_dict)
     else:
-        return _SXR(SDR, SIR, SNR)
+        return ResultTuple(SDR, SIR, SNR)
