@@ -1,11 +1,14 @@
 import numpy as np
 import collections
 import itertools
-from nt.speech_enhancement.noise import get_variance_for_zero_mean_signal
+from nt.speech_enhancement.noise import (
+    get_variance_for_zero_mean_signal,
+    get_snr,
+)
 from scipy.special import perm
 
 
-__all__ = ['input_sxr', 'output_sxr']
+__all__ = ['get_snr', 'input_sxr', 'output_sxr']
 
 
 ResultTuple = collections.namedtuple('SXR', ['sdr', 'sir', 'snr'])
