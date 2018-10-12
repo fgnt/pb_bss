@@ -172,7 +172,7 @@ class _Parameter:
         )
 
 
-def _unit_norm(signal, *, axis=-1, eps=1e-4, eps_style='plus'):
+def _unit_norm(signal, *, axis=-1, eps=1e-4, eps_style='plus', ord=None):
     """Unit normalization.
 
     Args:
@@ -196,7 +196,7 @@ def _unit_norm(signal, *, axis=-1, eps=1e-4, eps_style='plus'):
            [0.        , 0.        ]])
 
     """
-    norm = np.linalg.norm(signal, axis=axis, keepdims=True)
+    norm = np.linalg.norm(signal, ord=ord, axis=axis, keepdims=True)
     if eps_style == 'plus':
         norm = norm + eps
     elif eps_style == 'max':

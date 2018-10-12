@@ -147,7 +147,7 @@ class ComplexAngularCentralGaussianMixtureModel:
             use_pinv=False,
             visual_debug=False,
             pbar=False,
-            stable=False,
+            stable=True,
     ):
         self.eps = eps
         self.visual_debug = visual_debug  # ToDo
@@ -161,6 +161,7 @@ class ComplexAngularCentralGaussianMixtureModel:
             initialization,
             source_activity_mask=None,
             iterations=100,
+            saliency=None,
             hermitize=True,
             trace_norm=True,
             eigenvalue_floor=1e-10,
@@ -191,6 +192,9 @@ class ComplexAngularCentralGaussianMixtureModel:
         >> Model = ComplexAngularCentralGaussianMixtureModel()
         >> model = Model.fit(Y, init_affiliation, iterations=10)
         >> model = Model.fit(Y, model, iterations=10)  # ToDo
+
+        >> Trainer.custom_fit
+
         """
         *independent, T, D = Y.shape
         independent = tuple(independent)
@@ -205,6 +209,12 @@ class ComplexAngularCentralGaussianMixtureModel:
             assert K < 20, (K, 'Sure?')
             assert initialization.shape[-1] == T, (initialization.shape, T)
             assert initialization.shape[:-2] == independent, (initialization.shape, independent)
+
+        if isinstance(saliency, str):
+            if saliency == 'norm':
+                saliency = np.linalg.norm(Y)
+            else:
+                raise NotImplementedError(saliency)
 
         Y = _unit_norm(
             Y,
@@ -263,13 +273,25 @@ class ComplexAngularCentralGaussianMixtureModel:
                 # avg_change = np.mean(np.abs(params.affiliation - old_affiliation))
                 # print('Converged', avg_change)
 
-            params.mixture_weight = np.mean(params.affiliation, axis=-1)
+            affiliation = params.affiliation
+
+            if saliency is None:
+                params.mixture_weight = np.mean(params.affiliation, axis=-1)
+            else:
+                affiliation = affiliation * saliency
+                params.mixture_weight = _unit_norm(
+                    np.sum(affiliation, axis=-1),
+                    ord=1,
+                    axis=-1,
+                    eps=1e-10,
+                    eps_style='where',
+                )
             assert params.mixture_weight.shape == (*independent, K), (params.mixture_weight.shape, (*independent, K), params.affiliation.shape)
 
             del params.cacg
             params.cacg = cacg_model._fit(
                 Y=Y_for_psd,
-                saliency=params.affiliation,
+                saliency=affiliation,
                 quadratic_form=quadratic_form,
                 hermitize=hermitize,
                 trace_norm=trace_norm,
