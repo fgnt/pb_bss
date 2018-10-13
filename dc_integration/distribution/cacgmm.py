@@ -2,7 +2,10 @@ from operator import xor
 
 import numpy as np
 from dataclasses import dataclass
-from dc_integration.distribution.utils import _ProbabilisticModel
+from dc_integration.distribution.utils import (
+    _unit_norm,
+    _ProbabilisticModel,
+)
 
 from dc_integration.distribution import (
     ComplexAngularCentralGaussian,
@@ -140,8 +143,13 @@ class CACGMMTrainer:
         eigenvalue_floor,
     ):
         masked_affiliation = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliation)
-        weight /= np.einsum("...n->...", saliency)[..., None]
+        weight = _unit_norm(
+            np.sum(masked_affiliation, axis=-1),
+            ord=1,
+            axis=-1,
+            eps=1e-10,
+            eps_style='where',
+        )
 
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
             x=x[..., None, :, :],
