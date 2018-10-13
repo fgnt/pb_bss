@@ -6,9 +6,10 @@ In particular, the repository contains methods to integrate Deep Clustering (a n
 
 ```
 @InProceedings{Drude2017DeepClusteringIntegration,
-  Title                    = {Tight integration of spatial and spectral features for BSS with Deep Clustering embeddings},
+  Title                    = {{Tight integration of spatial and spectral features for BSS with Deep Clustering embeddings}},
   Author                   = {Drude, Lukas and and Haeb-Umbach, Reinhold},
   Booktitle                = {INTERSPEECH 2017, Stockholm, Sweden},
   Year                     = {2017},
   Month                    = {Aug}
+}
 ```
