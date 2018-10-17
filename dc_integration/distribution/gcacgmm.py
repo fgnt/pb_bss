@@ -106,6 +106,7 @@ class GCACGMMTrainer:
         trace_norm=True,
         eigenvalue_floor=1e-10,
         covariance_type="spherical",
+        fixed_covariance=None,
         affiliation_eps=1e-10,
         weight_constant_axis=(-1,),
         spatial_weight=1.,
@@ -124,6 +125,8 @@ class GCACGMMTrainer:
             trace_norm:
             eigenvalue_floor:
             covariance_type: Either 'full', 'diagonal', or 'spherical'
+            fixed_covariance: Learned, if None. If fixed, you need to provide
+                a covariance matrix with the correct shape.
             affiliation_eps: Used in M-step to clip saliency.
             weight_constant_axis: Axis, along which weight is constant. The
                 axis indices are based on affiliation shape. Consequently:
@@ -178,6 +181,7 @@ class GCACGMMTrainer:
                 trace_norm=trace_norm,
                 eigenvalue_floor=eigenvalue_floor,
                 covariance_type=covariance_type,
+                fixed_covariance=fixed_covariance,
                 weight_constant_axis=weight_constant_axis,
                 spatial_weight=spatial_weight,
                 spectral_weight=spectral_weight
@@ -201,6 +205,7 @@ class GCACGMMTrainer:
         trace_norm,
         eigenvalue_floor,
         covariance_type,
+        fixed_covariance,
         weight_constant_axis,
         spatial_weight,
         spectral_weight
@@ -230,6 +235,16 @@ class GCACGMMTrainer:
             saliency=masked_affiliation_,
             covariance_type=covariance_type,
         )
+
+        if fixed_covariance is not None:
+            assert fixed_covariance.shape == gaussian.covariance.shape, (
+                f'{fixed_covariance.shape} != {gaussian.covariance.shape}'
+            )
+            gaussian = gaussian.__class__(
+                mean=gaussian.mean,
+                covariance=fixed_covariance
+            )
+
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
             x=observation[..., None, :, :],
             saliency=masked_affiliation,
