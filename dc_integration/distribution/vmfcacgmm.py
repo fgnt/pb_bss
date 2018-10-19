@@ -17,13 +17,17 @@ from dc_integration.distribution import (
     ComplexAngularCentralGaussianTrainer,
 )
 from dc_integration.distribution.utils import _ProbabilisticModel
+from dc_integration.utils import unsqueeze
 
 
 @dataclass
 class VMFCACGMM(_ProbabilisticModel):
-    weight: np.array  # (K,)
+    weight: np.array  # Shape (), (K,), (F, K), (T, K)
+    weight_constant_axis: tuple
     vmf: VonMisesFisher
     cacg: ComplexAngularCentralGaussian
+    spatial_weight: float
+    spectral_weight: float
 
     def predict(self, observation, embedding):
         assert np.iscomplexobj(observation), observation.dtype
@@ -42,26 +46,26 @@ class VMFCACGMM(_ProbabilisticModel):
     def _predict(self, observation, embedding):
         F, T, D = observation.shape
         _, _, E = embedding.shape
-        num_classes = self.weight.shape[-1]
 
         observation_ = observation[..., None, :, :]
         cacg_log_pdf, quadratic_form = self.cacg._log_pdf(observation_)
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
         vmf_log_pdf = self.vmf.log_pdf(embedding_)
+        num_classes = vmf_log_pdf.shape[0]
         vmf_log_pdf = np.transpose(
             np.reshape(vmf_log_pdf, (num_classes, F, T)), (1, 0, 2)
         )
 
         affiliation = (
-            np.log(self.weight)[..., :, None]
-            + cacg_log_pdf
-            + vmf_log_pdf
+            unsqueeze(np.log(self.weight), self.weight_constant_axis)
+            + self.spatial_weight * cacg_log_pdf
+            + self.spectral_weight * vmf_log_pdf
         )
         affiliation -= np.max(affiliation, axis=-2, keepdims=True)
         np.exp(affiliation, out=affiliation)
         denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
+            np.einsum("...kt->...t", affiliation)[..., None, :],
             np.finfo(affiliation.dtype).tiny,
         )
         affiliation /= denominator
@@ -82,7 +86,10 @@ class VMFCACGMMTrainer:
         hermitize=True,
         trace_norm=True,
         eigenvalue_floor=1e-10,
-        affiliation_eps=1e-10
+        affiliation_eps=1e-10,
+        weight_constant_axis=(-1,),
+        spatial_weight=1.,
+        spectral_weight=1.
     ) -> VMFCACGMM:
         """
 
@@ -99,6 +106,14 @@ class VMFCACGMMTrainer:
             trace_norm:
             eigenvalue_floor:
             affiliation_eps: Used in M-step to clip saliency.
+            weight_constant_axis: Axis, along which weight is constant. The
+                axis indices are based on affiliation shape. Consequently:
+                (-3, -2, -1) == constant = ''
+                (-3, -1) == 'k'
+                (-1) == vanilla == 'fk'
+                (-3) == 'kt'
+            spatial_weight:
+            spectral_weight:
 
         Returns:
 
@@ -145,6 +160,9 @@ class VMFCACGMMTrainer:
                 hermitize=hermitize,
                 trace_norm=trace_norm,
                 eigenvalue_floor=eigenvalue_floor,
+                weight_constant_axis=weight_constant_axis,
+                spatial_weight=spatial_weight,
+                spectral_weight=spectral_weight
             )
 
             if iteration < iterations - 1:
@@ -166,14 +184,24 @@ class VMFCACGMMTrainer:
         hermitize,
         trace_norm,
         eigenvalue_floor,
+        weight_constant_axis,
+        spatial_weight,
+        spectral_weight
     ):
         F, T, D = observation.shape
         _, _, E = embedding.shape
         _, K, _ = affiliation.shape
 
         masked_affiliation = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliation)
-        weight /= np.einsum("...n->...", saliency)[..., None]
+
+        if -2 in weight_constant_axis:
+            weight = 1 / K
+        else:
+            weight = np.sum(
+                masked_affiliation, axis=weight_constant_axis, keepdims=True
+            )
+            weight /= np.sum(weight, axis=-2, keepdims=True)
+            weight = np.squeeze(weight, axis=weight_constant_axis)
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
         masked_affiliation_ = np.reshape(
@@ -194,4 +222,11 @@ class VMFCACGMMTrainer:
             trace_norm=trace_norm,
             eigenvalue_floor=eigenvalue_floor,
         )
-        return VMFCACGMM(weight=weight, vmf=vmf, cacg=cacg)
+        return VMFCACGMM(
+            weight=weight,
+            vmf=vmf,
+            cacg=cacg,
+            weight_constant_axis=weight_constant_axis,
+            spatial_weight=spatial_weight,
+            spectral_weight=spectral_weight
+        )
