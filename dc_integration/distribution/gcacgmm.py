@@ -261,3 +261,121 @@ class GCACGMMTrainer:
             spatial_weight=spatial_weight,
             spectral_weight=spectral_weight
         )
+
+
+class PartiallySharedGCACGMMTrainer(GCACGMMTrainer):
+    def _m_step(
+        self,
+        observation,
+        embedding,
+        quadratic_form,
+        affiliation,
+        saliency,
+        hermitize,
+        trace_norm,
+        eigenvalue_floor,
+        covariance_type,
+        fixed_covariance,
+        weight_constant_axis,
+        spatial_weight,
+        spectral_weight
+    ):
+        F, T, D = observation.shape
+        _, _, E = embedding.shape
+        _, K, _ = affiliation.shape
+
+        assert K == 4, f'This fancy sharing is just tested for K == 4 != {K}.'
+
+        masked_affiliation = affiliation * saliency[..., None, :]
+
+        if -2 in weight_constant_axis:
+            weight = 1 / K
+        else:
+            weight = np.sum(
+                masked_affiliation, axis=weight_constant_axis, keepdims=True
+            )
+            weight /= np.sum(weight, axis=-2, keepdims=True)
+            weight = np.squeeze(weight, axis=weight_constant_axis)
+
+        embedding_ = np.reshape(embedding, (1, F * T, E))
+
+        masked_affiliation_for_gaussian = np.stack((
+            masked_affiliation[:, 0, :] + masked_affiliation[:, 1, :],
+            masked_affiliation[:, 2, :] + masked_affiliation[:, 3, :]
+        ), axis=1)
+        masked_affiliation_for_gaussian = np.reshape(
+            np.transpose(masked_affiliation_for_gaussian, (1, 0, 2)),
+            (2, F * T)
+        )  # 'fkt->k,ft'
+        gaussian = GaussianTrainer()._fit(
+            x=embedding_,
+            saliency=masked_affiliation_for_gaussian,
+            covariance_type=covariance_type,
+        )
+
+        if fixed_covariance is not None:
+            assert fixed_covariance.shape == gaussian.covariance.shape, (
+                f'{fixed_covariance.shape} != {gaussian.covariance.shape}'
+            )
+            gaussian = gaussian.__class__(
+                mean=gaussian.mean,
+                covariance=fixed_covariance
+            )
+
+        # There are 4 classes in quadratic_form. Entry 1 and 2 are equal.
+        assert np.mean(
+            np.abs(quadratic_form[:, 1, :] - quadratic_form[:, 2, :])
+        ) < 1e-4
+        quadratic_form = quadratic_form[:, [0, 1, 3], :]
+
+        masked_affiliation_for_cacg = np.stack((
+            masked_affiliation[:, 0, :],
+            masked_affiliation[:, 1, :] + masked_affiliation[:, 2, :],
+            masked_affiliation[:, 3, :]
+        ), axis=1)
+        cacg = ComplexAngularCentralGaussianTrainer()._fit(
+            x=observation[..., None, :, :],
+            saliency=masked_affiliation_for_cacg,
+            quadratic_form=quadratic_form,
+            hermitize=hermitize,
+            trace_norm=trace_norm,
+            eigenvalue_floor=eigenvalue_floor,
+        )
+
+        # Expand again
+        gaussian = gaussian.__class__(
+            mean=np.stack((
+                gaussian.mean[0, :],
+                gaussian.mean[0, :],
+                gaussian.mean[1, :],
+                gaussian.mean[1, :]
+            )),
+            covariance=np.stack((
+                gaussian.covariance[0],
+                gaussian.covariance[0],
+                gaussian.covariance[1],
+                gaussian.covariance[1],
+            ))
+        )
+        # print('gaussian.mean.shape', gaussian.mean.shape)
+        # print('gaussian.covariance.shape', gaussian.covariance.shape)
+
+        # Expand again
+        cacg = ComplexAngularCentralGaussian(
+            covariance=np.stack((
+                cacg.covariance[:, 0, :, :],
+                cacg.covariance[:, 1, :, :],
+                cacg.covariance[:, 1, :, :],
+                cacg.covariance[:, 2, :, :]
+            ), axis=1)
+        )
+        # print('cacg.covariance.shape', cacg.covariance.shape)
+
+        return GCACGMM(
+            weight=weight,
+            gaussian=gaussian,
+            cacg=cacg,
+            weight_constant_axis=weight_constant_axis,
+            spatial_weight=spatial_weight,
+            spectral_weight=spectral_weight
+        )
