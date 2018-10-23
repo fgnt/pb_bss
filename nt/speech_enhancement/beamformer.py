@@ -718,6 +718,10 @@ def get_lcmv_vector_souden(
     Returns:
 
     """
+    raise NotImplementedError(
+        'This is not yet thoroughly tested. It also misses the response vector,'
+        'thus it is unclear, how to select, which speaker to attend to.'
+    )
     phi_in = stable_solve(noise_psd_matrix, interference_psd_matrix)
     phi_xn = stable_solve(noise_psd_matrix, target_psd_matrix)
 
