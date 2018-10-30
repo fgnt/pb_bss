@@ -224,7 +224,8 @@ def get_mvdr_vector_merl(target_psd_matrix, noise_psd_matrix):
 
 
 def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
-                   use_eig=False):
+                   use_eig=False, condition_noise_psd=False,
+                   noise_conditioning_gamma=None):
     """
     Returns the GEV beamforming vector.
 
@@ -234,6 +235,10 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
         with shape (..., sensors, sensors)
     :return: Set of beamforming vectors with shape (..., sensors)
     """
+
+    if condition_noise_psd:
+        noise_psd_matrix = condition_covariance(noise_psd_matrix,
+                                                noise_conditioning_gamma)
     if c_gev_available and not use_eig:
         try:
             if target_psd_matrix.ndim == 3:
@@ -442,6 +447,17 @@ def phase_correction(vector):
         ), axis=0
     )
     return vector
+
+
+def condition_covariance(x, gamma=None):
+    """see https://stt.msu.edu/users/mauryaas/Ashwini_JPEN.pdf (2.3)"""
+    if gamma is None:
+        gamma = np.finfo(x.dtype).tiny
+    scale = gamma * np.trace(x, axis1=-2, axis2=-1) / x.shape[-1]
+    scaled_eye = np.eye(x.shape[-1]).reshape(
+        [*np.ones([x.ndim-2], dtype=np.int64), *x.shape[-2:]]
+    ) * scale[..., None, None]
+    return (x + scaled_eye) / (1 + gamma)
 
 
 def apply_beamforming_vector(vector, mix):
