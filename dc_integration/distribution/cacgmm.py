@@ -165,6 +165,7 @@ class ComplexAngularCentralGaussianMixtureModel:
             hermitize=True,
             trace_norm=True,
             eigenvalue_floor=1e-10,
+            dirichlet_prior_concentration=1,
     ) -> ComplexAngularCentralGaussianMixtureModelParameters:
         """Fit a cACGMM.
 
@@ -276,8 +277,24 @@ class ComplexAngularCentralGaussianMixtureModel:
             affiliation = params.affiliation
 
             if saliency is None:
-                params.mixture_weight = np.mean(params.affiliation, axis=-1)
+                if dirichlet_prior_concentration == 1:
+                    params.mixture_weight = np.mean(params.affiliation, axis=-1)
+                elif np.isposinf(dirichlet_prior_concentration):
+                    K, T = params.affiliation.shape[-2:]
+                    params.mixture_weight = np.broadcast_to(1 / K, params.affiliation.shape[:-1])
+                else:
+                    assert dirichlet_prior_concentration >= 1, dirichlet_prior_concentration
+                    # params.affiliation: ..., K, T
+                    tmp = np.sum(params.affiliation, axis=-1)
+                    K, T = params.affiliation.shape[-2:]
+
+                    params.mixture_weight = (
+                        tmp + (dirichlet_prior_concentration - 1)
+                    ) / (
+                        T + (dirichlet_prior_concentration - 1) * K
+                    )
             else:
+                assert dirichlet_prior_concentration is None, dirichlet_prior_concentration
                 affiliation = affiliation * saliency
                 params.mixture_weight = _unit_norm(
                     np.sum(affiliation, axis=-1),
