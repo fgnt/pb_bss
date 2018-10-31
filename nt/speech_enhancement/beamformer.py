@@ -21,6 +21,7 @@ from scipy.linalg import eig
 from scipy.linalg import eigh
 from nt.math.correlation import covariance  # as shortcut!
 from nt.math.solve import stable_solve
+from nt.utils.numpy_utils import morph
 
 
 try:
@@ -224,8 +225,7 @@ def get_mvdr_vector_merl(target_psd_matrix, noise_psd_matrix):
 
 
 def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
-                   use_eig=False, condition_noise_psd=False,
-                   noise_conditioning_gamma=None):
+                   use_eig=False):
     """
     Returns the GEV beamforming vector.
 
@@ -236,9 +236,6 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
     :return: Set of beamforming vectors with shape (..., sensors)
     """
 
-    if condition_noise_psd:
-        noise_psd_matrix = condition_covariance(noise_psd_matrix,
-                                                noise_conditioning_gamma)
     if c_gev_available and not use_eig:
         try:
             if target_psd_matrix.ndim == 3:
@@ -449,10 +446,8 @@ def phase_correction(vector):
     return vector
 
 
-def condition_covariance(x, gamma=None):
+def condition_covariance(x, gamma):
     """see https://stt.msu.edu/users/mauryaas/Ashwini_JPEN.pdf (2.3)"""
-    if gamma is None:
-        gamma = np.finfo(x.dtype).tiny
     scale = gamma * np.trace(x, axis1=-2, axis2=-1) / x.shape[-1]
     scaled_eye = np.eye(x.shape[-1]).reshape(
         [*np.ones([x.ndim-2], dtype=np.int64), *x.shape[-2:]]
@@ -774,3 +769,87 @@ def get_lcmv_vector_souden(
         return beamformer, ref_channel
     else:
         return beamformer
+
+
+
+def block_online_beamforming(
+        observation,
+        target_mask,
+        noise_mask,
+        target_psd_init=None,
+        noise_psd_init=None,
+        get_bf_fn=get_mvdr_vector_souden,
+        target_decay_factor=0.95,
+        noise_decay_factor=0.95,
+        block_size=5,
+        eps=1e-10
+):
+
+    '''
+    :param observation: Observed signal
+        with shape (..., bins, sensors, frames)
+    :param target_mask: Target mask
+        with shape (..., bins, frames)
+    :param noise_mask: Noise mask
+        with shape(..., bins, frames)
+    :param target_psd_init: Target PSD matrix initalization
+        with shape (..., bins, sensors, sensors)
+    :param noise_psd_init: Noise PSD matrix initialization
+        with shape (..., bins, sensors, sensors)
+    :param get_bf_fn: function for bf vector estimation
+    :param decay_factor:
+    :param block_size:
+    :return:
+    '''
+    # split the inputs to segments of block_size
+    shape = observation.shape
+    ndims = observation.ndim
+    assert len(shape) >= 3
+    padding = (observation.ndim - 1) * [[0, 0]] + [
+        [0, block_size - shape[-1] % block_size]]
+    observation = np.pad(observation, padding, 'constant')
+    observation = np.reshape(observation, [*shape[:-1], block_size, -1])
+    observation = morph('...bt->t...b', observation)
+    target_mask = np.pad(target_mask, padding[1:], 'constant')
+    target_mask = np.reshape(target_mask, (*shape[:-2], block_size, -1))
+    target_mask = morph('...bt->t...b', target_mask)
+    noise_mask = np.pad(noise_mask, padding[1:], 'constant')
+    noise_mask = np.reshape(noise_mask, (*shape[:-2], block_size, -1))
+    noise_mask = morph('...bt->t...b', noise_mask)
+    target_psd = covariance(observation, target_mask, normalize=False,
+                            force_hermitian=True)
+    noise_psd = covariance(observation, noise_mask, normalize=True)
+    if target_psd_init is None:
+        target_psd_init = np.zeros_like(target_psd[0])
+    if noise_psd_init is None:
+        noise_psd_init = np.zeros_like(noise_psd[0])
+        noise_psd_init += np.reshape(
+            eps * np.eye(shape[-2], dtype=noise_psd.dtype),
+            (ndims-2) * [1] + [shape[-2], shape[-2]]
+        )
+    updated_target_psd = np.concatenate(
+        [target_psd_init[None], np.zeros_like(target_psd)], axis=0
+    )
+    updated_noise_psd = np.concatenate(
+        [noise_psd_init[None], np.zeros_like(noise_psd)], axis=0
+    )
+    for idx in range(target_psd.shape[0]):
+        updated_noise_psd[idx+1] = noise_decay_factor * updated_noise_psd[idx] +\
+                                   (1-noise_decay_factor) * noise_psd[idx]
+        updated_target_psd[idx+1] = target_decay_factor * updated_target_psd[idx] +\
+                                    (1-target_decay_factor) * target_psd[idx]
+    unbiased_noise_psd = updated_noise_psd[1:] / (
+        1-noise_decay_factor**np.reshape(
+            np.arange(1,noise_psd.shape[0]+1), ([-1] + ndims*[1])
+        ))
+    unbiased_targed_psd = updated_target_psd[1:] / (
+        1 - target_decay_factor ** np.reshape(
+            np.arange(1,noise_psd.shape[0]+1), ([-1] + ndims*[1])
+        ))
+    bf_vector = get_bf_fn(unbiased_targed_psd, unbiased_noise_psd)
+    cleaned = apply_beamforming_vector(bf_vector, observation)
+    return morph('t...b->...t*b', cleaned)
+
+
+
+
