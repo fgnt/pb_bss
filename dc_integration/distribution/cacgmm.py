@@ -74,6 +74,7 @@ class CACGMMTrainer:
             *,
             saliency=None,
             source_activity_mask=None,
+            dirichlet_prior_concentration=1,
             hermitize=True,
             covariance_norm='eigenvalue',
             eigenvalue_floor=1e-10,
@@ -92,11 +93,14 @@ class CACGMMTrainer:
                 Importance weighting for each observation, shape (..., N)
                 ToDo: Discuss: allow str
                     e.g. 'norm' as `saliency = np.linalg.norm(y)`
-            source_activity_mask:
+            source_activity_mask: Boolean mask that says for each time point for
+                each source if it is active or not.
                 Shape (..., K, N)
+            dirichlet_prior_concentration:
+                Prior for the mixture weight
             hermitize:
-            trace_norm:
-            eigenvalue_floor:
+            covariance_norm: 'eigenvalue', 'trace' or False
+            eigenvalue_floor: Relative flooring of the covariance eigenvalues
             return_affiliation:
 
         Returns:
@@ -159,6 +163,7 @@ class CACGMMTrainer:
                 quadratic_form,
                 affiliation=affiliation,
                 saliency=saliency,
+                dirichlet_prior_concentration=dirichlet_prior_concentration,
                 hermitize=hermitize,
                 covariance_norm=covariance_norm,
                 eigenvalue_floor=eigenvalue_floor,
@@ -177,14 +182,32 @@ class CACGMMTrainer:
             quadratic_form,
             affiliation,
             saliency,
+            dirichlet_prior_concentration,
             hermitize,
             covariance_norm,
             eigenvalue_floor,
     ):
         if saliency is None:
             masked_affiliation = affiliation
-            weight = np.mean(affiliation, axis=-1)
+
+            if dirichlet_prior_concentration == 1:
+                weight = np.mean(affiliation, axis=-1)
+            elif np.isposinf(dirichlet_prior_concentration):
+                K, T = affiliation.shape[-2:]
+                weight = np.broadcast_to(1 / K, affiliation.shape[:-1])
+            else:
+                assert dirichlet_prior_concentration >= 1, dirichlet_prior_concentration
+                # affiliation: ..., K, T
+                tmp = np.sum(affiliation, axis=-1)
+                K, T = affiliation.shape[-2:]
+
+                weight = (
+                    tmp + (dirichlet_prior_concentration - 1)
+                 ) / (
+                    T + (dirichlet_prior_concentration - 1) * K
+                )
         else:
+            assert dirichlet_prior_concentration == 1, dirichlet_prior_concentration
             masked_affiliation = affiliation * saliency[..., None, :]
             weight = _unit_norm(
                 np.sum(masked_affiliation, axis=-1),

@@ -48,6 +48,26 @@ class TestCACGMM(unittest.TestCase):
             model.cacg.covariance[best_permutation, :], covariance, atol=0.1
         )
 
+        model.weight = model.weight[best_permutation,]
+        assert model.weight[0] < model.weight[1], model.weight
+        assert_allclose(model.weight, weight, atol=0.15)
+
+        model = CACGMMTrainer().fit(
+            x,
+            num_classes=2,
+            covariance_norm='trace',
+            dirichlet_prior_concentration=np.inf
+        )
+        assert_allclose(model.weight, [0.5, 0.5])
+
+        model = CACGMMTrainer().fit(
+            x,
+            num_classes=2,
+            covariance_norm='trace',
+            dirichlet_prior_concentration=1_000_000_000
+        )
+        assert_allclose(model.weight, [0.5, 0.5])
+
     def test_cacgmm_independent_dimension(self):
         samples = 10000
         weight = np.array([0.3, 0.7])
