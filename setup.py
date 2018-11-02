@@ -11,7 +11,12 @@ setuptools.setup(
 
     packages=setuptools.find_packages(),
 
-    install_requires=['dataclasses', 'matplotlib'],
+    install_requires=[
+        'dataclasses',
+        'matplotlib',
+        'sklearn',
+        'cached_property',
+    ],
 
     classifiers=[
         'Programming Language :: Python :: 3.6',
