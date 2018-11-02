@@ -47,7 +47,11 @@ class CACGMM(_ProbabilisticModel):
         affiliation, quadratic_form = self.cacg._log_pdf(y[..., None, :, :])
 
         affiliation += np.log(self.weight)[..., :, None]
+
+        # The value of affiliation max exceed float64 range.
+        # Scaling (add in log domain) does not change the final affiliation.
         affiliation -= np.amax(affiliation, axis=-2, keepdims=True)
+        
         np.exp(affiliation, out=affiliation)  # inplace
 
         if source_activity_mask is not None:
