@@ -12,22 +12,22 @@ class VMFMM(_ProbabilisticModel):
     vmf: VonMisesFisher
     weight: np.array  # (..., K)
 
-    def predict(self, x):
+    def predict(self, y):
         """Predict class affiliation posteriors from given model.
 
         Args:
-            x: Observations with shape (..., N, D).
+            y: Observations with shape (..., N, D).
                 Observations are expected to are unit norm normalized.
         Returns: Affiliations with shape (..., K, T).
         """
-        assert np.isrealobj(x), x.dtype
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
+        assert np.isrealobj(y), y.dtype
+        y = y / np.maximum(
+            np.linalg.norm(y, axis=-1, keepdims=True), np.finfo(y.dtype).tiny
         )
-        return self._predict(x)
+        return self._predict(y)
 
-    def _predict(self, x):
-        log_pdf = self.vmf.pdf(x[..., None, :, :])
+    def _predict(self, y):
+        log_pdf = self.vmf.pdf(y[..., None, :, :])
 
         affiliation = np.log(self.weight)[..., :, None] + log_pdf
         affiliation -= np.max(affiliation, axis=-2, keepdims=True)
@@ -45,7 +45,7 @@ class VMFMMTrainer:
 
     def fit(
         self,
-        x,
+        y,
         initialization=None,
         num_classes=None,
         iterations=100,
@@ -56,7 +56,7 @@ class VMFMMTrainer:
         """ EM for vMFMMs with any number of independent dimensions.
 
         Args:
-            x: Observations with shape (N, D).
+            y: Observations with shape (N, D).
             initialization: Affiliations between 0 and 1. Shape (..., K, N)
             num_classes: Scalar >0
             iterations: Scalar >0
@@ -69,13 +69,13 @@ class VMFMMTrainer:
             "Exactly one of the two inputs has to be None: "
             f"{initialization is None} xor {num_classes is None}"
         )
-        assert np.isrealobj(x), x.dtype
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
+        assert np.isrealobj(y), y.dtype
+        y = y / np.maximum(
+            np.linalg.norm(y, axis=-1, keepdims=True), np.finfo(y.dtype).tiny
         )
 
         if initialization is None and num_classes is not None:
-            *independent, num_observations, _ = x.shape
+            *independent, num_observations, _ = y.shape
             affiliation_shape = (*independent, num_classes, num_observations)
             initialization = np.random.uniform(size=affiliation_shape)
             initialization /= np.einsum("...kn->...n", initialization)[
@@ -86,7 +86,7 @@ class VMFMMTrainer:
             saliency = np.ones_like(initialization[..., 0, :])
 
         return self._fit(
-            x,
+            y,
             initialization=initialization,
             iterations=iterations,
             saliency=saliency,
@@ -96,7 +96,7 @@ class VMFMMTrainer:
 
     def _fit(
         self,
-        x,
+        y,
         initialization,
         iterations,
         saliency,
@@ -106,7 +106,7 @@ class VMFMMTrainer:
         affiliation = initialization  # TODO: Do we need np.copy here?
         for iteration in range(iterations):
             model = self._m_step(
-                x,
+                y,
                 affiliation=affiliation,
                 saliency=saliency,
                 min_concentration=min_concentration,
@@ -114,19 +114,19 @@ class VMFMMTrainer:
             )
 
             if iteration < iterations - 1:
-                affiliation = model.predict(x)
+                affiliation = model.predict(y)
 
         return model
 
     def _m_step(
-        self, x, affiliation, saliency, min_concentration, max_concentration
+        self, y, affiliation, saliency, min_concentration, max_concentration
     ):
         masked_affiliation = affiliation * saliency[..., None, :]
         weight = np.einsum("...kn->...k", masked_affiliation)
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         vmf = VonMisesFisherTrainer()._fit(
-            x=x[..., None, :, :],
+            y=y[..., None, :, :],
             saliency=masked_affiliation,
             min_concentration=min_concentration,
             max_concentration=max_concentration,

@@ -40,29 +40,29 @@ class ComplexWatson(_ProbabilisticModel):
     mode: np.array = None  # Shape (..., D)
     concentration: np.array = None  # Shape (...)
 
-    def pdf(self, x):
+    def pdf(self, y):
         """ Calculates pdf function.
 
         Args:
-            x: Assumes shape (..., D).
+            y: Assumes shape (..., D).
             loc: Mode vector. Assumes corresponding shape (..., D).
             scale: Concentration parameter with shape (...).
 
         Returns:
         """
-        return np.exp(self.log_pdf(x))
+        return np.exp(self.log_pdf(y))
 
-    def log_pdf(self, x):
+    def log_pdf(self, y):
         """ Calculates logarithm of pdf function.
 
         Args:
-            x: Assumes shape (..., D).
+            y: Assumes shape (..., D).
             loc: Mode vector. Assumes corresponding shape (..., D).
             scale: Concentration parameter with shape (...).
 
         Returns:
         """
-        result = np.einsum("...d,...d", x, self.mode[..., None, :].conj())
+        result = np.einsum("...d,...d", y, self.mode[..., None, :].conj())
         result = result.real ** 2 + result.imag ** 2
         result *= self.concentration[..., None]
         result -= self.log_norm()[..., None]
@@ -248,39 +248,39 @@ class ComplexWatsonTrainer:
 
         return self.spline(eigenvalues)
 
-    def fit(self, x, saliency=None) -> ComplexWatson:
-        assert np.iscomplexobj(x), x.dtype
-        assert x.shape[-1] > 1
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
+    def fit(self, y, saliency=None) -> ComplexWatson:
+        assert np.iscomplexobj(y), y.dtype
+        assert y.shape[-1] > 1
+        y = y / np.maximum(
+            np.linalg.norm(y, axis=-1, keepdims=True), np.finfo(y.dtype).tiny
         )
 
         if saliency is not None:
-            assert is_broadcast_compatible(x.shape[:-1], saliency.shape), (
-                x.shape,
+            assert is_broadcast_compatible(y.shape[:-1], saliency.shape), (
+                y.shape,
                 saliency.shape,
             )
 
         if self.dimension is None:
-            self.dimension = x.shape[-1]
+            self.dimension = y.shape[-1]
         else:
-            assert self.dimension == x.shape[-1], (
+            assert self.dimension == y.shape[-1], (
                 "You initialized the trainer with a different dimension than "
                 "you are using to fit a model. Use a new trainer, when you "
                 "change the dimension."
             )
 
-        return self._fit(x, saliency=saliency)
+        return self._fit(y, saliency=saliency)
 
-    def _fit(self, x, saliency) -> ComplexWatson:
+    def _fit(self, y, saliency) -> ComplexWatson:
         if saliency is None:
             covariance = np.einsum(
-                "...nd,...nD->...dD", x, x.conj()
+                "...nd,...nD->...dD", y, y.conj()
             )
-            denominator = np.array(x.shape[-2])
+            denominator = np.array(y.shape[-2])
         else:
             covariance = np.einsum(
-                "...n,...nd,...nD->...dD", saliency, x, x.conj()
+                "...n,...nd,...nD->...dD", saliency, y, y.conj()
             )
             denominator = np.einsum("...n->...", saliency)[..., None, None]
 

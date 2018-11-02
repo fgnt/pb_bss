@@ -231,7 +231,7 @@ class GCACGMMTrainer:
             (K, F * T)
         )  # 'fkt->k,ft'
         gaussian = GaussianTrainer()._fit(
-            x=embedding_,
+            y=embedding_,
             saliency=masked_affiliation_,
             covariance_type=covariance_type,
         )
@@ -246,7 +246,7 @@ class GCACGMMTrainer:
             )
 
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
-            x=observation[..., None, :, :],
+            y=observation[..., None, :, :],
             saliency=masked_affiliation,
             quadratic_form=quadratic_form,
             hermitize=hermitize,
@@ -308,7 +308,7 @@ class PartiallySharedGCACGMMTrainer(GCACGMMTrainer):
             (2, F * T)
         )  # 'fkt->k,ft'
         gaussian = GaussianTrainer()._fit(
-            x=embedding_,
+            y=embedding_,
             saliency=masked_affiliation_for_gaussian,
             covariance_type=covariance_type,
         )
@@ -334,7 +334,7 @@ class PartiallySharedGCACGMMTrainer(GCACGMMTrainer):
             masked_affiliation[:, 3, :]
         ), axis=1)
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
-            x=observation[..., None, :, :],
+            y=observation[..., None, :, :],
             saliency=masked_affiliation_for_cacg,
             quadratic_form=quadratic_form,
             hermitize=hermitize,
@@ -361,7 +361,7 @@ class PartiallySharedGCACGMMTrainer(GCACGMMTrainer):
         # print('gaussian.covariance.shape', gaussian.covariance.shape)
 
         # Expand again
-        cacg = ComplexAngularCentralGaussian(
+        cacg = ComplexAngularCentralGaussian.from_covariance(
             covariance=np.stack((
                 cacg.covariance[:, 0, :, :],
                 cacg.covariance[:, 1, :, :],

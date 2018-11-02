@@ -20,17 +20,17 @@ class Gaussian(_ProbabilisticModel):
         self.precision_cholesky = np.reshape(pc, self.covariance.shape)
         self.log_det_precision_cholesky = _compute_log_det_cholesky(pc, 'full', D)
 
-    def log_pdf(self, x):
+    def log_pdf(self, y):
         """Gets used by e.g. the GMM.
 
         Args:
-            x: Shape (..., N, D)
+            y: Shape (..., N, D)
 
         Returns:
 
         """
         D = self.mean.shape[-1]
-        difference = x - self.mean[..., None, :]
+        difference = y - self.mean[..., None, :]
         white_x = np.einsum(
             '...dD,...nD->...nd',
             self.precision_cholesky,
@@ -57,17 +57,17 @@ class DiagonalGaussian(_ProbabilisticModel):
         self.precision_cholesky = np.reshape(pc, self.covariance.shape)
         self.log_det_precision_cholesky = _compute_log_det_cholesky(pc, 'diag', D)
 
-    def log_pdf(self, x):
+    def log_pdf(self, y):
         """Gets used by e.g. the GMM.
 
         Args:
-            x: Shape (..., N, D)
+            y: Shape (..., N, D)
 
         Returns:
 
         """
         D = self.mean.shape[-1]
-        difference = x - self.mean[..., None, :]
+        difference = y - self.mean[..., None, :]
         white_x = np.einsum(
             '...dD,...nD->...nd',
             self.precision_cholesky,
@@ -94,17 +94,17 @@ class SphericalGaussian(_ProbabilisticModel):
         self.precision_cholesky = np.reshape(pc, self.covariance.shape)
         self.log_det_precision_cholesky = _compute_log_det_cholesky(pc, 'spherical', D)
 
-    def log_pdf(self, x):
+    def log_pdf(self, y):
         """Gets used by e.g. the GMM.
 
         Args:
-            x: Shape (..., N, D)
+            y: Shape (..., N, D)
 
         Returns:
 
         """
         D = self.mean.shape[-1]
-        difference = x - self.mean[..., None, :]
+        difference = y - self.mean[..., None, :]
         white_x = np.einsum(
             '...,...nd->...nd',
             self.precision_cholesky,
@@ -118,43 +118,43 @@ class SphericalGaussian(_ProbabilisticModel):
 
 
 class GaussianTrainer:
-    def fit(self, x, saliency=None, covariance_type="full"):
+    def fit(self, y, saliency=None, covariance_type="full"):
         """
 
         Args:
-            x: Shape (..., N, D)
+            y: Shape (..., N, D)
             saliency: Importance weighting for each observation, shape (..., N)
             covariance_type: Either 'full', 'diagonal', or 'spherical'
 
         Returns:
 
         """
-        assert np.isrealobj(x), x.dtype
+        assert np.isrealobj(y), y.dtype
         if saliency is not None:
-            assert is_broadcast_compatible(x.shape[:-1], saliency.shape), (
-                x.shape, saliency.shape
+            assert is_broadcast_compatible(y.shape[:-1], saliency.shape), (
+                y.shape, saliency.shape
             )
-        return self._fit(x, saliency=saliency, covariance_type=covariance_type)
+        return self._fit(y, saliency=saliency, covariance_type=covariance_type)
 
-    def _fit(self, x, saliency, covariance_type):
-        dimension = x.shape[-1]
+    def _fit(self, y, saliency, covariance_type):
+        dimension = y.shape[-1]
 
         if saliency is None:
-            denominator = np.array(x.shape[-2])
-            mean = np.einsum("...nd->...d", x)
+            denominator = np.array(y.shape[-2])
+            mean = np.einsum("...nd->...d", y)
         else:
             denominator = np.maximum(
                 np.einsum("...n->...", saliency),
-                np.finfo(x.dtype).tiny
+                np.finfo(y.dtype).tiny
             )
-            mean = np.einsum("...n,...nd->...d", saliency, x)
+            mean = np.einsum("...n,...nd->...d", saliency, y)
         mean /= denominator[..., None]
 
         # Try to subtract mean later. Compare:
         # https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/mixture/gaussian_mixture.py#L143
         # https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/mixture/gaussian_mixture.py#L200
         # https://github.com/scikit-learn/scikit-learn/blob/f0ab589f/sklearn/mixture/gaussian_mixture.py#L226
-        difference = x - mean[..., None, :]
+        difference = y - mean[..., None, :]
 
         if covariance_type == "full":
             operation = "...nd,...nD->...dD"

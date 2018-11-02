@@ -38,7 +38,7 @@ class GMMTrainer:
 
     def fit(
         self,
-        x,
+        y,
         initialization=None,
         num_classes=None,
         iterations=100,
@@ -48,7 +48,7 @@ class GMMTrainer:
         """
 
         Args:
-            x: Shape (..., N, D)
+            y: Shape (..., N, D)
             initialization: Affiliations between 0 and 1. Shape (..., K, N)
             num_classes: Scalar >0
             iterations: Scalar >0
@@ -64,10 +64,10 @@ class GMMTrainer:
             "Exactly one of the two inputs has to be None: "
             f"{initialization is None} xor {num_classes is None}"
         )
-        assert np.isrealobj(x), x.dtype
+        assert np.isrealobj(y), y.dtype
 
         if initialization is None and num_classes is not None:
-            *independent, num_observations, _ = x.shape
+            *independent, num_observations, _ = y.shape
             affiliation_shape = (*independent, num_classes, num_observations)
             initialization = np.random.uniform(size=affiliation_shape)
             initialization /= np.einsum("...kn->...n", initialization)[
@@ -78,25 +78,25 @@ class GMMTrainer:
             saliency = np.ones_like(initialization[..., 0, :])
 
         return self._fit(
-            x,
+            y,
             initialization=initialization,
             iterations=iterations,
             saliency=saliency,
             covariance_type=covariance_type,
         )
 
-    def _fit(self, x, initialization, iterations, saliency, covariance_type):
+    def _fit(self, y, initialization, iterations, saliency, covariance_type):
         affiliation = initialization  # TODO: Do we need np.copy here?
         for iteration in range(iterations):
             model = self._m_step(
-                x,
+                y,
                 affiliation=affiliation,
                 saliency=saliency,
                 covariance_type=covariance_type,
             )
 
             if iteration < iterations - 1:
-                affiliation = model.predict(x)
+                affiliation = model.predict(y)
 
         return model
 
@@ -106,7 +106,7 @@ class GMMTrainer:
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         gaussian = GaussianTrainer()._fit(
-            x=x, saliency=masked_affiliation, covariance_type=covariance_type
+            y=x, saliency=masked_affiliation, covariance_type=covariance_type
         )
         return GMM(weight=weight, gaussian=gaussian)
 

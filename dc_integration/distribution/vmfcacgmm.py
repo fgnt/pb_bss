@@ -209,13 +209,13 @@ class VMFCACGMMTrainer:
             (K, F * T)
         )  # 'fkt->k,ft'
         vmf = VonMisesFisherTrainer()._fit(
-            x=embedding_,
+            y=embedding_,
             saliency=masked_affiliation_,
             min_concentration=min_concentration,
             max_concentration=max_concentration
         )
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
-            x=observation[..., None, :, :],
+            y=observation[..., None, :, :],
             saliency=masked_affiliation,
             quadratic_form=quadratic_form,
             hermitize=hermitize,

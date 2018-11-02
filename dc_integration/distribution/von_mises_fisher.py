@@ -62,76 +62,76 @@ class VonMisesFisher(_ProbabilisticModel):
     def norm(self):
         return np.exp(self.log_norm)
 
-    def log_pdf(self, x):
+    def log_pdf(self, y):
         """ Logarithm of probability density function.
 
         Args:
-            x: Observations with shape (..., D), i.e. (1, N, D).
+            y: Observations with shape (..., D), i.e. (1, N, D).
 
         Returns: Log-probability density with properly broadcasted shape.
         """
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
+        y = y / np.maximum(
+            np.linalg.norm(y, axis=-1, keepdims=True), np.finfo(y.dtype).tiny
         )
-        result = np.einsum("...d,...d", x, self.mean[..., None, :])
+        result = np.einsum("...d,...d", y, self.mean[..., None, :])
         result *= self.concentration[..., None]
         result -= self.log_norm()[..., None]
         return result
 
-    def pdf(self, x):
+    def pdf(self, y):
         """ Probability density function.
 
         Args:
-            x: Observations with shape (..., D), i.e. (1, N, D).
+            y: Observations with shape (..., D), i.e. (1, N, D).
 
         Returns: Probability density with properly broadcasted shape.
         """
-        return np.exp(self.log_pdf(x))
+        return np.exp(self.log_pdf(y))
 
 
 class VonMisesFisherTrainer:
     def fit(
-        self, x, saliency=None, min_concentration=1e-10, max_concentration=500
+        self, y, saliency=None, min_concentration=1e-10, max_concentration=500
     ) -> VonMisesFisher:
         """ Fits a von Mises Fisher distribution.
 
         Broadcasting (for sources) has to be done outside this function.
 
         Args:
-            x: Observations with shape (..., N, D)
+            y: Observations with shape (..., N, D)
             saliency: Either None or weights with shape (..., N)
             min_concentration:
             max_concentration:
         """
-        assert np.isrealobj(x), x.dtype
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
+        assert np.isrealobj(y), y.dtype
+        y = y / np.maximum(
+            np.linalg.norm(y, axis=-1, keepdims=True), np.finfo(y.dtype).tiny
         )
         if saliency is not None:
-            assert is_broadcast_compatible(x.shape[:-1], saliency.shape), (
-                x.shape,
+            assert is_broadcast_compatible(y.shape[:-1], saliency.shape), (
+                y.shape,
                 saliency.shape,
             )
         return self._fit(
-            x,
+            y,
             saliency=saliency,
             min_concentration=min_concentration,
             max_concentration=max_concentration,
         )
 
     def _fit(
-        self, x, saliency, min_concentration, max_concentration
+        self, y, saliency, min_concentration, max_concentration
     ) -> VonMisesFisher:
 
-        D = x.shape[-1]
+        D = y.shape[-1]
 
         if saliency is None:
-            saliency = np.ones(x.shape[:-1])
+            saliency = np.ones(y.shape[:-1])
 
         # [Banerjee2005vMF] Equation 2.4
-        r = np.einsum("...n,...nd->...d", saliency, x)
+        r = np.einsum("...n,...nd->...d", saliency, y)
         norm = np.linalg.norm(r, axis=-1)
-        mean = r / np.maximum(norm, np.finfo(x.dtype).tiny)[..., None]
+        mean = r / np.maximum(norm, np.finfo(y.dtype).tiny)[..., None]
 
         # [Banerjee2005vMF] Equation 2.5
         r_bar = norm / np.sum(saliency, axis=-1)
