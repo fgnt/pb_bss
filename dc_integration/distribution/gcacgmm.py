@@ -69,7 +69,9 @@ class GCACGMM(_ProbabilisticModel):
         _, _, E = embedding.shape
 
         observation_ = observation[..., None, :, :]
-        cacg_log_pdf, quadratic_form = self.cacg._log_pdf(observation_)
+        cacg_log_pdf, quadratic_form = self.cacg._log_pdf(
+            np.swapaxes(observation_, -1, -2)
+        )
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
         gaussian_log_pdf = self.gaussian.log_pdf(embedding_)
@@ -103,7 +105,7 @@ class GCACGMMTrainer:
         iterations=100,
         saliency=None,
         hermitize=True,
-        trace_norm=True,
+        covariance_norm='eigenvalue',
         eigenvalue_floor=1e-10,
         covariance_type="spherical",
         fixed_covariance=None,
@@ -178,7 +180,7 @@ class GCACGMMTrainer:
                 ),
                 saliency=saliency,
                 hermitize=hermitize,
-                trace_norm=trace_norm,
+                covariance_norm=covariance_norm,
                 eigenvalue_floor=eigenvalue_floor,
                 covariance_type=covariance_type,
                 fixed_covariance=fixed_covariance,
@@ -202,7 +204,7 @@ class GCACGMMTrainer:
         affiliation,
         saliency,
         hermitize,
-        trace_norm,
+        covariance_norm,
         eigenvalue_floor,
         covariance_type,
         fixed_covariance,
@@ -246,11 +248,11 @@ class GCACGMMTrainer:
             )
 
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
-            y=observation[..., None, :, :],
+            y=np.swapaxes(observation[..., None, :, :], -1, -2),
             saliency=masked_affiliation,
             quadratic_form=quadratic_form,
             hermitize=hermitize,
-            trace_norm=trace_norm,
+            covariance_norm=covariance_norm,
             eigenvalue_floor=eigenvalue_floor,
         )
         return GCACGMM(

@@ -25,7 +25,7 @@ class TestCWMM(unittest.TestCase):
         x = np.zeros((samples, dimension), dtype=np.complex128)
 
         for l in range(num_classes):
-            cacg = ComplexAngularCentralGaussian(
+            cacg = ComplexAngularCentralGaussian.from_covariance(
                 covariance=covariance[l, :, :]
             )
             x[labels == l, :] = cacg.sample(size=(np.sum(labels == l),))

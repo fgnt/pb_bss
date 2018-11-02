@@ -14,7 +14,9 @@ class TestComplexWatson(unittest.TestCase):
             [[10, 1 + 1j, 1 + 1j], [1 - 1j, 5, 1], [1 - 1j, 1, 2]]
         )
         covariance /= np.trace(covariance)
-        model = ComplexAngularCentralGaussian(covariance=covariance)
+        model = ComplexAngularCentralGaussian.from_covariance(
+            covariance=covariance,
+        )
         x = model.sample(size=(10000,))
         model = ComplexWatsonTrainer().fit(x)
         assert_equal(model.mode.shape, (3,))

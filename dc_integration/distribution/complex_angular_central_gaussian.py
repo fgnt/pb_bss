@@ -74,7 +74,7 @@ class ComplexAngularCentralGaussian(_ProbabilisticModel):
         if covariance_norm == 'trace':
             covariance /= np.einsum('...dd', covariance)[..., None, None]
         else:
-            assert covariance_norm in ['eigenvalue']
+            assert covariance_norm in ['eigenvalue', False]
 
         try:
             eigenvals, eigenvecs = np.linalg.eigh(covariance)
