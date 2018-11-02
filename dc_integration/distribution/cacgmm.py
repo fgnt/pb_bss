@@ -31,7 +31,7 @@ class CACGMM(_ProbabilisticModel):
         affiliation, quadratic_form = self._predict(y)
         return affiliation
 
-    def _predict(self, y, source_activity_mask=False):
+    def _predict(self, y, source_activity_mask=False, affiliation_eps=0.):
         """
 
         Note: y shape is (..., D, N) and not (..., N, D) like in predict
@@ -51,7 +51,7 @@ class CACGMM(_ProbabilisticModel):
         # The value of affiliation max exceed float64 range.
         # Scaling (add in log domain) does not change the final affiliation.
         affiliation -= np.amax(affiliation, axis=-2, keepdims=True)
-        
+
         np.exp(affiliation, out=affiliation)  # inplace
 
         if source_activity_mask is not None:
@@ -63,8 +63,11 @@ class CACGMM(_ProbabilisticModel):
             np.finfo(affiliation.dtype).tiny,
         )
         affiliation /= denominator
-        # ToDo: should the affiliation be clipped?
-        # affiliation = np.clip(affiliation, self.eps, 1 - self.eps)
+
+        if affiliation_eps != 0:
+            affiliation = np.clip(
+                affiliation, affiliation_eps, 1 - affiliation_eps
+            )
         return affiliation, quadratic_form
 
 
@@ -81,6 +84,7 @@ class CACGMMTrainer:
             dirichlet_prior_concentration=1,
             hermitize=True,
             covariance_norm='eigenvalue',
+            affiliation_eps=1e-10,
             eigenvalue_floor=1e-10,
             return_affiliation=False
     ):
@@ -160,6 +164,7 @@ class CACGMMTrainer:
                 affiliation, quadratic_form = model._predict(
                     y,
                     source_activity_mask=source_activity_mask,
+                    affiliation_eps=affiliation_eps,
                 )
 
             model = self._m_step(
