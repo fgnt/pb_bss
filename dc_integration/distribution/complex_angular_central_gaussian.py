@@ -18,114 +18,178 @@ import numpy as np
 from dc_integration.utils import is_broadcast_compatible
 from dc_integration.distribution.utils import force_hermitian
 from dc_integration.distribution.utils import _ProbabilisticModel
+from dc_integration.distribution.utils import _unit_norm
 from dc_integration.distribution.complex_circular_symmetric_gaussian import (
     ComplexCircularSymmetricGaussian
 )
 
 
+__all__ = [
+    'ComplexAngularCentralGaussian',
+    'ComplexAngularCentralGaussianTrainer',
+    'sample_complex_angular_central_gaussian',
+]
+
+
+def normalize_observation(observation):
+    observation = _unit_norm(
+        observation,
+        axis=-1,
+        eps=np.finfo(observation.dtype).tiny,
+        eps_style='where',
+    )
+    return np.ascontiguousarray(np.swapaxes(observation, -2, -1))
+
+
+def sample_complex_angular_central_gaussian(
+        size,
+        covariance,
+):
+    csg = ComplexCircularSymmetricGaussian(covariance=covariance)
+    x = csg.sample(size=size)
+    x /= np.linalg.norm(x, axis=-1, keepdims=True)
+    return x
+
+
 @dataclass
 class ComplexAngularCentralGaussian(_ProbabilisticModel):
-    covariance: np.array  # (..., D, D)
-    eigenvalue_floor: float = None
+    """
 
-    def sample(self, size):
-        csg = ComplexCircularSymmetricGaussian(covariance=self.covariance)
-        x = csg.sample(size=size)
-        x /= np.linalg.norm(x, axis=-1, keepdims=True)
-        return x
 
-    @property
-    def determinant_and_precision(self):
-        """
+    Note:
+        Instead of the covariance the eigenvectors and eigenvalues are saved.
+        These saves some computations, because to have a more stable covariance,
+        the eigenvalues are floored.
+    """
+    covariance_eigenvectors: np.array = None  # (..., D, D)
+    covariance_eigenvalues: np.array = None  # (..., D)
 
-        Returns:
-            determinant: Determinant of the covariance matrix.
-            precision:
+    @classmethod
+    def from_covariance(
+            cls,
+            covariance,
+            eigenvalue_floor=0.,
+            covariance_norm='eigenvalue',
+    ):
+        if covariance_norm == 'trace':
+            covariance /= np.einsum('...dd', covariance)[..., None, None]
+        else:
+            assert covariance_norm in ['eigenvalue']
 
-        """
-        D = self.covariance.shape[-1]
-        eigenvals, eigenvecs = np.linalg.eigh(self.covariance)
+        try:
+            eigenvals, eigenvecs = np.linalg.eigh(covariance)
+        except np.linalg.LinAlgError:
+            # ToDo: figure out when this happen and why eig may work.
+            # It is likely that eig is more stable than eigh.
+            eigenvals, eigenvecs = np.linalg.eig(covariance)
         eigenvals = eigenvals.real
-
-        # TODO: Do we always want (automatic) flooring?
-        if self.eigenvalue_floor is not None:
+        if covariance_norm == 'eigenvalue':
+            # The scale of the eigenvals does not matter.
+            eigenvals = eigenvals / np.amax(eigenvals, axis=-1, keepdims=True)
             eigenvals = np.maximum(
                 eigenvals,
-                np.max(eigenvals, axis=-1, keepdims=True)
-                * self.eigenvalue_floor,
+                eigenvalue_floor,
+            )
+        else:
+            eigenvals = np.maximum(
+                eigenvals,
+                np.amax(eigenvals, axis=-1, keepdims=True) * eigenvalue_floor,
             )
 
-        determinant = np.prod(eigenvals, axis=-1)
-        inverse_diagonal = np.einsum(
-            "de,...d->...de", np.eye(D), 1 / eigenvals
+        return cls(
+            covariance_eigenvalues=eigenvals,
+            covariance_eigenvectors=eigenvecs,
         )
-        precision = np.einsum(
-            "...wx,...xy,...zy->...wz",
-            eigenvecs,
-            inverse_diagonal,
-            eigenvecs.conj(),
-        )
-        return determinant, precision
 
-    def log_pdf(self, x):
+    def sample(self, size):
+        return sample_complex_angular_central_gaussian(
+            size=size,
+            covariance=self.covariance,
+        )
+
+    @property
+    def covariance(self):
+        return np.einsum(
+            '...wx,...x,...zx->...wz',
+            self.covariance_eigenvectors,
+            self.covariance_eigenvalues,
+            self.covariance_eigenvectors.conj(),
+            optimize='greedy',
+        )
+
+    @property
+    def log_determinant(self):
+        return np.sum(np.log(self.covariance_eigenvalues), axis=-1)
+
+    def log_pdf(self, y):
         """
 
         Args:
-            x: Shape (..., N, D)
+            y: Shape (..., N, D)
 
         Returns:
 
         """
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
-        )
-        log_pdf, _ = self._log_pdf(x)
+        y = normalize_observation(y)  # swap D and N dim
+        log_pdf, _ = self._log_pdf(y)
         return log_pdf
 
-    def _log_pdf(self, x):
+    def _log_pdf(self, y):
         """Gets used by. e.g. the cACGMM.
         TODO: quadratic_form might be useful by itself
 
-        Args:
-            x: Shape (..., N, D)
+        Note: y shape is (..., D, N) and not (..., N, D) like in log_pdf
 
-        Returns:
+        Args:
+            y: Normalized observations with shape (..., D, N).
+        Returns: Affiliations with shape (..., K, N) and quadratic format
+            with the same shape.
 
         """
-        assert is_broadcast_compatible(
-            x.shape[:-2], self.covariance.shape[:-2]
-        ), (x.shape, self.covariance.shape)
 
-        D = x.shape[-1]
-        determinant, precision = self.determinant_and_precision
+        *independent, D, T = y.shape
+
+        assert is_broadcast_compatible(
+            [*independent, D, D], self.covariance_eigenvectors.shape
+        ), (y.shape, self.covariance_eigenvectors.shape)
+
         quadratic_form = np.maximum(
             np.abs(
-                np.einsum("...nd,...dD,...nD->...n", x.conj(), precision, x)
+                np.einsum(
+                    # '...dt,...kde,...ke,...kge,...gt->...kt',
+                    '...dt,...de,...e,...ge,...gt->...t',
+                    y.conj(),
+                    self.covariance_eigenvectors,
+                    1 / self.covariance_eigenvalues,
+                    self.covariance_eigenvectors.conj(),
+                    y,
+                    optimize='optimal',
+                )
             ),
-            np.finfo(x.dtype).tiny,
+            np.finfo(y.dtype).tiny,
         )
-
         log_pdf = -D * np.log(quadratic_form)
-        log_pdf -= np.log(determinant)[..., None]
+        log_pdf -= self.log_determinant[..., None]
 
         return log_pdf, quadratic_form
 
 
 class ComplexAngularCentralGaussianTrainer:
     def fit(
-        self,
-        x,
-        saliency=None,
-        hermitize=True,
-        trace_norm=True,
-        eigenvalue_floor=1e-10,
-        iterations=10,
+            self,
+            y,
+            saliency=None,
+            hermitize=True,
+            covariance_norm='eigenvalue',
+            eigenvalue_floor=1e-10,
+            iterations=10,
     ):
         """
 
         Args:
-            x: Should be normalized to unit norm. We normalize it anyway again.
-            saliency:
+            y: Should be normalized to unit norm. We normalize it anyway again.
+               Shape (..., D, N), e.g. (1, D, N) for mixture models
+            saliency: Shape (..., N), e.g. (K, N) for mixture models
             hermitize:
             trace_norm:
             eigenvalue_floor:
@@ -134,44 +198,46 @@ class ComplexAngularCentralGaussianTrainer:
         Returns:
 
         """
-        *independent, N, D = x.shape
-        assert np.iscomplexobj(x), x.dtype
-        assert x.shape[-1] > 1
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
-        )
+        *independent, N, D = y.shape
+        assert np.iscomplexobj(y), y.dtype
+        assert y.shape[-1] > 1
+        y = normalize_observation(y)  # swap D and N dim
 
         if saliency is None:
             quadratic_form = np.ones(*independent, N)
         else:
             raise NotImplementedError
 
+        assert iterations > 0, iterations
         for _ in range(iterations):
             model = self._fit(
-                x=x,
+                y=y,
                 saliency=saliency,
                 quadratic_form=quadratic_form,
                 hermitize=hermitize,
-                trace_norm=trace_norm,
+                covariance_norm=covariance_norm,
                 eigenvalue_floor=eigenvalue_floor,
             )
-            _, quadratic_form = model._log_pdf(x)
+            _, quadratic_form = model._log_pdf(y)
 
         return model
 
     def _fit(
-        self,
-        x,
-        saliency,
-        quadratic_form,
-        hermitize=True,
-        trace_norm=True,
-        eigenvalue_floor=1e-10,
+            self,
+            y,
+            saliency,
+            quadratic_form,
+            hermitize=True,
+            covariance_norm='eigenvalue',
+            eigenvalue_floor=1e-10,
     ) -> ComplexAngularCentralGaussian:
         """Single step of the fit function. In general, needs iterations.
 
+        Note: y shape is (..., D, N) and not (..., N, D) like in fit
+
         Args:
-            x: Shape (..., N, D)
+            y:  Assumed to have unit length.
+                Shape (..., D, N), e.g. (1, D, N) for mixture models
             saliency: Shape (..., N), e.g. (K, N) for mixture models
             quadratic_form: (..., N), e.g. (K, N) for mixture models
             hermitize:
@@ -181,23 +247,28 @@ class ComplexAngularCentralGaussianTrainer:
         Returns:
 
         """
-        assert np.iscomplexobj(x), x.dtype
+        assert np.iscomplexobj(y), y.dtype
 
         assert is_broadcast_compatible(
-            x.shape[:-2], quadratic_form.shape[:-1]
-        ), (x.shape, quadratic_form.shape)
+            y.shape[:-2], quadratic_form.shape[:-1]
+        ), (y.shape, quadratic_form.shape)
 
-        D = x.shape[-1]
+        D = y.shape[-2]
         *independent, N = quadratic_form.shape
 
         if saliency is None:
             saliency = 1
-            denominator = np.array(x.shape[-2])
+            denominator = N
         else:
-            denominator = np.einsum("...n->...", saliency)[..., None, None]
+            assert y.ndim == saliency.ndim + 1, (y.shape, saliency.ndim)
+            denominator = np.einsum('...n->...', saliency)[..., None, None]
 
         covariance = D * np.einsum(
-            "...n,...nd,...nD->...dD", (saliency / quadratic_form), x, x.conj()
+            '...n,...dn,...Dn->...dD',
+            (saliency / quadratic_form),
+            y,
+            y.conj(),
+            optimize='greedy',
         )
         covariance /= denominator
         assert covariance.shape == (*independent, D, D), covariance.shape
@@ -205,9 +276,8 @@ class ComplexAngularCentralGaussianTrainer:
         if hermitize:
             covariance = force_hermitian(covariance)
 
-        if trace_norm:
-            covariance /= np.einsum("...dd", covariance)[..., None, None]
-
-        return ComplexAngularCentralGaussian(
-            covariance=covariance, eigenvalue_floor=eigenvalue_floor
+        return ComplexAngularCentralGaussian.from_covariance(
+            covariance,
+            eigenvalue_floor=eigenvalue_floor,
+            covariance_norm=covariance_norm,
         )

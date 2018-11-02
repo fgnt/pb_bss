@@ -25,12 +25,16 @@ class TestCACGMM(unittest.TestCase):
         x = np.zeros((samples, dimension), dtype=np.complex128)
 
         for l in range(num_classes):
-            cacg = ComplexAngularCentralGaussian(
+            cacg = ComplexAngularCentralGaussian.from_covariance(
                 covariance=covariance[l, :, :]
             )
             x[labels == l, :] = cacg.sample(size=(np.sum(labels == l),))
 
-        model = CACGMMTrainer().fit(x, num_classes=2)
+        model = CACGMMTrainer().fit(
+            x,
+            num_classes=2,
+            covariance_norm='trace',
+        )
 
         # Permutation invariant testing
         permutations = list(itertools.permutations(range(2)))
@@ -62,12 +66,16 @@ class TestCACGMM(unittest.TestCase):
         x = np.zeros((samples, dimension), dtype=np.complex128)
 
         for l in range(num_classes):
-            cacg = ComplexAngularCentralGaussian(
+            cacg = ComplexAngularCentralGaussian.from_covariance(
                 covariance=covariance[l, :, :]
             )
             x[labels == l, :] = cacg.sample(size=(np.sum(labels == l),))
 
-        model = CACGMMTrainer().fit(x[None, ...], num_classes=2)
+        model = CACGMMTrainer().fit(
+            x[None, ...],
+            num_classes=2,
+            covariance_norm='trace',
+        )
 
         # Permutation invariant testing
         permutations = list(itertools.permutations(range(2)))

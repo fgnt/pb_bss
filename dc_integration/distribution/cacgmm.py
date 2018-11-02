@@ -7,10 +7,17 @@ from dc_integration.distribution.utils import (
     _ProbabilisticModel,
 )
 
-from dc_integration.distribution import (
+from dc_integration.distribution.complex_angular_central_gaussian import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
+    normalize_observation,
 )
+
+__all__ = [
+    'CACGMM',
+    'CACGMMTrainer',
+    # 'sample_cacgmm',  # <- TODO
+]
 
 
 @dataclass
@@ -18,56 +25,79 @@ class CACGMM(_ProbabilisticModel):
     weight: np.array  # (..., K)
     cacg: ComplexAngularCentralGaussian
 
-    def predict(self, x):
-        assert np.iscomplexobj(x), x.dtype
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
-        )
-        affiliation, quadratic_form = self._predict(x)
+    def predict(self, y):
+        assert np.iscomplexobj(y), y.dtype
+        y = normalize_observation(y)  # swap D and N dim
+        affiliation, quadratic_form = self._predict(y)
         return affiliation
 
-    def _predict(self, x):
-        *independent, num_observations, _ = x.shape
+    def _predict(self, y, source_activity_mask=False):
+        """
 
-        log_pdf, quadratic_form = self.cacg._log_pdf(x[..., None, :, :])
+        Note: y shape is (..., D, N) and not (..., N, D) like in predict
 
-        affiliation = (
-            np.log(self.weight)[..., :, None]
-            + log_pdf
-        )
-        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
-        np.exp(affiliation, out=affiliation)
+        Args:
+            y: Normalized observations with shape (..., D, N).
+        Returns: Affiliations with shape (..., K, N) and quadratic format
+            with the same shape.
+
+        """
+        *independent, _, num_observations = y.shape
+
+        affiliation, quadratic_form = self.cacg._log_pdf(y[..., None, :, :])
+
+        affiliation += np.log(self.weight)[..., :, None]
+        affiliation -= np.amax(affiliation, axis=-2, keepdims=True)
+        np.exp(affiliation, out=affiliation)  # inplace
+
+        if source_activity_mask is not None:
+            assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
+            affiliation *= source_activity_mask
+
         denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
+            np.sum(affiliation, axis=-2, keepdims=True),
             np.finfo(affiliation.dtype).tiny,
         )
         affiliation /= denominator
+        # ToDo: should the affiliation be clipped?
+        # affiliation = np.clip(affiliation, self.eps, 1 - self.eps)
         return affiliation, quadratic_form
 
 
 class CACGMMTrainer:
     def fit(
-        self,
-        x,
-        initialization=None,
-        num_classes=None,
-        iterations=100,
-        saliency=None,
-        hermitize=True,
-        trace_norm=True,
-        eigenvalue_floor=1e-10,
+            self,
+            y,
+            initialization=None,
+            num_classes=None,
+            iterations=100,
+            *,
+            saliency=None,
+            source_activity_mask=None,
+            hermitize=True,
+            covariance_norm='eigenvalue',
+            eigenvalue_floor=1e-10,
+            return_affiliation=False
     ):
         """
 
         Args:
-            x: Shape (..., N, D)
-            initialization: Affiliations between 0 and 1. Shape (..., K, N)
+            y: Shape (..., N, D)
+            initialization:
+                Affiliations between 0 and 1. Shape (..., K, N)
+                or CACGMM instance
             num_classes: Scalar >0
             iterations: Scalar >0
-            saliency: Importance weighting for each observation, shape (..., N)
+            saliency:
+                Importance weighting for each observation, shape (..., N)
+                ToDo: Discuss: allow str
+                    e.g. 'norm' as `saliency = np.linalg.norm(y)`
+            source_activity_mask:
+                Shape (..., K, N)
             hermitize:
             trace_norm:
             eigenvalue_floor:
+            return_affiliation:
 
         Returns:
 
@@ -78,23 +108,21 @@ class CACGMMTrainer:
             f"{initialization is None} xor {num_classes is None}"
         )
 
-        assert np.iscomplexobj(x), x.dtype
-        assert x.shape[-1] > 1
-        x = x / np.maximum(
-            np.linalg.norm(x, axis=-1, keepdims=True), np.finfo(x.dtype).tiny
-        )
+        assert np.iscomplexobj(y), y.dtype
+        assert y.shape[-1] > 1
+        y = normalize_observation(y)  # swap D and N dim
 
         assert iterations > 0, iterations
 
         model = None
 
-        *independent, num_observations, _ = x.shape
+        *independent, D, num_observations = y.shape
         if initialization is None:
-            assert num_classes is not None
+            assert num_classes is not None, num_classes
             affiliation_shape = (*independent, num_classes, num_observations)
             affiliation = np.random.uniform(size=affiliation_shape)
             affiliation /= np.einsum("...kn->...n", affiliation)[..., None, :]
-            quadratic_form = np.ones(affiliation_shape, dtype=x.real.dtype)
+            quadratic_form = np.ones(affiliation_shape, dtype=y.real.dtype)
         elif isinstance(initialization, np.ndarray):
             num_classes = initialization.shape[-2]
             affiliation_shape = (*independent, num_classes, num_observations)
@@ -102,61 +130,76 @@ class CACGMMTrainer:
                 initialization.shape, affiliation_shape
             )
             affiliation = initialization
-            quadratic_form = np.ones(affiliation_shape, dtype=x.real.dtype)
+            quadratic_form = np.ones(affiliation_shape, dtype=y.real.dtype)
         elif isinstance(initialization, CACGMM):
+            num_classes = initialization.weight.shape[-1]
             model = initialization
         else:
             raise TypeError('No sufficient initialization.')
 
-        if saliency is None:
-            # TODO: Maybe `*independent` allocates too much.
-            # TODO: Saliency should be allowed to be None.
-            saliency = np.ones(
-                (*independent, num_observations),
-                dtype=x.real.dtype
-            )
+        if source_activity_mask is not None:
+            assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
+            assert source_activity_mask.shape[-2:] == (num_classes, num_observations), (source_activity_mask.shape, independent, num_classes, num_observations)
+
+            if isinstance(initialization, np.ndarray):
+                assert source_activity_mask.shape == initialization.shape, (source_activity_mask.shape, initialization.shape)
+
+        assert num_classes < 20, f'num_classes: {num_classes}, sure?'
+        assert D < 30, f'Channels: {D}, sure?'
 
         for iteration in range(iterations):
             if model is not None:
-                affiliation, quadratic_form = model._predict(x)
+                affiliation, quadratic_form = model._predict(
+                    y,
+                    source_activity_mask=source_activity_mask,
+                )
 
             model = self._m_step(
-                x,
+                y,
                 quadratic_form,
                 affiliation=affiliation,
                 saliency=saliency,
                 hermitize=hermitize,
-                trace_norm=trace_norm,
+                covariance_norm=covariance_norm,
                 eigenvalue_floor=eigenvalue_floor,
             )
 
-        return model
+        if return_affiliation is True:
+            return model, affiliation
+        elif return_affiliation is False:
+            return model
+        else:
+            raise ValueError(return_affiliation)
 
     def _m_step(
-        self,
-        x,
-        quadratic_form,
-        affiliation,
-        saliency,
-        hermitize,
-        trace_norm,
-        eigenvalue_floor,
+            self,
+            x,
+            quadratic_form,
+            affiliation,
+            saliency,
+            hermitize,
+            covariance_norm,
+            eigenvalue_floor,
     ):
-        masked_affiliation = affiliation * saliency[..., None, :]
-        weight = _unit_norm(
-            np.sum(masked_affiliation, axis=-1),
-            ord=1,
-            axis=-1,
-            eps=1e-10,
-            eps_style='where',
-        )
+        if saliency is None:
+            masked_affiliation = affiliation
+            weight = np.mean(affiliation, axis=-1)
+        else:
+            masked_affiliation = affiliation * saliency[..., None, :]
+            weight = _unit_norm(
+                np.sum(masked_affiliation, axis=-1),
+                ord=1,
+                axis=-1,
+                eps=1e-10,
+                eps_style='where',
+            )
 
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
-            x=x[..., None, :, :],
+            y=x[..., None, :, :],
             saliency=masked_affiliation,
             quadratic_form=quadratic_form,
             hermitize=hermitize,
-            trace_norm=trace_norm,
+            covariance_norm=covariance_norm,
             eigenvalue_floor=eigenvalue_floor,
         )
         return CACGMM(weight=weight, cacg=cacg)
