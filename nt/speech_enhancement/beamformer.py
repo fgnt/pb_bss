@@ -776,6 +776,7 @@ def block_online_beamforming(
         observation,
         target_mask,
         noise_mask,
+        *,
         block_size=5,
         target_psd_init=None,
         noise_psd_init=None,
