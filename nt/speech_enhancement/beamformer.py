@@ -19,6 +19,7 @@ import numpy as np
 from numpy.linalg import solve
 from scipy.linalg import eig
 from scipy.linalg import eigh
+from scipy.signal import lfilter
 from nt.math.correlation import covariance  # as shortcut!
 from nt.math.solve import stable_solve
 from nt.utils.numpy_utils import morph
@@ -831,23 +832,24 @@ def block_online_beamforming(
             (ndims-2) * [1] + [shape[-2], shape[-2]]
         )
     updated_target_psd = np.concatenate(
-        [target_psd_init[None], np.zeros_like(target_psd)], axis=0
+        [target_psd_init[None], target_psd], axis=0
     )
     updated_noise_psd = np.concatenate(
-        [noise_psd_init[None], np.zeros_like(noise_psd)], axis=0
+        [noise_psd_init[None] / (1 - noise_decay_factor), noise_psd], axis=0
     )
-    for idx in range(target_psd.shape[0]):
-        updated_noise_psd[idx+1] = noise_decay_factor * updated_noise_psd[idx] +\
-                                   (1-noise_decay_factor) * noise_psd[idx]
-        updated_target_psd[idx+1] = target_decay_factor * updated_target_psd[idx] +\
-                                    (1-target_decay_factor) * target_psd[idx]
-    unbiased_noise_psd = updated_noise_psd[1:] / (
+    unbiased_noise_psd = lfilter([noise_decay_factor],
+                                 [1., -noise_decay_factor],
+                                 updated_noise_psd, axis=0)[1:]
+    unbiased_targed_psd = lfilter([target_decay_factor],
+                                  [1., -target_decay_factor],
+                                  updated_target_psd, axis=0)[1:]
+    unbiased_noise_psd = unbiased_noise_psd / (
         1-noise_decay_factor**np.reshape(
-            np.arange(1,noise_psd.shape[0]+1), ([-1] + ndims*[1])
+            np.arange(1, noise_psd.shape[0]+1), ([-1] + ndims*[1])
         ))
-    unbiased_targed_psd = updated_target_psd[1:] / (
+    unbiased_targed_psd = unbiased_targed_psd / (
         1 - target_decay_factor ** np.reshape(
-            np.arange(1,noise_psd.shape[0]+1), ([-1] + ndims*[1])
+            np.arange(1, target_psd.shape[0]+1), ([-1] + ndims*[1])
         ))
     unbiased_noise_psd = condition_covariance(unbiased_noise_psd, 1e-10)
     bf_vector = get_bf_fn(unbiased_targed_psd, unbiased_noise_psd)
