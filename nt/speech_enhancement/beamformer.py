@@ -776,12 +776,13 @@ def block_online_beamforming(
         observation,
         target_mask,
         noise_mask,
+        block_size=5,
         target_psd_init=None,
         noise_psd_init=None,
         get_bf_fn=get_mvdr_vector_souden,
         target_decay_factor=0.95,
         noise_decay_factor=0.95,
-        block_size=5,
+        noise_psd_normalization=False,
         eps=1e-10
 ):
 
@@ -818,7 +819,8 @@ def block_online_beamforming(
     noise_mask = morph('...bt->t...b', noise_mask)
     target_psd = covariance(observation, target_mask, normalize=False,
                             force_hermitian=True)
-    noise_psd = covariance(observation, noise_mask, normalize=True)
+    noise_psd = covariance(observation, noise_mask,
+                           normalize=noise_psd_normalization)
     if target_psd_init is None:
         target_psd_init = np.zeros_like(target_psd[0])
     if noise_psd_init is None:
@@ -846,10 +848,7 @@ def block_online_beamforming(
         1 - target_decay_factor ** np.reshape(
             np.arange(1,noise_psd.shape[0]+1), ([-1] + ndims*[1])
         ))
+    unbiased_noise_psd = condition_covariance(unbiased_noise_psd, 1e-10)
     bf_vector = get_bf_fn(unbiased_targed_psd, unbiased_noise_psd)
     cleaned = apply_beamforming_vector(bf_vector, observation)
     return morph('t...b->...t*b', cleaned)
-
-
-
-
