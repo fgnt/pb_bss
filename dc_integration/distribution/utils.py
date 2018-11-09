@@ -213,36 +213,33 @@ def stack_parameters(parameters: typing.List[_ProbabilisticModel]):
 
         >>> from IPython.lib.pretty import pprint
         >>> from dc_integration.distribution.cacgmm import (
-        ...     ComplexAngularCentralGaussianParameters,
-        ...     ComplexAngularCentralGaussianMixtureModelParameters,
+        ...     CACGMM,
+        ...     ComplexAngularCentralGaussian,
         ... )
-        >>> model1 = ComplexAngularCentralGaussianParameters(
-        ...     covariance=[1], precision=[2], determinant=[3]
+        >>> model1 = ComplexAngularCentralGaussian.from_covariance(
+        ...     covariance=[[1, 0], [0, 1]]
         ... )
-        >>> model2 = ComplexAngularCentralGaussianParameters(
-        ...     covariance=[3], precision=[4], determinant=[5]
+        >>> model2 = ComplexAngularCentralGaussian.from_covariance(
+        ...     covariance=[[3, 1], [1, 2]]
         ... )
         >>> stack_parameters([model1, model2])
-        ComplexAngularCentralGaussianParameters(covariance=array([[1],
-               [3]]), precision=array([[2],
-               [4]]), determinant=array([[3],
-               [5]]))
+        ComplexAngularCentralGaussian(covariance_eigenvectors=array([[[ 1.        ,  0.        ],
+                [ 0.        ,  1.        ]],
+        <BLANKLINE>
+               [[ 0.52573111, -0.85065081],
+                [-0.85065081, -0.52573111]]]), covariance_eigenvalues=array([[1.        , 1.        ],
+               [0.38196601, 1.        ]]))
 
-        >>> model3 = ComplexAngularCentralGaussianMixtureModelParameters(
-        ...     cacg=model1,
-        ...     mixture_weight=[6], affiliation=[7], eps=8
-        ... )
-        >>> model4 = ComplexAngularCentralGaussianMixtureModelParameters(
-        ...     cacg=model2,
-        ...     mixture_weight=[9], affiliation=[10], eps=11
-        ... )
+        >>> model3 = CACGMM(cacg=model1, weight=[6])
+        >>> model4 = CACGMM(cacg=model2, weight=[9])
         >>> stack_parameters([model3, model4])
-        ComplexAngularCentralGaussianMixtureModelParameters(cacg=ComplexAngularCentralGaussianParameters(covariance=array([[1],
-               [3]]), precision=array([[2],
-               [4]]), determinant=array([[3],
-               [5]])), mixture_weight=array([[6],
-               [9]]), affiliation=array([[ 7],
-               [10]]), eps=array([ 8, 11]))
+        CACGMM(weight=array([[6],
+               [9]]), cacg=ComplexAngularCentralGaussian(covariance_eigenvectors=array([[[ 1.        ,  0.        ],
+                [ 0.        ,  1.        ]],
+        <BLANKLINE>
+               [[ 0.52573111, -0.85065081],
+                [-0.85065081, -0.52573111]]]), covariance_eigenvalues=array([[1.        , 1.        ],
+               [0.38196601, 1.        ]])))
 
     """
     def get_type(objects):
@@ -250,9 +247,10 @@ def stack_parameters(parameters: typing.List[_ProbabilisticModel]):
         assert len(types) == 1, types
         return list(types)[0]
 
-    out = get_type(parameters)()
+    out_type = get_type(parameters)
 
-    for k in out.__dataclass_fields__.keys():
+    out = {}
+    for k in parameters[0].__dataclass_fields__.keys():
         datas = [getattr(p, k) for p in parameters]
 
         # Ensure unique type
@@ -263,8 +261,10 @@ def stack_parameters(parameters: typing.List[_ProbabilisticModel]):
         else:
             data = np.stack(datas)
 
-        setattr(out, k, data)
-    return out
+        # setattr(out, k, data)
+        out[k] = data
+        # setattr(out, k, data)
+    return out_type(**out)
 
 
 def force_hermitian(matrix):
