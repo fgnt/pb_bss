@@ -47,7 +47,7 @@ else:
 
 
 def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
-                                      source_dim=-2, time_dim=-1):
+                                      source_dim=-2, time_dim=-1, normalize=True):
     """
     Calculates the weighted power spectral density matrix.
     It's also called covariance matrix.
@@ -62,6 +62,7 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
         source_dim = 0 means mask shape (sources, ..., frames)
     :param time_dim:  change time dimension index (Default: -1),
         this index must match for mask and observation
+    :param normalize: Boolean to decide if normalize the mask
     :return: PSD matrix with shape (..., sensors, sensors)
         or (..., sources, sensors, sensors) or
         (sources, ..., sensors, sensors)
@@ -108,7 +109,8 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
         if mask.dtype == np.bool:
             mask = np.asfarray(mask)
 
-        mask /= np.maximum(np.sum(mask, axis=time_dim, keepdims=True), 1e-10)
+        if normalize:
+            mask /= np.maximum(np.sum(mask, axis=time_dim, keepdims=True), 1e-10)
 
         if mask.ndim + 1 == observation.ndim:
             mask = np.expand_dims(mask, -2)
