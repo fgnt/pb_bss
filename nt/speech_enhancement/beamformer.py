@@ -813,14 +813,11 @@ def block_online_beamforming(
     padding = (observation.ndim - 1) * [[0, 0]] + [
         [0, block_size - shape[-1] % block_size]]
     observation = np.pad(observation, padding, 'constant')
-    observation = np.reshape(observation, [*shape[:-1], block_size, -1])
-    observation = morph('...bt->t...b', observation)
+    observation = morph('...t*b->t...b', observation, b=block_size)
     target_mask = np.pad(target_mask, padding[1:], 'constant')
-    target_mask = np.reshape(target_mask, (*shape[:-2], block_size, -1))
-    target_mask = morph('...bt->t...b', target_mask)
+    target_mask = morph('...t*b->t...b', target_mask, b=block_size)
     noise_mask = np.pad(noise_mask, padding[1:], 'constant')
-    noise_mask = np.reshape(noise_mask, (*shape[:-2], block_size, -1))
-    noise_mask = morph('...bt->t...b', noise_mask)
+    noise_mask = morph('...t*b->t...b', noise_mask, b=block_size)
     target_psd = covariance(observation, target_mask, normalize=False,
                             force_hermitian=True)
     noise_psd = covariance(observation, noise_mask,
@@ -854,6 +851,8 @@ def block_online_beamforming(
             np.arange(1, target_psd.shape[0]+1), ([-1] + ndims*[1])
         ))
     unbiased_noise_psd = condition_covariance(unbiased_noise_psd, 1e-10)
-    bf_vector = get_bf_fn(unbiased_targed_psd, unbiased_noise_psd)
+    bf_vector = get_bf_fn(unbiased_targed_psd.reshape(-1, shape[-2], shape[-2]),
+                          unbiased_noise_psd.reshape(-1, shape[-2], shape[-2]))
+    bf_vector = bf_vector.reshape(observation.shape[:-1])
     cleaned = apply_beamforming_vector(bf_vector, observation)
-    return morph('t...b->...t*b', cleaned)
+    return np.swapaxes(morph('t...b->...t*b', cleaned), axis1=-1, axis2=-2)
