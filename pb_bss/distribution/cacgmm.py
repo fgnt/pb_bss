@@ -31,7 +31,7 @@ class CACGMM(_ProbabilisticModel):
         affiliation, quadratic_form = self._predict(y)
         return affiliation
 
-    def _predict(self, y, source_activity_mask=False, affiliation_eps=0.):
+    def _predict(self, y, source_activity_mask=None, affiliation_eps=0.):
         """
 
         Note: y shape is (..., D, N) and not (..., N, D) like in predict
