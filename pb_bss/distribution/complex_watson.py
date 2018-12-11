@@ -7,10 +7,10 @@ from cached_property import cached_property
 
 import numpy as np
 
-from dc_integration.distribution.utils import _ProbabilisticModel
-from dc_integration.utils import is_broadcast_compatible
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.utils import is_broadcast_compatible
 
-from dc_integration.utils import get_power_spectral_density_matrix, get_pca
+from pb_bss.utils import get_power_spectral_density_matrix, get_pca
 
 
 @dataclass

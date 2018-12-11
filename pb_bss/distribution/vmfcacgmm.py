@@ -10,14 +10,14 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from dc_integration.distribution import VonMisesFisher
-from dc_integration.distribution import VonMisesFisherTrainer
-from dc_integration.distribution import (
+from pb_bss.distribution import VonMisesFisher
+from pb_bss.distribution import VonMisesFisherTrainer
+from pb_bss.distribution import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
 )
-from dc_integration.distribution.utils import _ProbabilisticModel
-from dc_integration.utils import unsqueeze
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.utils import unsqueeze
 
 
 @dataclass

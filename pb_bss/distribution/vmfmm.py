@@ -4,7 +4,7 @@ import numpy as np
 from dataclasses import dataclass
 
 from .von_mises_fisher import VonMisesFisher, VonMisesFisherTrainer
-from dc_integration.distribution.utils import _ProbabilisticModel
+from pb_bss.distribution.utils import _ProbabilisticModel
 
 
 @dataclass

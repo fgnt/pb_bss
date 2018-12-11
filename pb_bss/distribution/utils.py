@@ -6,7 +6,7 @@ import numpy as np
 def get_model_class_from_parameter(parameter):
     """
     >>> from IPython.lib.pretty import pprint
-    >>> from dc_integration.distribution.cacgmm import (
+    >>> from pb_bss.distribution.cacgmm import (
     ...     ComplexAngularCentralGaussianParameters,
     ... )
     >>> get_model_class_from_parameter(ComplexAngularCentralGaussianParameters).__name__
@@ -15,7 +15,7 @@ def get_model_class_from_parameter(parameter):
     'ComplexAngularCentralGaussian'
 
     """
-    from dc_integration import distribution
+    from pb_bss import distribution
 
     if not hasattr(parameter, '__name__'):
         parameter = parameter.__class__
@@ -31,7 +31,7 @@ def parameter_from_dict(parameter_class_or_str, d: dict):
     """
 
     >>> from IPython.lib.pretty import pprint
-    >>> from dc_integration.distribution.cacgmm import (
+    >>> from pb_bss.distribution.cacgmm import (
     ...     ComplexAngularCentralGaussianParameters,
     ...     ComplexAngularCentralGaussianMixtureModelParameters,
     ... )
@@ -51,7 +51,7 @@ def parameter_from_dict(parameter_class_or_str, d: dict):
 
     """
     if isinstance(parameter_class_or_str, str):
-        from dc_integration import distribution
+        from pb_bss import distribution
         # mapping = {
         #     k: getattr(distribution, k)
         #     for k in dir(distribution)
@@ -66,7 +66,7 @@ class _ProbabilisticModel:
     def to_dict(self):
         """
         >>> from IPython.lib.pretty import pprint
-        >>> from dc_integration.distribution.cacgmm import (
+        >>> from pb_bss.distribution.cacgmm import (
         ...     ComplexAngularCentralGaussianParameters, 
         ...     ComplexAngularCentralGaussianMixtureModelParameters,
         ... )
@@ -111,7 +111,7 @@ class _ProbabilisticModel:
         """
 
         >>> from IPython.lib.pretty import pprint
-        >>> from dc_integration.distribution.cacgmm import (
+        >>> from pb_bss.distribution.cacgmm import (
         ...     ComplexAngularCentralGaussianParameters,
         ...     ComplexAngularCentralGaussianMixtureModelParameters,
         ... )
@@ -144,7 +144,7 @@ class _ProbabilisticModel:
     def __getattr__(self, name):
         """
         >>> from IPython.lib.pretty import pprint
-        >>> from dc_integration.distribution.cacgmm import (
+        >>> from pb_bss.distribution.cacgmm import (
         ...     ComplexAngularCentralGaussianParameters,
         ...     ComplexAngularCentralGaussianMixtureModelParameters,
         ... )
@@ -212,7 +212,7 @@ def stack_parameters(parameters: typing.List[_ProbabilisticModel]):
     """
 
         >>> from IPython.lib.pretty import pprint
-        >>> from dc_integration.distribution.cacgmm import (
+        >>> from pb_bss.distribution.cacgmm import (
         ...     CACGMM,
         ...     ComplexAngularCentralGaussian,
         ... )

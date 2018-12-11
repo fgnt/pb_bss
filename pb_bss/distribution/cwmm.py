@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import numpy as np
 from .complex_watson import ComplexWatson, ComplexWatsonTrainer
 
-from dc_integration.distribution.utils import _ProbabilisticModel
+from pb_bss.distribution.utils import _ProbabilisticModel
 from cached_property import cached_property
 
 

@@ -15,11 +15,11 @@ References:
 from dataclasses import dataclass
 
 import numpy as np
-from dc_integration.utils import is_broadcast_compatible
-from dc_integration.distribution.utils import force_hermitian
-from dc_integration.distribution.utils import _ProbabilisticModel
-from dc_integration.distribution.utils import _unit_norm
-from dc_integration.distribution.complex_circular_symmetric_gaussian import (
+from pb_bss.utils import is_broadcast_compatible
+from pb_bss.distribution.utils import force_hermitian
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.distribution.utils import _unit_norm
+from pb_bss.distribution.complex_circular_symmetric_gaussian import (
     ComplexCircularSymmetricGaussian
 )
 

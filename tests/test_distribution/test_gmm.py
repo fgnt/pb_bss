@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 import unittest
-from dc_integration.distribution import GMMTrainer
+from pb_bss.distribution import GMMTrainer
 import itertools
 
 

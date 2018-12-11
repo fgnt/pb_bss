@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_allclose
 import unittest
-from dc_integration.distribution import GaussianTrainer
+from pb_bss.distribution import GaussianTrainer
 
 
 class TestGaussian(unittest.TestCase):

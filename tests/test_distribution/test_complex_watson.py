@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_equal
 import unittest
-from dc_integration.distribution import (
+from pb_bss.distribution import (
     ComplexAngularCentralGaussian,
     ComplexWatsonTrainer,
 )

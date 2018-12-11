@@ -4,9 +4,9 @@ import numpy as np
 from dataclasses import dataclass
 from sklearn.cluster import KMeans
 
-from dc_integration.distribution import Gaussian, GaussianTrainer
-from dc_integration.distribution.utils import _ProbabilisticModel
-from dc_integration.utils import labels_to_one_hot
+from pb_bss.distribution import Gaussian, GaussianTrainer
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.utils import labels_to_one_hot
 
 
 @dataclass

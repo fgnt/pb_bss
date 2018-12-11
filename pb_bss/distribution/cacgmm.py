@@ -2,12 +2,12 @@ from operator import xor
 
 import numpy as np
 from dataclasses import dataclass
-from dc_integration.distribution.utils import (
+from pb_bss.distribution.utils import (
     _unit_norm,
     _ProbabilisticModel,
 )
 
-from dc_integration.distribution.complex_angular_central_gaussian import (
+from pb_bss.distribution.complex_angular_central_gaussian import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
     normalize_observation,

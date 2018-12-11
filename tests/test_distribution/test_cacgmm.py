@@ -1,8 +1,8 @@
 import numpy as np
 from numpy.testing import assert_allclose
 import unittest
-from dc_integration.distribution import CACGMMTrainer
-from dc_integration.distribution import ComplexAngularCentralGaussian
+from pb_bss.distribution import CACGMMTrainer
+from pb_bss.distribution import ComplexAngularCentralGaussian
 import itertools
 
 

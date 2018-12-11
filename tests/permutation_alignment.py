@@ -7,7 +7,7 @@ Or with:
 
 import unittest
 import numpy as np
-from dc_integration.permutation_alignment import DHTVPermutationAlignment as FPA
+from pb_bss.permutation_alignment import DHTVPermutationAlignment as FPA
 from pathlib import Path
 import itertools
 from chainer.testing import condition

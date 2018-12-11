@@ -2,8 +2,8 @@ from dataclasses import dataclass, field
 import numpy as np
 from sklearn.mixture.gaussian_mixture import _compute_precision_cholesky
 from sklearn.mixture.gaussian_mixture import _compute_log_det_cholesky
-from dc_integration.utils import is_broadcast_compatible
-from dc_integration.distribution.utils import _ProbabilisticModel
+from pb_bss.utils import is_broadcast_compatible
+from pb_bss.distribution.utils import _ProbabilisticModel
 
 
 @dataclass

@@ -1,7 +1,7 @@
 import numpy as np
 from numpy.testing import assert_equal
 import unittest
-from dc_integration.distribution import VMFMMTrainer
+from pb_bss.distribution import VMFMMTrainer
 import itertools
 
 

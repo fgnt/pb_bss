@@ -7,11 +7,11 @@ from scipy.special import hyp1f1
 from scipy.special import ive
 import matplotlib.pyplot as plt
 
-from dc_integration.utils import reshape
-from dc_integration.utils import get_pca
-from dc_integration.utils import get_power_spectral_density_matrix
-from dc_integration.utils import get_stft_center_frequencies
-from dc_integration.utils import deprecated
+from pb_bss.utils import reshape
+from pb_bss.utils import get_pca
+from pb_bss.utils import get_power_spectral_density_matrix
+from pb_bss.utils import get_stft_center_frequencies
+from pb_bss.utils import deprecated
 
 try:
     from nt.visualization import plot, facet_grid, context_manager
@@ -92,7 +92,7 @@ def _frequency_norm(
 
 class ComplexWatson:
     """
-    >>> import dc_integration.distributions.complex_watson as cw
+    >>> import pb_bss.distributions.complex_watson as cw
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>> scales = [
