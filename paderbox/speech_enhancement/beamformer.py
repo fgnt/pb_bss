@@ -83,7 +83,7 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
     (51, 6, 6)
     """
 
-    # TODO: Can we use nt.utils.math_ops.covariance instead?
+    # TODO: Can we use paderbox.utils.math_ops.covariance instead?
 
     # ensure negative dim indexes
     sensor_dim, source_dim, time_dim = (d % observation.ndim - observation.ndim
