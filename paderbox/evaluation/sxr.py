@@ -1,7 +1,7 @@
 import numpy as np
 import collections
 import itertools
-from nt.speech_enhancement.noise import (
+from paderbox.speech_enhancement.noise import (
     get_variance_for_zero_mean_signal,
     get_snr,
 )
