@@ -1,6 +1,6 @@
 import numpy
 import numpy as np
-from nt.transform.module_stft import get_stft_center_frequencies
+from paderbox.transform.module_stft import get_stft_center_frequencies
 
 
 def _angle_to_rotation_matrix(rotation_angles):

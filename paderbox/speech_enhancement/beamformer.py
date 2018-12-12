@@ -20,9 +20,9 @@ from numpy.linalg import solve
 from scipy.linalg import eig
 from scipy.linalg import eigh
 from scipy.signal import lfilter
-from nt.math.correlation import covariance  # as shortcut!
-from nt.math.solve import stable_solve
-from nt.utils.numpy_utils import morph
+from paderbox.math.correlation import covariance  # as shortcut!
+from paderbox.math.solve import stable_solve
+from paderbox.utils.numpy_utils import morph
 
 
 try:
