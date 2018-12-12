@@ -1,7 +1,7 @@
 import setuptools
 
 setuptools.setup(
-    name="dc_integration",
+    name="pb_bss",
 
     author="Lukas Drude",
     author_email="mail@lukas-drude.de",
@@ -14,7 +14,7 @@ setuptools.setup(
     install_requires=[
         'dataclasses',
         'matplotlib',
-        'sklearn',
+        'scikit-learn',
         'cached_property',
     ],
 
