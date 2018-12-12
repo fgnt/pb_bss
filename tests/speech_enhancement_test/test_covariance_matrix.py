@@ -2,8 +2,8 @@ import unittest
 
 import numpy as np
 
-import nt.testing as tc
-from nt.speech_enhancement.beamformer import get_power_spectral_density_matrix
+import paderbox.testing as tc
+from paderbox.speech_enhancement.beamformer import get_power_spectral_density_matrix
 
 
 def rand(*shape, data_type):

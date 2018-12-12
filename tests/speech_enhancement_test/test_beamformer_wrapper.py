@@ -1,8 +1,8 @@
 import unittest
 import numpy as np
-from nt.speech_enhancement.beamformer import gev_wrapper_on_masks
-from nt.speech_enhancement.beamformer import pca_wrapper_on_masks
-from nt.speech_enhancement.beamformer import pca_mvdr_wrapper_on_masks
+from paderbox.speech_enhancement.beamformer import gev_wrapper_on_masks
+from paderbox.speech_enhancement.beamformer import pca_wrapper_on_masks
+from paderbox.speech_enhancement.beamformer import pca_mvdr_wrapper_on_masks
 
 
 def rand(*shape, data_type):

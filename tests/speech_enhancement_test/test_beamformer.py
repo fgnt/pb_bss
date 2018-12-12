@@ -2,15 +2,15 @@ import unittest
 
 import numpy as np
 import functools
-import nt.testing as tc
-from nt.speech_enhancement.beamformer import get_gev_vector, \
+import paderbox.testing as tc
+from paderbox.speech_enhancement.beamformer import get_gev_vector, \
     _get_gev_vector, _cythonized_eig, eig
-from nt.speech_enhancement.beamformer import get_lcmv_vector
-from nt.speech_enhancement.beamformer import get_mvdr_vector
-from nt.speech_enhancement.beamformer import get_pca_vector
-from nt.speech_enhancement.beamformer import get_mvdr_vector_souden
-from nt.math.vector import cos_similarity
-from nt.utils.random_helper import uniform, hermitian, pos_def_hermitian
+from paderbox.speech_enhancement.beamformer import get_lcmv_vector
+from paderbox.speech_enhancement.beamformer import get_mvdr_vector
+from paderbox.speech_enhancement.beamformer import get_pca_vector
+from paderbox.speech_enhancement.beamformer import get_mvdr_vector_souden
+from paderbox.math.vector import cos_similarity
+from paderbox.utils.random_helper import uniform, hermitian, pos_def_hermitian
 
 
 class TestBeamformerWrapper(unittest.TestCase):
@@ -80,7 +80,7 @@ class TestBeamformerWrapperWithSpeakers(TestBeamformerWrapper):
 
 class TestCythonizedGetGEV(unittest.TestCase):
     def test_import(self):
-        from nt.speech_enhancement.cythonized.get_gev_vector import \
+        from paderbox.speech_enhancement.cythonized.get_gev_vector import \
             _c_get_gev_vector
 
     def test_result_equal(self):
@@ -138,7 +138,7 @@ class TestCythonizedEig(unittest.TestCase):
         tc.assert_array_greater(elapsed_time_python / elapsed_time_cython1, 4)
 
 
-from nt.speech_enhancement.beamformer import get_mvdr_vector_souden
+from paderbox.speech_enhancement.beamformer import get_mvdr_vector_souden
 
 
 class TestMvdrSouden(unittest.TestCase):

@@ -3,11 +3,11 @@ import unittest
 import numpy as np
 from nose_parameterized import parameterized, param
 
-import nt.testing as tc
-from nt.speech_enhancement import mask_module
-from nt.speech_enhancement.mask_module import wiener_like_mask, lorenz_mask, \
+import paderbox.testing as tc
+from paderbox.speech_enhancement import mask_module
+from paderbox.speech_enhancement.mask_module import wiener_like_mask, lorenz_mask, \
     ideal_binary_mask
-from nt.utils.random_helper import randn
+from paderbox.utils.random_helper import randn
 
 
 def randc128(*shape):
