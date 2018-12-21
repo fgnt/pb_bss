@@ -31,11 +31,24 @@ All other axes are regarded as independent dimensions.
 # TODO: Add test-case for LorenzMask
 # CB: Eventuell einen Dekorator nutzen für force signal np.ndarray?
 # CB: Eventuell einen Dekorator nutzen für force signal.real.dtype == return.dtype?
-
 import numpy as np
 from typing import Optional
 from paderbox.math.misc import abs_square
 EPS = 1e-18
+
+
+__all__ = [
+    'voiced_unvoiced_split_characteristic',
+    'ideal_binary_mask',
+    'wiener_like_mask',
+    'ideal_ratio_mask',
+    'ideal_amplitude_mask',
+    'phase_sensitive_mask',
+    'ideal_complex_mask',
+    'lorenz_mask',
+    'quantile_mask',
+    'biased_binary_mask',
+]
 
 
 def voiced_unvoiced_split_characteristic(
@@ -389,31 +402,37 @@ def lorenz_mask(
     return np.moveaxis(mask.reshape(shape), tmp_axis, axis)
 
 
-def quantil_mask(
+def quantile_mask(
         signal: np.ndarray,
-        quantil=[0.1, -0.9],
+        quantile=(0.1, -0.9),
         *,
         sensor_axis=None,
-        axis=(-2),
+        axis=-2,
         weight: float=0.999,
 ) -> np.ndarray:
     """
 
     Args:
         signal:
-        quantil: pos for speech, negative for noise
+        quantile: pos for speech, negative for noise
         sensor_axis:
         axis: Suggestion: time axis, Alternative time and frequency axis
         weight:
 
     Returns:
-        Mask of shape [*quantil.shape, *signal.shape]
+        Mask of shape [*quantile.shape, *signal.shape]
 
     """
     signal = np.abs(signal)
 
-    if isinstance(quantil, (tuple, list)):
-        return np.array([quantil_mask(signal=signal, sensor_axis=sensor_axis, axis=axis, quantil=q, weight=weight) for q in quantil])
+    if isinstance(quantile, (tuple, list)):
+        return np.array([quantile_mask(
+            signal=signal,
+            sensor_axis=sensor_axis,
+            axis=axis,
+            quantile=q,
+            weight=weight
+        ) for q in quantile])
 
     if sensor_axis is not None:
         signal = signal.sum(axis=sensor_axis, keepdims=True)
@@ -429,14 +448,14 @@ def quantil_mask(
         [np.prod(shape[:-len(tmp_axis)]), np.prod(shape[-len(tmp_axis):])])
     signal = np.reshape(signal, working_shape)
 
-    if quantil >= 0:
-        threshold = np.percentile(signal, q=(1 - quantil)*100, axis=-1)
+    if quantile >= 0:
+        threshold = np.percentile(signal, q=(1 - quantile) * 100, axis=-1)
     else:
-        threshold = np.percentile(signal, q=abs(quantil)*100, axis=-1)
+        threshold = np.percentile(signal, q=abs(quantile) * 100, axis=-1)
 
     mask = np.zeros_like(signal)
     for i in range(mask.shape[0]):
-        if quantil >= 0:
+        if quantile >= 0:
             mask[i, :] = signal[i, :] > threshold[i]
         else:
             mask[i, :] = signal[i, :] < threshold[i]
