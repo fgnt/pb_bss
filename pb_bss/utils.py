@@ -150,7 +150,14 @@ def get_pca(target_psd_matrix, use_scipy=False):
         eigenvalues = np.array(eigenvalues)
     else:
         # Calculate eigenvals/vecs
-        eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
+        try:
+            eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
+        except np.linalg.LinAlgError:
+            # ToDo: figure out when this happen and why eig may work.
+            # It is likely that eig is more stable than eigh.
+            eigenvals, eigenvecs = np.linalg.eig(target_psd_matrix)
+            eigenvals = eigenvals.real
+
         # Select eigenvec for max eigenval. Eigenvals are sorted in ascending order.
         beamforming_vector = eigenvecs[..., -1]
         eigenvalues = eigenvals[..., -1]
