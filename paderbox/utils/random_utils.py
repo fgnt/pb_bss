@@ -47,8 +47,9 @@ def randn(*shape, dtype=np.complex128):
     elif dtype is np.complex128:
         return _randn(np.float64) + 1j * _randn(np.float64)
 
+
 def normal(*shape, dtype=np.complex128):
-    return randn(*shape, dtype)
+    return randn(*shape, dtype=dtype)
 
 
 @_force_correct_shape
