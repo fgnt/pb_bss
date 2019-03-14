@@ -746,7 +746,7 @@ def _gevd_rank_one_estimate(cov_a, cov_b):
 def get_wmwf_vector(
         target_psd_matrix, noise_psd_matrix, reference_channel=None,
         rank_one_estimate=False, rank_one_estimate_type="evd",
-        channel_selection_vector=None, distortion_weight=1., scope=None):
+        channel_selection_vector=None, distortion_weight=1.):
     """Speech distortion weighted multichannel Wiener filter.
 
     This filter is the solution to the optimization problem
@@ -801,7 +801,7 @@ def get_wmwf_vector(
 
     phi = stable_solve(noise_psd_matrix, target_psd_matrix)
     lambda_ = np.trace(phi, axis1=-1, axis2=-2)[..., None, None]
-    if distortion_weight == -1:
+    if distortion_weight == 'frequency_dependent':
         phi_x1x1 = target_psd_matrix[..., 0:1, 0:1]
         distortion_weight = np.sqrt(phi_x1x1 * lambda_)
         filter_ = phi / (distortion_weight)
