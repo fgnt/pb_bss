@@ -705,8 +705,8 @@ def get_mvdr_vector_souden(
     mat = phi / np.maximum(lambda_.real, eps)
     
     if ref_channel is None:
-        get_optimal_reference_channel(mat, target_psd_matrix, noise_psd_matrix,
-                                      eps=eps)
+        ref_channel = get_optimal_reference_channel(
+            mat, target_psd_matrix, noise_psd_matrix, eps=eps)
 
     assert np.isscalar(ref_channel), ref_channel
     beamformer = mat[..., ref_channel]
