@@ -313,7 +313,6 @@ def _get_gev_vector(target_psd_matrix, noise_psd_matrix, use_eig=False):
                              'phi_nn: {}'.format(
                 f, target_psd_matrix[f], noise_psd_matrix[f]))
         beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
-
     return beamforming_vector.reshape(original_shape[:-1])
 
 
@@ -624,6 +623,28 @@ def get_mvdr_vector_souden_old(
     return beamforming_vector
 
 
+def get_optimal_reference_channel(w_mat, target_psd_matrix, noise_psd_matrix,
+                                  eps=None):
+    if w_mat.ndim != 3:
+        raise ValueError(
+            'Estimating the ref_channel expects currently that the input '
+            'has 3 ndims (frequency x sensors x sensors). '
+            'Considering an independent dim in the SNR estimate is not '
+            'unique.'
+        )
+    if eps is None:
+        eps = np.finfo(w_mat.dtype).tiny
+    SNR = np.einsum(
+        '...FdR,...FdD,...FDR->...R', w_mat.conj(), target_psd_matrix, w_mat
+    ) / np.maximum(np.einsum(
+        '...FdR,...FdD,...FDR->...R', w_mat.conj(), noise_psd_matrix, w_mat
+    ), eps)
+    # Raises an exception when np.inf and/or np.NaN was in target_psd_matrix
+    # or noise_psd_matrix
+    assert np.all(np.isfinite(SNR)), SNR
+    return np.argmax(SNR.real)
+
+
 def get_mvdr_vector_souden(
         target_psd_matrix,
         noise_psd_matrix,
@@ -684,22 +705,8 @@ def get_mvdr_vector_souden(
     mat = phi / np.maximum(lambda_.real, eps)
     
     if ref_channel is None:
-        if phi.ndim != 3:
-            raise ValueError(
-                'Estimating the ref_channel expects currently that the input '
-                'has 3 ndims (frequency x sensors x sensors). '
-                'Considering an independent dim in the SNR estimate is not '
-                'unique.'
-            )
-        SNR = np.einsum(
-            '...FdR,...FdD,...FDR->...R', mat.conj(), target_psd_matrix, mat
-        ) / np.maximum(np.einsum(
-            '...FdR,...FdD,...FDR->...R', mat.conj(), noise_psd_matrix, mat
-        ), eps)
-        # Raises an exception when np.inf and/or np.NaN was in target_psd_matrix
-        # or noise_psd_matrix
-        assert np.all(np.isfinite(SNR)), SNR
-        ref_channel = np.argmax(SNR.real)
+        get_optimal_reference_channel(mat, target_psd_matrix, noise_psd_matrix,
+                                      eps=eps)
 
     assert np.isscalar(ref_channel), ref_channel
     beamformer = mat[..., ref_channel]
@@ -726,13 +733,10 @@ def _evd_rank_one_estimate(cov):
     return scale[..., None, None] * cov_rank1
 
 
-def _gevd_rank_one_estimate(cov_a, cov_b, svd=False):
+def _gevd_rank_one_estimate(cov_a, cov_b):
     """Estimates the matrix as the outer product of the dominant eigenvector."""
     w = get_gev_vector(cov_a, cov_b)
-    if svd:
-        a = np.einsum('...ab,...b->...a', cov_b, w)
-    else:
-        a = w
+    a = np.einsum('...ab,...b->...a', cov_b, w)
     cov_rank1 = np.einsum('...a,...b->...ab', a, a.conj())
     scale = np.trace(cov_a, axis1=-1, axis2=-2) / np.trace(
         cov_rank1, axis1=-1, axis2=-2)
@@ -790,10 +794,7 @@ def get_wmwf_vector(
             target_psd_matrix = _evd_rank_one_estimate(target_psd_matrix)
         elif rank_one_estimate_type == "gevd":
             target_psd_matrix = _gevd_rank_one_estimate(
-                target_psd_matrix, noise_psd_matrix, svd=False)
-        elif rank_one_estimate_type == "gsvd":
-            target_psd_matrix = _gevd_rank_one_estimate(
-                target_psd_matrix, noise_psd_matrix, svd=True)
+                target_psd_matrix, noise_psd_matrix)
         else:
             raise ValueError(
                 "Unknown rank-1 estimate type {}".format(rank_one_estimate_type))
@@ -807,14 +808,11 @@ def get_wmwf_vector(
     else:
         filter_ = phi / (distortion_weight + lambda_)
     if channel_selection_vector is not None:
-        channel_selection_vector = np.cast(
-            channel_selection_vector, filter_.dtype)
-        projected = filter_ * \
-            np.expand_dims(channel_selection_vector, axis=-2)
+        projected = filter_ * channel_selection_vector[..., None, :]
         return np.sum(projected, axis=-1)
     else:
         if reference_channel is None:
-            reference_channel = get_opt_ref_channel(
+            reference_channel = get_optimal_reference_channel(
                 filter_, target_psd_matrix, noise_psd_matrix)
 
         assert np.isscalar(reference_channel), reference_channel
