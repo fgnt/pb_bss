@@ -745,8 +745,8 @@ def _gevd_rank_one_estimate(cov_a, cov_b):
 
 def get_wmwf_vector(
         target_psd_matrix, noise_psd_matrix, reference_channel=None,
-        rank_one_estimate=False, rank_one_estimate_type="evd",
-        channel_selection_vector=None, distortion_weight=1.):
+        target_psd_constraints=None, channel_selection_vector=None,
+        distortion_weight=1.):
     """Speech distortion weighted multichannel Wiener filter.
 
     This filter is the solution to the optimization problem
@@ -785,19 +785,16 @@ def get_wmwf_vector(
     """
 
     # See https://arxiv.org/abs/1707.00201 for details
-    if rank_one_estimate:
-        # TODO(jhey): Using the generalized eigenvalue decomposition here caused
-        # instability and inferior results. This contradicts the results in the
-        # paper. Investigate this issue. Maybe add some other regularization to
-        # the noise PSD matrix.
-        if rank_one_estimate_type == "evd":
+    if target_psd_constraints:
+        if target_psd_constraints == "rank1_evd":
             target_psd_matrix = _evd_rank_one_estimate(target_psd_matrix)
-        elif rank_one_estimate_type == "gevd":
+        elif target_psd_constraints == "rank1_gevd":
             target_psd_matrix = _gevd_rank_one_estimate(
                 target_psd_matrix, noise_psd_matrix)
         else:
             raise ValueError(
-                "Unknown rank-1 estimate type {}".format(rank_one_estimate_type))
+                "Unknown target psd constraints estimate type {}".format(
+                    target_psd_constraints))
 
     phi = stable_solve(noise_psd_matrix, target_psd_matrix)
     lambda_ = np.trace(phi, axis1=-1, axis2=-2)[..., None, None]
