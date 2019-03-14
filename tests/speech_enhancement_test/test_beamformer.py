@@ -9,6 +9,7 @@ from paderbox.speech_enhancement.beamformer import get_lcmv_vector
 from paderbox.speech_enhancement.beamformer import get_mvdr_vector
 from paderbox.speech_enhancement.beamformer import get_pca_vector
 from paderbox.speech_enhancement.beamformer import get_mvdr_vector_souden
+from paderbox.speech_enhancement.beamformer import get_wmwf_vector
 from paderbox.math.vector import cos_similarity
 from paderbox.utils.random_utils import uniform, hermitian, pos_def_hermitian
 
@@ -40,6 +41,41 @@ class TestBeamformerWrapper(unittest.TestCase):
             pos_def_hermitian(
                 self.shape_psd), pos_def_hermitian(
                 self.shape_psd), ref_channel=1)
+        tc.assert_equal(output.shape, self.shape_vector)
+
+    def test_wmwf_dimensions(self):
+        output = get_wmwf_vector(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd))
+        tc.assert_equal(output.shape, self.shape_vector)
+
+    def test_wmwf_dimensions_frequency_dependent_distortion_weight(self):
+        output = get_wmwf_vector(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd), distortion_weight='frequency_dependent')
+        tc.assert_equal(output.shape, self.shape_vector)
+
+    def test_wmwf_dimensions_ref_channel(self):
+        output = get_wmwf_vector(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd), reference_channel=1)
+        tc.assert_equal(output.shape, self.shape_vector)
+
+    def test_wmwf_dimensions_rank1_evd(self):
+        output = get_wmwf_vector(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd), target_psd_constraints='rank1_evd')
+        tc.assert_equal(output.shape, self.shape_vector)
+
+    def test_wmwf_dimensions_rank1_gevd(self):
+        output = get_wmwf_vector(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd), target_psd_constraints='rank1_gevd')
         tc.assert_equal(output.shape, self.shape_vector)
 
     def test_pca_dimensions(self):
@@ -136,9 +172,6 @@ class TestCythonizedEig(unittest.TestCase):
 
         # assume speedup is bigger than 5
         tc.assert_array_greater(elapsed_time_python / elapsed_time_cython1, 4)
-
-
-from paderbox.speech_enhancement.beamformer import get_mvdr_vector_souden
 
 
 class TestMvdrSouden(unittest.TestCase):
