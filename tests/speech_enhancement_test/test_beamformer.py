@@ -45,37 +45,30 @@ class TestBeamformerWrapper(unittest.TestCase):
 
     def test_wmwf_dimensions(self):
         output = get_wmwf_vector(
-            pos_def_hermitian(
-                self.shape_psd), pos_def_hermitian(
-                self.shape_psd))
+            pos_def_hermitian(self.shape_psd),
+            pos_def_hermitian(self.shape_psd),
+            reference_channel=1)
         tc.assert_equal(output.shape, self.shape_vector)
 
     def test_wmwf_dimensions_frequency_dependent_distortion_weight(self):
         output = get_wmwf_vector(
-            pos_def_hermitian(
-                self.shape_psd), pos_def_hermitian(
-                self.shape_psd), distortion_weight='frequency_dependent')
-        tc.assert_equal(output.shape, self.shape_vector)
-
-    def test_wmwf_dimensions_ref_channel(self):
-        output = get_wmwf_vector(
-            pos_def_hermitian(
-                self.shape_psd), pos_def_hermitian(
-                self.shape_psd), reference_channel=1)
+            pos_def_hermitian(self.shape_psd),
+            pos_def_hermitian(self.shape_psd),
+            reference_channel=1, distortion_weight='frequency_dependent')
         tc.assert_equal(output.shape, self.shape_vector)
 
     def test_wmwf_dimensions_rank1_evd(self):
         output = get_wmwf_vector(
-            pos_def_hermitian(
-                self.shape_psd), pos_def_hermitian(
-                self.shape_psd), target_psd_constraints='rank1_evd')
+            pos_def_hermitian(self.shape_psd),
+            pos_def_hermitian(self.shape_psd),
+            reference_channel=1, target_psd_constraints='rank1_evd')
         tc.assert_equal(output.shape, self.shape_vector)
 
     def test_wmwf_dimensions_rank1_gevd(self):
         output = get_wmwf_vector(
-            pos_def_hermitian(
-                self.shape_psd), pos_def_hermitian(
-                self.shape_psd), target_psd_constraints='rank1_gevd')
+            pos_def_hermitian(self.shape_psd),
+            pos_def_hermitian(self.shape_psd),
+            reference_channel=1, target_psd_constraints='rank1_gevd')
         tc.assert_equal(output.shape, self.shape_vector)
 
     def test_pca_dimensions(self):
