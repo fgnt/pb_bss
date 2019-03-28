@@ -139,7 +139,7 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
     return psd
 
 
-def get_pca(target_psd_matrix):
+def get_pca(target_psd_matrix, return_all_vecs=False):
     # Save the shape of target_psd_matrix
     shape = target_psd_matrix.shape
 
@@ -149,11 +149,16 @@ def get_pca(target_psd_matrix):
     # Calculate eigenvals/vecs
     eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
     # Select eigenvec for max eigenval. Eigenvals are sorted in ascending order.
-    beamforming_vector = eigenvecs[..., -1]
-    eigenvalues = eigenvals[..., -1]
-    # Reconstruct original shape
-    beamforming_vector = np.reshape(beamforming_vector, shape[:-1])
-    eigenvalues = np.reshape(eigenvalues, shape[:-2])
+    if return_all_vecs:
+        # Reconstruct original shape
+        beamforming_vector = np.reshape(eigenvecs, shape)
+        eigenvalues = np.reshape(eigenvals, shape[:-1])
+    else:
+        beamforming_vector = eigenvecs[..., -1]
+        eigenvalues = eigenvals[..., -1]
+        # Reconstruct original shape
+        beamforming_vector = np.reshape(beamforming_vector, shape[:-1])
+        eigenvalues = np.reshape(eigenvalues, shape[:-2])
 
     return beamforming_vector, eigenvalues
 
@@ -487,6 +492,18 @@ def apply_online_beamforming_vector(vector, mix):
 
 def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
                          normalization=False):
+    """Performs GEV beamforming given observation and masks.
+    
+    Args:
+        mix (np.array): (frames, source, bins)
+        noise_mask (np.array, optional): (frames, bins)
+        target_mask (np.array, optional): (frames, bins)
+        normalization (bool, optional): Defaults to False. [description]
+    
+    Returns:
+        beamformed signal: (frames, bins)
+    """
+
     if noise_mask is None and target_mask is None:
         raise ValueError('At least one mask needs to be present.')
 
