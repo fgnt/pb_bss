@@ -22,7 +22,7 @@ __all__ = [
 
 @dataclass
 class CACGMM(_ProbabilisticModel):
-    weight: np.array  # (..., K, 1)
+    weight: np.array  # (..., K, 1) for weight_constant_axis==(-1,)
     cacg: ComplexAngularCentralGaussian
 
     def predict(self, y):
@@ -105,6 +105,12 @@ class CACGMMTrainer:
             source_activity_mask: Boolean mask that says for each time point for
                 each source if it is active or not.
                 Shape (..., K, N)
+            weight_constant_axis: The axis that us used to calculate the mean
+                over the affiliations. The affiliations have the
+                shape (..., K, N), so the default value means averaging over
+                the sample dimension. Note an averaging over independent axis
+                is supported. Averaging over -2 is identical to
+                dirichlet_prior_concentration == np.inf.
             dirichlet_prior_concentration:
                 Prior for the mixture weight
             hermitize:
@@ -215,6 +221,10 @@ class CACGMMTrainer:
                 weight = np.broadcast_to(1 / K, affiliation.shape)
             else:
                 assert dirichlet_prior_concentration >= 1, dirichlet_prior_concentration
+                assert weight_constant_axis == (-1,), (
+                    'ToDo: implement weight_constant_axis ({}) for '
+                    'dirichlet_prior_concentration ({}).'
+                ).format(weight_constant_axis, dirichlet_prior_concentration)
                 # affiliation: ..., K, T
                 tmp = np.sum(
                     affiliation, axis=weight_constant_axis, keepdims=True
