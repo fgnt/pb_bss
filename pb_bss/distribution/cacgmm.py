@@ -22,7 +22,7 @@ __all__ = [
 
 @dataclass
 class CACGMM(_ProbabilisticModel):
-    weight: np.array  # (..., K)
+    weight: np.array  # (..., K, 1)
     cacg: ComplexAngularCentralGaussian
 
     def predict(self, y):
@@ -46,7 +46,7 @@ class CACGMM(_ProbabilisticModel):
 
         affiliation, quadratic_form = self.cacg._log_pdf(y[..., None, :, :])
 
-        affiliation += np.log(self.weight)[..., :, None]
+        affiliation += np.log(self.weight)
 
         # The value of affiliation max exceed float64 range.
         # Scaling (add in log domain) does not change the final affiliation.
@@ -81,12 +81,13 @@ class CACGMMTrainer:
             *,
             saliency=None,
             source_activity_mask=None,
+            weight_constant_axis=(-1,),
             dirichlet_prior_concentration=1,
             hermitize=True,
             covariance_norm='eigenvalue',
             affiliation_eps=1e-10,
             eigenvalue_floor=1e-10,
-            return_affiliation=False
+            return_affiliation=False,
     ):
         """
 
@@ -144,10 +145,14 @@ class CACGMMTrainer:
             affiliation = initialization
             quadratic_form = np.ones(affiliation_shape, dtype=y.real.dtype)
         elif isinstance(initialization, CACGMM):
-            num_classes = initialization.weight.shape[-1]
+            num_classes = initialization.weight.shape[-2]
             model = initialization
         else:
             raise TypeError('No sufficient initialization.')
+
+        if isinstance(weight_constant_axis, list):
+            # List does not work in numpy 1.16.0 as axis
+            weight_constant_axis = tuple(weight_constant_axis)
 
         if source_activity_mask is not None:
             assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
@@ -157,7 +162,7 @@ class CACGMMTrainer:
                 assert source_activity_mask.shape == initialization.shape, (source_activity_mask.shape, initialization.shape)
 
         assert num_classes < 20, f'num_classes: {num_classes}, sure?'
-        assert D < 30, f'Channels: {D}, sure?'
+        assert D < 35, f'Channels: {D}, sure?'
 
         for iteration in range(iterations):
             if model is not None:
@@ -176,6 +181,7 @@ class CACGMMTrainer:
                 hermitize=hermitize,
                 covariance_norm=covariance_norm,
                 eigenvalue_floor=eigenvalue_floor,
+                weight_constant_axis=weight_constant_axis,
             )
 
         if return_affiliation is True:
@@ -195,19 +201,24 @@ class CACGMMTrainer:
             hermitize,
             covariance_norm,
             eigenvalue_floor,
+            weight_constant_axis,
     ):
         if saliency is None:
             masked_affiliation = affiliation
 
             if dirichlet_prior_concentration == 1:
-                weight = np.mean(affiliation, axis=-1)
+                weight = np.mean(
+                    affiliation, axis=weight_constant_axis, keepdims=True
+                )
             elif np.isposinf(dirichlet_prior_concentration):
                 K, T = affiliation.shape[-2:]
-                weight = np.broadcast_to(1 / K, affiliation.shape[:-1])
+                weight = np.broadcast_to(1 / K, affiliation.shape)
             else:
                 assert dirichlet_prior_concentration >= 1, dirichlet_prior_concentration
                 # affiliation: ..., K, T
-                tmp = np.sum(affiliation, axis=-1)
+                tmp = np.sum(
+                    affiliation, axis=weight_constant_axis, keepdims=True
+                )
                 K, T = affiliation.shape[-2:]
 
                 weight = (
@@ -219,7 +230,9 @@ class CACGMMTrainer:
             assert dirichlet_prior_concentration == 1, dirichlet_prior_concentration
             masked_affiliation = affiliation * saliency[..., None, :]
             weight = _unit_norm(
-                np.sum(masked_affiliation, axis=-1),
+                np.sum(
+                    masked_affiliation, axis=weight_constant_axis, keepdims=True
+                ),
                 ord=1,
                 axis=-1,
                 eps=1e-10,
