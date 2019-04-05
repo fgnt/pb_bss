@@ -128,7 +128,7 @@ class CACGMMTrainer:
         )
 
         assert np.iscomplexobj(y), y.dtype
-        assert y.shape[-1] > 1
+        assert y.shape[-1] > 1, y.shape
         y = normalize_observation(y)  # swap D and N dim
 
         assert iterations > 0, iterations
