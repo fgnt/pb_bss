@@ -19,7 +19,7 @@ class GMM(_ProbabilisticModel):
 
         affiliation = (
             np.log(self.weight)[..., :, None]
-            + self.gaussian.log_pdf(x)
+            + self.gaussian.log_pdf(x[..., None, :, :])
         )
         affiliation -= np.max(affiliation, axis=-2, keepdims=True)
         np.exp(affiliation, out=affiliation)
@@ -106,7 +106,9 @@ class GMMTrainer:
         weight /= np.einsum("...n->...", saliency)[..., None]
 
         gaussian = GaussianTrainer()._fit(
-            y=x, saliency=masked_affiliation, covariance_type=covariance_type
+            y=x[..., None, :, :],
+            saliency=masked_affiliation,
+            covariance_type=covariance_type
         )
         return GMM(weight=weight, gaussian=gaussian)
 

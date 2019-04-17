@@ -18,7 +18,10 @@ class Gaussian(_ProbabilisticModel):
         c = np.reshape(self.covariance, (-1, D, D))
         pc = _compute_precision_cholesky(c, 'full')
         self.precision_cholesky = np.reshape(pc, self.covariance.shape)
-        self.log_det_precision_cholesky = _compute_log_det_cholesky(pc, 'full', D)
+        self.log_det_precision_cholesky = np.reshape(
+            _compute_log_det_cholesky(pc, 'full', D),
+            self.covariance.shape[:-2]
+        )
 
     def log_pdf(self, y):
         """Gets used by e.g. the GMM.
