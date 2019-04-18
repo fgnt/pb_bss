@@ -56,8 +56,8 @@ class TestGMM(unittest.TestCase):
         x[labels == 1, :] = np.random.multivariate_normal(
             mean[1, :], covariance[0, :, :], size=(np.sum(labels == 1),)
         )
-
-        model = GMMTrainer().fit(x[None, ...], num_classes=2)
+        x = np.concatenate((x[None, ...], x[None, ...]), axis=0)
+        model = GMMTrainer().fit(x, num_classes=2)
 
         # Permutation invariant testing
         permutations = list(itertools.permutations(range(2)))
