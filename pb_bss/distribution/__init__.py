@@ -27,6 +27,6 @@ from .complex_angular_central_gaussian import (
 from .complex_watson import ComplexWatson, ComplexWatsonTrainer
 from .vmfmm import VMFMM, VMFMMTrainer
 from .vmfcacgmm import VMFCACGMM, VMFCACGMMTrainer
-from .cacgmm import CACGMM, CACGMMTrainer
+from .cacgmm import CACGMM, CACGMMTrainer, sample_cacgmm
 from .gcacgmm import GCACGMM, GCACGMMTrainer, PartiallySharedGCACGMMTrainer
 from .cwmm import CWMM, CWMMTrainer
