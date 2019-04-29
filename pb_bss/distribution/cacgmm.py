@@ -1,6 +1,7 @@
 from operator import xor
 
 import numpy as np
+import scipy.special
 from dataclasses import dataclass
 from pb_bss.distribution.utils import (
     _unit_norm,
@@ -16,8 +17,39 @@ from pb_bss.distribution.complex_angular_central_gaussian import (
 __all__ = [
     'CACGMM',
     'CACGMMTrainer',
-    # 'sample_cacgmm',  # <- TODO
+    'sample_cacgmm',
 ]
+
+
+def sample_cacgmm(
+        size,
+        weight,
+        covariance,
+        return_label=False
+):
+    assert weight.ndim == 1, weight
+    assert isinstance(size, int), size
+    assert covariance.ndim == 3, covariance.shape
+
+    num_classes, = weight.shape
+
+    D = covariance.shape[-1]
+    assert covariance.shape == (num_classes, D, D), (covariance.shape, num_classes, D)
+
+    labels = np.random.choice(range(num_classes), size=size, p=weight)
+
+    x = np.zeros((size, D), dtype=np.complex128)
+
+    for l in range(num_classes):
+        cacg = ComplexAngularCentralGaussian.from_covariance(
+            covariance=covariance[l, :, :]
+        )
+        x[labels == l, :] = cacg.sample(size=(np.sum(labels == l),))
+
+    if return_label:
+        return x, labels
+    else:
+        return x
 
 
 @dataclass
@@ -25,11 +57,14 @@ class CACGMM(_ProbabilisticModel):
     weight: np.array  # (..., K, 1) for weight_constant_axis==(-1,)
     cacg: ComplexAngularCentralGaussian
 
-    def predict(self, y):
+    def predict(self, y, return_quadratic_form=False):
         assert np.iscomplexobj(y), y.dtype
         y = normalize_observation(y)  # swap D and N dim
-        affiliation, quadratic_form = self._predict(y)
-        return affiliation
+        affiliation, quadratic_form, _ = self._predict(y)
+        if return_quadratic_form:
+            return affiliation, quadratic_form
+        else:
+            return affiliation
 
     def _predict(self, y, source_activity_mask=None, affiliation_eps=0.):
         """
@@ -44,13 +79,13 @@ class CACGMM(_ProbabilisticModel):
         """
         *independent, _, num_observations = y.shape
 
-        affiliation, quadratic_form = self.cacg._log_pdf(y[..., None, :, :])
+        log_pdf, quadratic_form = self.cacg._log_pdf(y[..., None, :, :])
 
-        affiliation += np.log(self.weight)
+        log_pdf = log_pdf + np.log(self.weight)
 
         # The value of affiliation max exceed float64 range.
         # Scaling (add in log domain) does not change the final affiliation.
-        affiliation -= np.amax(affiliation, axis=-2, keepdims=True)
+        affiliation = log_pdf - np.amax(log_pdf, axis=-2, keepdims=True)
 
         np.exp(affiliation, out=affiliation)  # inplace
 
@@ -68,7 +103,55 @@ class CACGMM(_ProbabilisticModel):
             affiliation = np.clip(
                 affiliation, affiliation_eps, 1 - affiliation_eps
             )
-        return affiliation, quadratic_form
+        return affiliation, quadratic_form, log_pdf
+
+    def log_likelihood(self, y):
+        """
+
+        >>> import paderbox as pb
+        >>> F, T, D, K = 513, 400, 6, 3
+        >>> y = pb.utils.random_utils.normal([F, T, D], dtype=np.complex128)
+        >>> mm = CACGMMTrainer().fit(y, num_classes=K, iterations=2)
+        >>> log_likelihood1 = mm.log_likelihood(y)
+        >>> mm = CACGMMTrainer().fit(y, initialization=mm, iterations=1)
+        >>> log_likelihood2 = mm.log_likelihood(y)
+        >>> assert log_likelihood2 > log_likelihood1, (log_likelihood1, log_likelihood2)
+
+        >>> np.isscalar(log_likelihood1), log_likelihood1.dtype
+        (True, dtype('float64'))
+
+
+        """
+        assert np.iscomplexobj(y), y.dtype
+        y = normalize_observation(y)  # swap D and N dim
+        affiliation, quadratic_form, log_pdf = self._predict(y)
+        return self._log_likelihood(y, log_pdf)
+
+    def _log_likelihood(self, y, log_pdf):
+        """
+        Note: y shape is (..., D, N) and not (..., N, D) like in log_likelihood
+
+        Args:
+            y:
+        Returns: Affiliations with shape (..., K, N) and quadratic format
+            with the same shape.
+
+        Args:
+            y: Normalized observations with shape (..., D, N).
+            log_pdf: shape (..., K, N)
+
+        Returns:
+            log_likelihood, scalar
+
+        """
+        *independent, channels, num_observations = y.shape
+
+        # log_pdf.shape: *independent, speakers, num_observations
+
+        # first: sum above the speakers
+        # second: sum above time frequency in log domain
+        log_likelihood = np.sum(scipy.special.logsumexp(log_pdf, axis=-2))
+        return log_likelihood
 
 
 class CACGMMTrainer:
@@ -144,11 +227,16 @@ class CACGMMTrainer:
             quadratic_form = np.ones(affiliation_shape, dtype=y.real.dtype)
         elif isinstance(initialization, np.ndarray):
             num_classes = initialization.shape[-2]
+            assert num_classes > 1, num_classes
             affiliation_shape = (*independent, num_classes, num_observations)
-            assert initialization.shape == affiliation_shape, (
+            assert initialization.ndim == len(affiliation_shape), (
+                initialization.shape, affiliation_shape
+            )  # force same number of dims (Prevent wrong input)
+            # Allow singleton dimensions to be broadcasted
+            assert initialization.shape[-2:] == affiliation_shape[-2:], (
                 initialization.shape, affiliation_shape
             )
-            affiliation = initialization
+            affiliation = np.broadcast_to(initialization, affiliation_shape)
             quadratic_form = np.ones(affiliation_shape, dtype=y.real.dtype)
         elif isinstance(initialization, CACGMM):
             num_classes = initialization.weight.shape[-2]
@@ -172,7 +260,7 @@ class CACGMMTrainer:
 
         for iteration in range(iterations):
             if model is not None:
-                affiliation, quadratic_form = model._predict(
+                affiliation, quadratic_form, _ = model._predict(
                     y,
                     source_activity_mask=source_activity_mask,
                     affiliation_eps=affiliation_eps,
@@ -217,8 +305,8 @@ class CACGMMTrainer:
                     affiliation, axis=weight_constant_axis, keepdims=True
                 )
             elif np.isposinf(dirichlet_prior_concentration):
-                K, T = affiliation.shape[-2:]
-                weight = np.broadcast_to(1 / K, affiliation.shape)
+                *independent, K, T = affiliation.shape[-2:]
+                weight = np.broadcast_to(1 / K, [*independent, K, 1])
             else:
                 assert dirichlet_prior_concentration >= 1, dirichlet_prior_concentration
                 assert weight_constant_axis == (-1,), (
