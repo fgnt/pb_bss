@@ -301,7 +301,46 @@ def labels_to_one_hot(
     Returns:
         One-hot encoding with shape (..., categories, ...).
 
+    >>> labels_to_one_hot([0, 1], categories=4)
+    array([[ True, False],
+           [False,  True],
+           [False, False],
+           [False, False]])
+    >>> labels_to_one_hot([0, 1], categories=4, axis=-1)
+    array([[ True, False, False, False],
+           [False,  True, False, False]])
+    >>> labels_to_one_hot([[0, 1], [0, 3]], categories=4, axis=-1)
+    array([[[ True, False, False, False],
+            [False,  True, False, False]],
+    <BLANKLINE>
+           [[ True, False, False, False],
+            [False, False, False,  True]]])
+    >>> labels_to_one_hot([[0, 1], [0, 3]], categories=4, axis=1)
+    array([[[ True, False],
+            [False,  True],
+            [False, False],
+            [False, False]],
+    <BLANKLINE>
+           [[ True, False],
+            [False, False],
+            [False, False],
+            [False,  True]]])
+    >>> labels_to_one_hot([[0, 1], [0, 3]], categories=4, axis=0)
+    array([[[ True, False],
+            [ True, False]],
+    <BLANKLINE>
+           [[False,  True],
+            [False, False]],
+    <BLANKLINE>
+           [[False, False],
+            [False, False]],
+    <BLANKLINE>
+           [[False, False],
+            [False,  True]]])
+
     """
+    labels = np.asarray(labels)
+
     if keepdims:
         assert labels.shape[axis] == 1
         result_ndim = labels.ndim
