@@ -3,7 +3,11 @@ from operator import xor
 from dataclasses import dataclass
 
 import numpy as np
-from .complex_watson import ComplexWatson, ComplexWatsonTrainer
+from .complex_watson import (
+    ComplexWatson,
+    ComplexWatsonTrainer,
+    normalize_observation,
+)
 
 from pb_bss.distribution.utils import _ProbabilisticModel
 from cached_property import cached_property
@@ -93,9 +97,8 @@ class CWMMTrainer:
         )
         assert np.iscomplexobj(y), y.dtype
         assert y.shape[-1] > 1
-        y = y / np.maximum(
-            np.linalg.norm(y, axis=-1, keepdims=True), np.finfo(y.dtype).tiny
-        )
+
+        y = normalize_observation(y)
 
         if initialization is None and num_classes is not None:
             *independent, num_observations, _ = y.shape
@@ -127,10 +130,10 @@ class CWMMTrainer:
     def _fit(self, y, initialization, iterations, saliency, ) -> CWMM:
         affiliation = initialization  # TODO: Do we need np.copy here?
         for iteration in range(iterations):
-            model = self._m_step(y, affiliation=affiliation, saliency=saliency)
-
-            if iteration < iterations - 1:
+            if iteration != 0:
                 affiliation = model.predict(y)
+
+            model = self._m_step(y, affiliation=affiliation, saliency=saliency)
 
         return model
 
