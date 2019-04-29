@@ -132,11 +132,6 @@ class CACGMM(_ProbabilisticModel):
         Note: y shape is (..., D, N) and not (..., N, D) like in log_likelihood
 
         Args:
-            y:
-        Returns: Affiliations with shape (..., K, N) and quadratic format
-            with the same shape.
-
-        Args:
             y: Normalized observations with shape (..., D, N).
             log_pdf: shape (..., K, N)
 
@@ -229,13 +224,17 @@ class CACGMMTrainer:
             num_classes = initialization.shape[-2]
             assert num_classes > 1, num_classes
             affiliation_shape = (*independent, num_classes, num_observations)
+
+            # Force same number of dims (Prevent wrong input)
             assert initialization.ndim == len(affiliation_shape), (
                 initialization.shape, affiliation_shape
-            )  # force same number of dims (Prevent wrong input)
+            )
+
             # Allow singleton dimensions to be broadcasted
             assert initialization.shape[-2:] == affiliation_shape[-2:], (
                 initialization.shape, affiliation_shape
             )
+            
             affiliation = np.broadcast_to(initialization, affiliation_shape)
             quadratic_form = np.ones(affiliation_shape, dtype=y.real.dtype)
         elif isinstance(initialization, CACGMM):

@@ -14,6 +14,15 @@ from pb_bss.utils import get_power_spectral_density_matrix, get_pca
 
 
 def normalize_observation(observation):
+    """
+
+    Args:
+        observation: (..., N, D)
+
+    Returns:
+        normalized observation (..., N, D)
+    """
+    # ToDo: Should the dimensions be swapped like in cacg for speed?
     return observation / np.maximum(
         np.linalg.norm(observation, axis=-1, keepdims=True),
         np.finfo(observation.dtype).tiny,

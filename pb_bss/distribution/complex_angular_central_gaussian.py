@@ -36,6 +36,10 @@ def normalize_observation(observation):
 
     Attention: swap D and N dim
 
+    The dimensions are swapped, because some calculations (e.g. covariance) do
+    a reduction over the sample (time) dimension. Having the time dimension on
+    the last axis improves the execution time.
+
     Args:
         observation: (..., N, D)
 
