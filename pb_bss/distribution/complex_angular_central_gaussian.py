@@ -32,6 +32,16 @@ __all__ = [
 
 
 def normalize_observation(observation):
+    """
+
+    Attention: swap D and N dim
+
+    Args:
+        observation: (..., N, D)
+
+    Returns:
+        normalized observation (..., D, N)
+    """
     observation = _unit_norm(
         observation,
         axis=-1,
