@@ -40,6 +40,23 @@ def get_steering_vector(
     return steering_vector
 
 
+def get_diffuse_noise_psd(sensor_distances, fft_size=1024, sample_rate=16000):
+    """
+
+    :param sensor_distances:
+        with shape: num_channels x num_channels
+    :param fft_size:
+    :param sample_rate:
+    :return: noise psd matrix:
+        with shape: num frequency bins x num_channels x num_channels
+    """
+    num_fbins = int(fft_size // 2 + 1)
+    f = np.linspace(0.0, sample_rate//2, num_fbins).reshape(num_fbins, 1, 1)
+    c = 340.0 # velocity of sound
+
+    return np.sinc(2.0 * f * sensor_distances[None] / c)
+
+
 def get_nearfield_time_of_flight(source_positions, sensor_positions,
                                  sound_velocity=343):
     """ Calculates exact time of flight in seconds without farfield assumption.
