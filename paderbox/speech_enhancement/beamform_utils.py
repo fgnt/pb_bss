@@ -4,6 +4,16 @@ from paderbox.transform.module_stft import get_stft_center_frequencies
 
 
 def _angle_to_rotation_matrix(rotation_angles):
+    """
+    It would be helpful to explain the meaning of the elevation. Does
+    it go from -pi/2 to pi/2 or from 0 to pi?
+
+    Args:
+        rotation_angles: Shape (2, K)
+
+    Returns:
+
+    """
 
     azimuth = rotation_angles[0]
     elevation = rotation_angles[1]
@@ -85,9 +95,9 @@ def get_farfield_time_difference_of_arrival(
     """ Calculates the far field time difference of arrival
 
     :param source_angles: Impinging angle of the planar waves (assumes an
-        infinite distance between source and sensor array)
+        infinite distance between source and sensor array) in radians
     :type source_angles: 2xK matrix of azimuth and elevation angles.
-    :param sensor_positions: Sensor positions in radians
+    :param sensor_positions: Sensor positions
     :type sensor_positions: 3xM matrix, where M is the number of sensors and
         3 are the cartesian dimensions
     :param reference_channel: Reference microphone starting from index=0.
