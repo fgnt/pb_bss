@@ -50,21 +50,38 @@ def get_steering_vector(
     return steering_vector
 
 
-def get_diffuse_noise_psd(sensor_distances, fft_size=1024, sample_rate=16000):
-    """
+def get_diffuse_noise_psd(
+        sensor_distances,
+        fft_size=1024,
+        sample_rate=16000,
+        sound_velocity=343
+):
+    """This function does not calculate a PSD matrix.
 
-    :param sensor_distances:
-        with shape: num_channels x num_channels
-    :param fft_size:
-    :param sample_rate:
-    :return: noise psd matrix:
-        with shape: num frequency bins x num_channels x num_channels
-    """
-    num_fbins = int(fft_size // 2 + 1)
-    f = np.linspace(0.0, sample_rate//2, num_fbins).reshape(num_fbins, 1, 1)
-    c = 340.0 # velocity of sound
+    Calculates a spatial coherence matrix for a spherically isotropic sound
+    field. This can be interpreted as a normalized PSD matrix.
 
-    return np.sinc(2.0 * f * sensor_distances[None] / c)
+    The implementation is according to Bitzer, Joerg, and K. Uwe Simmer.
+    "Superdirective microphone arrays." In Microphone arrays, pp. 19-38.
+    Springer, Berlin, Heidelberg, 2001. In particular Equation (2.17).
+
+    Args:
+        sensor_distances: Shape (num_channels, num_channels) in meters.
+        fft_size:
+        sample_rate:
+        sound_velocity: Scalar in meters/ second.
+
+    Returns: spatial coherence matrix
+        with shape (num_frequency_bins, num_channels, num_channels)
+
+    """
+    f = get_stft_center_frequencies(size=fft_size, sample_rate=sample_rate)
+    return np.sinc(
+        2.0
+        * f[:, None, None]
+        * sensor_distances[None, :, :]
+        / sound_velocity
+    )
 
 
 def get_nearfield_time_of_flight(source_positions, sensor_positions,
