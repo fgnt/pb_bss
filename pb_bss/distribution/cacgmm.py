@@ -193,6 +193,7 @@ class CACGMMTrainer:
                 Prior for the mixture weight
             hermitize:
             covariance_norm: 'eigenvalue', 'trace' or False
+            affiliation_eps:
             eigenvalue_floor: Relative flooring of the covariance eigenvalues
             return_affiliation:
 

@@ -3,20 +3,18 @@ from operator import xor
 from dataclasses import dataclass
 
 import numpy as np
-from .complex_watson import (
-    ComplexWatson,
-    ComplexWatsonTrainer,
-    normalize_observation,
+from .complex_circular_symmetric_gaussian import (
+    ComplexCircularSymmetricGaussian,
+    ComplexCircularSymmetricGaussianTrainer,
 )
 
 from pb_bss.distribution.utils import _ProbabilisticModel
-from cached_property import cached_property
 
 
 @dataclass
-class CWMM(_ProbabilisticModel):
+class CCSGMM(_ProbabilisticModel):
     weight: np.array  # (..., K)
-    complex_watson: ComplexWatson
+    complex_gaussian: ComplexCircularSymmetricGaussian
 
     def predict(self, y):
         """Predict class affiliation posteriors from given model.
@@ -40,7 +38,7 @@ class CWMM(_ProbabilisticModel):
                 Observations are expected to are unit norm normalized.
         Returns: Affiliations with shape (..., K, T).
         """
-        log_pdf = self.complex_watson.log_pdf(y[..., None, :, :])
+        log_pdf = self.complex_gaussian.log_pdf(y[..., None, :, :])
 
         affiliation = np.log(self.weight)[..., :, None] + log_pdf
         affiliation -= np.max(affiliation, axis=-2, keepdims=True)
@@ -53,23 +51,7 @@ class CWMM(_ProbabilisticModel):
         return affiliation
 
 
-class CWMMTrainer:
-    def __init__(
-        self, dimension=None, max_concentration=100, spline_markers=100
-    ):
-        """
-
-        Args:
-            dimension: Feature dimension. If you do not provide this when
-                initializing the trainer, it will be inferred when the fit
-                function is called.
-            max_concentration: For numerical stability reasons.
-            spline_markers:
-        """
-        self.dimension = dimension
-        self.max_concentration = max_concentration
-        self.spline_markers = spline_markers
-
+class CCSGMMTrainer:
     def fit(
             self,
             y,
@@ -77,8 +59,8 @@ class CWMMTrainer:
             num_classes=None,
             iterations=100,
             saliency=None,
-    ) -> CWMM:
-        """ EM for CWMMs with any number of independent dimensions.
+    ) -> CCSGMM:
+        """ EM for CGMMs with any number of independent dimensions.
 
         Does not support sequence lengths.
         Can later be extended to accept more initializations, but for now
@@ -99,8 +81,6 @@ class CWMMTrainer:
         assert np.iscomplexobj(y), y.dtype
         assert y.shape[-1] > 1
 
-        y = normalize_observation(y)
-
         if initialization is None and num_classes is not None:
             *independent, num_observations, _ = y.shape
             affiliation_shape = (*independent, num_classes, num_observations)
@@ -112,15 +92,6 @@ class CWMMTrainer:
         if saliency is None:
             saliency = np.ones_like(initialization[..., 0, :])
 
-        if self.dimension is None:
-            self.dimension = y.shape[-1]
-        else:
-            assert self.dimension == y.shape[-1], (
-                "You initialized the trainer with a different dimension than "
-                "you are using to fit a model. Use a new trainer, when you "
-                "change the dimension."
-            )
-
         return self._fit(
             y,
             initialization=initialization,
@@ -128,7 +99,7 @@ class CWMMTrainer:
             saliency=saliency,
         )
 
-    def _fit(self, y, initialization, iterations, saliency, ) -> CWMM:
+    def _fit(self, y, initialization, iterations, saliency, ) -> CCSGMM:
         affiliation = initialization  # TODO: Do we need np.copy here?
         for iteration in range(iterations):
             if iteration != 0:
@@ -138,21 +109,13 @@ class CWMMTrainer:
 
         return model
 
-    @cached_property
-    def complex_watson_trainer(self):
-        return ComplexWatsonTrainer(
-            self.dimension,
-            max_concentration=self.max_concentration,
-            spline_markers=self.spline_markers
-        )
-
     def _m_step(self, y, affiliation, saliency):
         masked_affiliation = affiliation * saliency[..., None, :]
         weight = np.einsum("...kn->...k", masked_affiliation)
         weight /= np.einsum("...n->...", saliency)[..., None]
 
-        complex_watson = self.complex_watson_trainer._fit(
+        complex_gaussian = ComplexCircularSymmetricGaussianTrainer().fit(
             y=y[..., None, :, :],
             saliency=masked_affiliation,
         )
-        return CWMM(weight=weight, complex_watson=complex_watson)
+        return CCSGMM(weight=weight, complex_gaussian=complex_gaussian)
