@@ -279,3 +279,66 @@ def force_hermitian(matrix):
            [ 5.+3.j, 13.+0.j]])
     """
     return (matrix + np.swapaxes(matrix.conj(), -1, -2)) / 2
+
+
+def estimate_mixture_weight(
+    affiliation,
+    saliency,
+    weight_constant_axis=-1,
+    dirichlet_prior_concentration=1,
+):
+    """
+    Estimates the mixture weight of a mxture model.
+
+    The simplest version (without saliency and prior):
+
+        return np.mean(affiliation, axis=weight_constant_axis, keepdims=True)
+
+    Args:
+        affiliation: Shape: ..., K, T
+        saliency: Shape: ..., K, T
+        weight_constant_axis: int
+        dirichlet_prior_concentration: int
+
+    Returns:
+
+    """
+    if saliency is None:
+        if dirichlet_prior_concentration == 1:
+            weight = np.mean(
+                affiliation, axis=weight_constant_axis, keepdims=True
+            )
+        elif np.isposinf(dirichlet_prior_concentration):
+            *independent, K, T = affiliation.shape[-2:]
+            weight = np.broadcast_to(1 / K, [*independent, K, 1])
+        else:
+            assert dirichlet_prior_concentration >= 1, dirichlet_prior_concentration
+            assert weight_constant_axis == (-1,), (
+                'ToDo: implement weight_constant_axis ({}) for '
+                'dirichlet_prior_concentration ({}).'
+            ).format(weight_constant_axis, dirichlet_prior_concentration)
+            # affiliation: ..., K, T
+            tmp = np.sum(
+                affiliation, axis=weight_constant_axis, keepdims=True
+            )
+            K, T = affiliation.shape[-2:]
+
+            weight = (
+                tmp + (dirichlet_prior_concentration - 1)
+             ) / (
+                T + (dirichlet_prior_concentration - 1) * K
+            )
+    else:
+        assert dirichlet_prior_concentration == 1, dirichlet_prior_concentration
+        masked_affiliation = affiliation * saliency[..., None, :]
+        weight = _unit_norm(
+            np.sum(
+                masked_affiliation, axis=weight_constant_axis, keepdims=True
+            ),
+            ord=1,
+            axis=-1,
+            eps=1e-10,
+            eps_style='where',
+        )
+
+    return weight
