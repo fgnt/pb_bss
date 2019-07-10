@@ -44,6 +44,7 @@ class GMMTrainer:
         iterations=100,
         saliency=None,
         covariance_type="full",
+        fixed_covariance=None,
     ):
         """
 
@@ -54,6 +55,8 @@ class GMMTrainer:
             iterations: Scalar >0
             saliency: Importance weighting for each observation, shape (..., N)
             covariance_type: Either 'full', 'diagonal', or 'spherical'
+            fixed_covariance: Learned if None. Otherwise, you need to provide
+                the correct shape.
 
         Returns:
 
@@ -83,9 +86,18 @@ class GMMTrainer:
             iterations=iterations,
             saliency=saliency,
             covariance_type=covariance_type,
+            fixed_covariance=fixed_covariance,
         )
 
-    def _fit(self, y, initialization, iterations, saliency, covariance_type):
+    def _fit(
+            self,
+            y,
+            initialization,
+            iterations,
+            saliency,
+            covariance_type,
+            fixed_covariance,
+        ):
         affiliation = initialization  # TODO: Do we need np.copy here?
         for iteration in range(iterations):
             model = self._m_step(
@@ -93,6 +105,7 @@ class GMMTrainer:
                 affiliation=affiliation,
                 saliency=saliency,
                 covariance_type=covariance_type,
+                fixed_covariance=fixed_covariance,
             )
 
             if iteration < iterations - 1:
@@ -100,7 +113,14 @@ class GMMTrainer:
 
         return model
 
-    def _m_step(self, x, affiliation, saliency, covariance_type):
+    def _m_step(
+            self,
+            x,
+            affiliation,
+            saliency,
+            covariance_type,
+            fixed_covariance,
+    ):
         masked_affiliation = affiliation * saliency[..., None, :]
         weight = np.einsum("...kn->...k", masked_affiliation)
         weight /= np.einsum("...n->...", saliency)[..., None]
@@ -110,6 +130,16 @@ class GMMTrainer:
             saliency=masked_affiliation,
             covariance_type=covariance_type
         )
+
+        if fixed_covariance is not None:
+            assert fixed_covariance.shape == gaussian.covariance.shape, (
+                f'{fixed_covariance.shape} != {gaussian.covariance.shape}'
+            )
+            gaussian = gaussian.__class__(
+                mean=gaussian.mean,
+                covariance=fixed_covariance
+            )
+
         return GMM(weight=weight, gaussian=gaussian)
 
 
