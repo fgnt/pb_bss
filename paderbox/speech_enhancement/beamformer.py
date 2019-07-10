@@ -27,8 +27,13 @@ __all__ = [
     'get_power_spectral_density_matrix',
     'get_mvdr_vector_souden',
     'get_mvdr_vector',
+    'get_wmwf_vector',
+    'get_pca_vector',
     'get_gev_vector',
-    'apply_beamforming_vector'
+    'blind_analytic_normalization',
+    'condition_covariance',
+    'apply_beamforming_vector',
+    'block_online_beamforming',
 ]
 
 try:
@@ -914,10 +919,12 @@ def block_online_beamforming(
         target_psd_init=None,
         noise_psd_init=None,
         get_bf_fn=get_mvdr_vector_souden,
+        apply_ban=False,
         target_decay_factor=0.95,
         noise_decay_factor=0.95,
         noise_psd_normalization=False,
-        eps=1e-10
+        eps=1e-10,
+        return_bf_vector=False
 ):
 
     '''
@@ -984,5 +991,17 @@ def block_online_beamforming(
     bf_vector = get_bf_fn(unbiased_targed_psd.reshape(-1, shape[-2], shape[-2]),
                           unbiased_noise_psd.reshape(-1, shape[-2], shape[-2]))
     bf_vector = bf_vector.reshape(observation.shape[:-1])
+    if apply_ban:
+        bf_vector = blind_analytic_normalization(bf_vector, unbiased_noise_psd)
     cleaned = apply_beamforming_vector(bf_vector, observation)
-    return np.swapaxes(morph('t...b->...t*b', cleaned), axis1=-1, axis2=-2)
+    if return_bf_vector:
+        bf_vector = np.repeat(bf_vector[..., None], block_size, axis=-1)
+        return np.swapaxes(
+            morph('t...b->...t*b', cleaned)[..., :shape[-1]],
+            axis1=-1, axis2=-2
+        ), morph('t...b->...t*b', bf_vector)[..., :shape[-1]],
+    else:
+        return np.swapaxes(
+            morph('t...b->...t*b', cleaned)[..., :shape[-1]],
+            axis1=-1, axis2=-2
+        )
