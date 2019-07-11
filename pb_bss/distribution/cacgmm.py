@@ -178,16 +178,15 @@ class CACGMMTrainer:
             iterations: Scalar >0
             saliency:
                 Importance weighting for each observation, shape (..., N)
-                ToDo: Discuss: allow str
-                    e.g. 'norm' as `saliency = np.linalg.norm(y)`
+                Should be pre-calculated externally, not just a string.
             source_activity_mask: Boolean mask that says for each time point for
                 each source if it is active or not.
                 Shape (..., K, N)
-            weight_constant_axis: The axis that us used to calculate the mean
+            weight_constant_axis: The axis that is used to calculate the mean
                 over the affiliations. The affiliations have the
                 shape (..., K, N), so the default value means averaging over
-                the sample dimension. Note an averaging over independent axis
-                is supported. Averaging over -2 is identical to
+                the sample dimension. Note that averaging over an independent
+                axis is supported. Averaging over -2 is identical to
                 dirichlet_prior_concentration == np.inf.
             dirichlet_prior_concentration:
                 Prior for the mixture weight
