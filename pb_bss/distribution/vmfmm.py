@@ -27,7 +27,7 @@ class VMFMM(_ProbabilisticModel):
         return self._predict(y)
 
     def _predict(self, y):
-        log_pdf = self.vmf.pdf(y[..., None, :, :])
+        log_pdf = self.vmf.log_pdf(y[..., None, :, :])
 
         affiliation = np.log(self.weight)[..., :, None] + log_pdf
         affiliation -= np.max(affiliation, axis=-2, keepdims=True)
