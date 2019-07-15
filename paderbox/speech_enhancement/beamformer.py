@@ -480,6 +480,7 @@ def apply_beamforming_vector(vector, mix):
     :param mix: Observed signal with dimensions ..., sensors, time-frames
     :return: A beamformed signal with dimensions ..., time-frames
     """
+    assert vector.shape[-1] < 30, (vector.shape, mix.shape)
     return np.einsum('...a,...at->...t', vector.conj(), mix)
 
 
