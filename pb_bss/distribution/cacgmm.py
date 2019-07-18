@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from pb_bss.distribution.utils import (
     _unit_norm,
     _ProbabilisticModel,
+    estimate_mixture_weight,
 )
 
 from pb_bss.distribution.complex_angular_central_gaussian import (
@@ -160,7 +161,6 @@ class CACGMMTrainer:
             saliency=None,
             source_activity_mask=None,
             weight_constant_axis=(-1,),
-            dirichlet_prior_concentration=1,
             hermitize=True,
             covariance_norm='eigenvalue',
             affiliation_eps=1e-10,
@@ -270,7 +270,6 @@ class CACGMMTrainer:
                 quadratic_form,
                 affiliation=affiliation,
                 saliency=saliency,
-                dirichlet_prior_concentration=dirichlet_prior_concentration,
                 hermitize=hermitize,
                 covariance_norm=covariance_norm,
                 eigenvalue_floor=eigenvalue_floor,
@@ -290,7 +289,6 @@ class CACGMMTrainer:
             quadratic_form,
             affiliation,
             saliency,
-            dirichlet_prior_concentration,
             hermitize,
             covariance_norm,
             eigenvalue_floor,
@@ -300,7 +298,6 @@ class CACGMMTrainer:
             affiliation=affiliation,
             saliency=saliency,
             weight_constant_axis=weight_constant_axis,
-            dirichlet_prior_concentration=dirichlet_prior_concentration,
         )
 
         if saliency is None:
