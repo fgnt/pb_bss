@@ -196,13 +196,16 @@ def _unit_norm(signal, *, axis=-1, eps=1e-4, eps_style='plus', ord=None):
            [0.        , 0.        ]])
 
     """
-    norm = np.linalg.norm(signal, ord=ord, axis=axis, keepdims=True)
+    from pb_bss.utils import get_xp
+    xp = get_xp(signal)
+
+    norm = xp.linalg.norm(signal, ord=ord, axis=axis, keepdims=True)
     if eps_style == 'plus':
         norm = norm + eps
     elif eps_style == 'max':
-        norm = np.maximum(norm, eps)
+        norm = xp.maximum(norm, eps)
     elif eps_style == 'where':
-        norm = np.where(norm == 0, eps, norm)
+        norm = xp.where(norm == 0, eps, norm)
     else:
         assert False, eps_style
     return signal / norm
@@ -283,9 +286,8 @@ def force_hermitian(matrix):
 
 def estimate_mixture_weight(
     affiliation,
-    saliency,
+    saliency=None,
     weight_constant_axis=-1,
-    dirichlet_prior_concentration=1,
 ):
     """
     Estimates the mixture weight of a mxture model.
@@ -295,14 +297,83 @@ def estimate_mixture_weight(
         return np.mean(affiliation, axis=weight_constant_axis, keepdims=True)
 
     Args:
-        affiliation: Shape: ..., K, T
-        saliency: Shape: ..., K, T
+        affiliation: Shape: (..., K, T)
+        saliency: Shape: (..., K, T)
         weight_constant_axis: int
         dirichlet_prior_concentration: int
 
     Returns:
+        mixture weight with the same shape as affiliation, except for the
+        weight_constant_axis that is a singleton:
+            e.g. for weight_constant_axis == -1: (..., K, 1)
+        When the weight_constant_axis is -2 or the positive counterpart,
+        then the returned shape is always (K, 1) and the value if 1/K.
+
+    >>> affiliation = [[0.4, 1, 0.4], [0.6, 0, 0.6]]
+    >>> estimate_mixture_weight(affiliation)
+    array([[0.6],
+           [0.4]])
+    >>> estimate_mixture_weight(affiliation, weight_constant_axis=-2)
+    array([[0.5],
+           [0.5]])
+    >>> estimate_mixture_weight([affiliation, affiliation])
+    array([[[0.6],
+            [0.4]],
+    <BLANKLINE>
+           [[0.6],
+            [0.4]]])
+    >>> estimate_mixture_weight([affiliation, affiliation], weight_constant_axis=-2)
+    array([[0.5],
+           [0.5]])
+    >>> estimate_mixture_weight([affiliation, affiliation], weight_constant_axis=-3)
+    array([[[0.4, 1. , 0.4],
+            [0.6, 0. , 0.6]]])
 
     """
+    affiliation = np.asarray(affiliation)
+
+    if isinstance(weight_constant_axis, int) and \
+            weight_constant_axis % affiliation.ndim - affiliation.ndim == -2:
+        K = affiliation.shape[-2]
+        return np.full([K, 1], 1/K)
+
+    if saliency is None:
+        weight = np.mean(
+            affiliation, axis=weight_constant_axis, keepdims=True
+        )
+    else:
+        masked_affiliation = affiliation * saliency[..., None, :]
+        weight = _unit_norm(
+            np.sum(
+                masked_affiliation, axis=weight_constant_axis, keepdims=True
+            ),
+            ord=1,
+            axis=-2,
+            eps=1e-10,
+            eps_style='where',
+        )
+
+    return weight
+
+
+def _estimate_mixture_weight_with_dirichlet_prior_concentration(
+    affiliation,
+    saliency=None,
+    weight_constant_axis=-1,
+    dirichlet_prior_concentration=1,
+):
+    """
+    This function is a start point for those that want to use a dirichlet
+    prior.
+
+    """
+    affiliation = np.asarray(affiliation)
+
+    if isinstance(weight_constant_axis, int) and \
+            weight_constant_axis % affiliation.ndim - affiliation.ndim == -2:
+        K = affiliation.shape[-2]
+        return np.full([K, 1], 1/K)
+
     if saliency is None:
         if dirichlet_prior_concentration == 1:
             weight = np.mean(
