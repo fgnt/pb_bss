@@ -196,16 +196,13 @@ def _unit_norm(signal, *, axis=-1, eps=1e-4, eps_style='plus', ord=None):
            [0.        , 0.        ]])
 
     """
-    from pb_bss.utils import get_xp
-    xp = get_xp(signal)
-
-    norm = xp.linalg.norm(signal, ord=ord, axis=axis, keepdims=True)
+    norm = np.linalg.norm(signal, ord=ord, axis=axis, keepdims=True)
     if eps_style == 'plus':
         norm = norm + eps
     elif eps_style == 'max':
-        norm = xp.maximum(norm, eps)
+        norm = np.maximum(norm, eps)
     elif eps_style == 'where':
-        norm = xp.where(norm == 0, eps, norm)
+        norm = np.where(norm == 0, eps, norm)
     else:
         assert False, eps_style
     return signal / norm
