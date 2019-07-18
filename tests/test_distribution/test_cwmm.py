@@ -32,6 +32,6 @@ class TestCWMM(unittest.TestCase):
 
         model = CWMMTrainer().fit(x, num_classes=2)
 
-        assert_equal(model.weight.shape, (2,))
+        assert_equal(model.weight.shape, (2, 1))
         assert_equal(model.complex_watson.mode.shape, (2, 3))
         assert_equal(model.complex_watson.concentration.shape, (2,))
