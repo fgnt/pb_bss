@@ -66,7 +66,6 @@ class TestCACGMM(unittest.TestCase):
         #     dirichlet_prior_concentration=1_000_000_000
         # )
         # assert_allclose(np.squeeze(model.weight, axis=-1), [0.5, 0.5])
-        )
 
         model = CACGMMTrainer().fit(
             x,
