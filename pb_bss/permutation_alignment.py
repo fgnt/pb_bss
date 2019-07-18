@@ -197,28 +197,9 @@ class DHTVPermutationAlignment(_PermutationAlignment):
         """
         K, T = prototype.shape
         assert K < 10, (K, 'Sure?')
-        # if self.similarity_metric in ['cos']:
-        #     c_matrix = np.dot(prototype, mask.T)
-        # elif self.similarity_metric in ['euclidean']:
-        # else:
-        #     raise ValueError(self.similarity_metric)
-
         c_matrix = self.get_score_matrix(mask, prototype)
         return _mapping_from_score_matrix(c_matrix, algorithm=self.algorithm)
 
-        # reverse_permutation = np.zeros((K,), dtype=np.int)
-        # estimated_permutation = np.zeros((K,), dtype=np.int)
-        #
-        # for _ in range(K):
-        #     c_max = np.max(c_matrix, axis=0)
-        #     index_0 = np.argmax(c_matrix, axis=0)
-        #     index_1 = np.argmax(c_max)
-        #     c_matrix[index_0[index_1], :] = -1
-        #     c_matrix[:, index_1] = -1
-        #     reverse_permutation[index_0[index_1]] = index_1
-        #     estimated_permutation[index_1] = index_0[index_1]
-        #
-        # return reverse_permutation
 
     @property
     def alignment_plan(self):
@@ -368,62 +349,7 @@ class DHTVPermutationAlignment(_PermutationAlignment):
                         features[:, f, :] = features[reverse_permutation, f, :]
                         mapping[:, f] = mapping[reverse_permutation, f]
 
-                        if plot:
-                            from paderbox import visualization as vis
-
-                            # tmp_mask = apply_mapping(features, mapping)
-                            tmp_mask = features
-
-                            with vis.axes_context(2) as axes:
-                                from einops import rearrange
-
-                                vis.plot.mask(
-                                    rearrange(tmp_mask, 'k f t -> (k t) f'),
-                                    ax=axes.new,
-                                    title=f'{start}-{end}',
-                                )
-
-                                # for tmp_mask_k in tmp_mask:
-                                #     vis.plot.mask(
-                                #         tmp_mask_k.T,
-                                #         ax=axes.new,
-                                #         title=f'{start}-{end}',
-                                #     )
-
-                                tmp_mask = self.get_score_matrix(tmp_mask, time_centroid[..., None, :])
-
-                                # vis.plot.mask(
-                                #     # rearrange(tmp_mask[start:end], 'f k kk -> k (kk f)'),
-                                #     rearrange(tmp_mask[start:end], 'f k kk -> kk (k f)'),
-                                #     ax=axes.new,
-                                #     title=f'{start}-{end}',
-                                #     limits=None,
-                                # )
-                                # vis.plot.mask(
-                                #     # rearrange(tmp_mask[start:end], 'f k kk -> k (kk f)'),
-                                #     rearrange(tmp_mask[start:end], 'f k kk -> k (kk f)'),
-                                #     ax=axes.new,
-                                #     title=f'{start}-{end}',
-                                #     limits=None,
-                                # )
-
-                                # for tmp_mask_k in tmp_mask:
-                                #     vis.plot.mask(
-                                #         tmp_mask_k,
-                                #         ax=axes.new,
-                                #         title=f'{start}-{end}',
-                                #     )
-                                mapping_tmp = mapping.copy()
-                                mapping_tmp = mapping_tmp - 0.5
-                                mapping_tmp[start:end] += 0.5
-                                vis.plot.mask(mapping_tmp, limits=None, ax=axes.new)
-                                # vis.plot.mask(time_centroid.T, ax=axes.new)
-
-
-
-
                 if nothing_changed:
-                    # print(self.__class__.__name__, f'break after {iteration}')
                     break
 
         return mapping
@@ -486,10 +412,6 @@ class _ScoreMatrix:
     @classmethod
     def euclidean(cls, mask, reference_mask):
         # Note: the minus converts the distance to a similarity
-        # score_matrix = -np.rollaxis(np.sqrt(np.sum(
-        #     np.abs(mask[None, ...] - reference_mask[:, None, ...]) ** 2,
-        #     axis=-1
-        # )), axis=-1)
         score_matrix = -np.sqrt(np.sum(
             np.abs(mask[:, None, ...] - reference_mask[None, ...]) ** 2,
             axis=-1
@@ -585,8 +507,6 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
         #  11# 10   0
         #   4   5  10#
         #   6   0#  5
-
-        # assert F == [], F
 
         reverse_permutation = np.zeros((K, *F), dtype=np.int)
         # estimated_permutation = np.zeros((K,), dtype=np.int)
@@ -722,7 +642,7 @@ class GreedyPermutationAlignment(_PermutationAlignment):
         assert K < 10, (K, 'Sure?')
         assert F % 2 == 1, (F, 'Sure? Usually F is odd.', mask.shape)
 
-        # # Looy code
+        # # Loopy code
         # mapping = np.zeros([K, F], np.int64)
         # mapping[:, 0] = range(K)
         #
@@ -827,26 +747,6 @@ class OraclePermutationAlignment(_PermutationAlignment):
         assert K < 10, (K, 'Sure?')
         if len(F) == 1:
             assert F[0] % 2 == 1, (F, 'Sure? Usually F is odd.', mask.shape)
-
-        # if self.similarity_metric in ['cos']:
-        #     # ToDo: check cos metric. Does not work for real masks.
-        #     mask = _parameterized_vector_norm(mask, axis=-1)
-        #     reference_mask = _parameterized_vector_norm(reference_mask, axis=-1)
-        #     score_matrix = np.einsum('K...T,k...T->...kK', mask.conj(), reference_mask)
-        #
-        #     if np.iscomplexobj(score_matrix):
-        #         # ToDo: Why?
-        #         # If is complex swap to squared cosine similarity
-        #         # Does not change greedy solution, but changes optimal solution
-        #         score_matrix = np.abs(score_matrix)**2
-        # elif self.similarity_metric in ['euclidean']:
-        #     score_matrix = -np.rollaxis(np.sqrt(np.sum(
-        #         np.abs(mask[None, ...] - reference_mask[:, None, ...])**2,
-        #         axis=-1
-        #     )), axis=-1)
-        #
-        # else:
-        #     raise ValueError(self.similarity_metric)
 
         score_matrix = self.get_score_matrix(mask, reference_mask)
 
