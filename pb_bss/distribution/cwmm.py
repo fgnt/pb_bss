@@ -9,7 +9,10 @@ from .complex_watson import (
     normalize_observation,
 )
 
-from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.distribution.utils import (
+    _ProbabilisticModel,
+    estimate_mixture_weight,
+)
 from cached_property import cached_property
 
 
@@ -42,7 +45,7 @@ class CWMM(_ProbabilisticModel):
         """
         log_pdf = self.complex_watson.log_pdf(y[..., None, :, :])
 
-        affiliation = np.log(self.weight)[..., :, None] + log_pdf
+        affiliation = np.log(self.weight) + log_pdf
         affiliation -= np.max(affiliation, axis=-2, keepdims=True)
         np.exp(affiliation, out=affiliation)
         denominator = np.maximum(
@@ -55,7 +58,7 @@ class CWMM(_ProbabilisticModel):
 
 class CWMMTrainer:
     def __init__(
-        self, dimension=None, max_concentration=100, spline_markers=100
+        self, dimension=None, max_concentration=500, spline_markers=1000
     ):
         """
 
@@ -64,6 +67,9 @@ class CWMMTrainer:
                 initializing the trainer, it will be inferred when the fit
                 function is called.
             max_concentration: For numerical stability reasons.
+                500 is relative stable (works for dimension <= 60)
+                700 works for dimension <= 7
+                800 does not work in the moment
             spline_markers:
         """
         self.dimension = dimension
@@ -76,7 +82,11 @@ class CWMMTrainer:
             initialization=None,
             num_classes=None,
             iterations=100,
+            *,
             saliency=None,
+            weight_constant_axis=(-1,),
+            affiliation_eps=0,
+            return_affiliation=False,
     ) -> CWMM:
         """ EM for CWMMs with any number of independent dimensions.
 
@@ -126,17 +136,40 @@ class CWMMTrainer:
             initialization=initialization,
             iterations=iterations,
             saliency=saliency,
+            affiliation_eps=affiliation_eps,
+            return_affiliation=return_affiliation,
+            weight_constant_axis=weight_constant_axis,
         )
 
-    def _fit(self, y, initialization, iterations, saliency, ) -> CWMM:
+    def _fit(
+            self,
+            y,
+            initialization,
+            iterations,
+            saliency,
+            return_affiliation,
+            weight_constant_axis,
+            affiliation_eps,
+    ) -> CWMM:
+        assert affiliation_eps == 0, affiliation_eps
         affiliation = initialization  # TODO: Do we need np.copy here?
         for iteration in range(iterations):
             if iteration != 0:
                 affiliation = model.predict(y)
 
-            model = self._m_step(y, affiliation=affiliation, saliency=saliency)
+            model = self._m_step(
+                y,
+                affiliation=affiliation,
+                saliency=saliency,
+                weight_constant_axis=weight_constant_axis,
+            )
 
-        return model
+        if return_affiliation is True:
+            return model, affiliation
+        elif return_affiliation is False:
+            return model
+        else:
+            raise ValueError(return_affiliation)
 
     @cached_property
     def complex_watson_trainer(self):
@@ -146,10 +179,24 @@ class CWMMTrainer:
             spline_markers=self.spline_markers
         )
 
-    def _m_step(self, y, affiliation, saliency):
-        masked_affiliation = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliation)
-        weight /= np.einsum("...n->...", saliency)[..., None]
+    def _m_step(
+            self,
+            y,
+            affiliation,
+            saliency,
+            weight_constant_axis,
+    ):
+        weight = estimate_mixture_weight(
+            affiliation=affiliation,
+            saliency=saliency,
+            weight_constant_axis=weight_constant_axis,
+            # dirichlet_prior_concentration=dirichlet_prior_concentration,
+        )
+
+        if saliency is None:
+            masked_affiliation = affiliation
+        else:
+            masked_affiliation = affiliation * saliency[..., None, :]
 
         complex_watson = self.complex_watson_trainer._fit(
             y=y[..., None, :, :],
