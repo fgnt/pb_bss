@@ -4,6 +4,7 @@ import itertools
 __all__ = [
     'DHTVPermutationAlignment',
     'OraclePermutationAlignment',
+    'GreedyPermutationAlignment',
 ]
 
 
