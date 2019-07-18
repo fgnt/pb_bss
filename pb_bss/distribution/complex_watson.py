@@ -217,7 +217,7 @@ class ComplexWatson(_ProbabilisticModel):
 
 class ComplexWatsonTrainer:
     def __init__(
-        self, dimension=None, max_concentration=100, spline_markers=100
+        self, dimension=None, max_concentration=500, spline_markers=1000
     ):
         """
 
@@ -242,9 +242,8 @@ class ComplexWatsonTrainer:
         x = np.logspace(
             -3, np.log10(self.max_concentration), self.spline_markers
         )
-        y = hyp1f1(2, self.dimension + 1, x) / (
-            self.dimension * hyp1f1(1, self.dimension, x)
-        )
+        y = self.hypergeometric_ratio(x)
+
         return interp1d(
             y,
             x,
@@ -253,6 +252,12 @@ class ComplexWatsonTrainer:
             bounds_error=False,
             fill_value=(0, self.max_concentration),
         )
+
+    def hypergeometric_ratio(self, concentration):
+        eigenvalue = hyp1f1(2, self.dimension + 1, concentration) / (
+            self.dimension * hyp1f1(1, self.dimension, concentration)
+        )
+        return eigenvalue
 
     def hypergeometric_ratio_inverse(self, eigenvalues):
         """
