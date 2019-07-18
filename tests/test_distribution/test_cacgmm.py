@@ -67,11 +67,6 @@ class TestCACGMM(unittest.TestCase):
         # )
         # assert_allclose(np.squeeze(model.weight, axis=-1), [0.5, 0.5])
 
-        model = CACGMMTrainer().fit(
-            x,
-            num_classes=2,
-            covariance_norm='trace',
-        )
 
     def test_cacgmm_independent_dimension(self):
         samples = 10000
