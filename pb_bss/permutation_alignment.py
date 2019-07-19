@@ -83,7 +83,7 @@ def apply_mapping(mask, mapping):
     0 0 0 0 1 1   1 1 0 0 0 0   0 0 1 1 0 0
     0 0 0 0 1 1   0 0 1 1 0 0   1 1 0 0 0 0
 
-    Test against an loopy implementation of apply mapping
+    Test against a loopy implementation of apply mapping
     >>> def apply_mapping_loopy(mask, mapping):
     ...     _, F = mapping.shape
     ...     aligned_mask = np.zeros_like(mask)
@@ -200,7 +200,6 @@ class DHTVPermutationAlignment(_PermutationAlignment):
         assert K < 10, (K, 'Sure?')
         c_matrix = self.get_score_matrix(mask, prototype)
         return _mapping_from_score_matrix(c_matrix, algorithm=self.algorithm)
-
 
     @property
     def alignment_plan(self):
@@ -564,7 +563,7 @@ class GreedyPermutationAlignment(_PermutationAlignment):
     ):
         """
         Calculates a greedy mapping to solve the permutation problem.
-        Calculates between adjacent frequencies the `similarity_metrix` and
+        Calculates between adjacent frequencies the `similarity_metric` and
         from that matrix the optimal permutation (`algorithm='optimal'`) or a
         greedy solution (`algorithm='greedy'`, see _mapping_from_score_matrix)
 
@@ -582,14 +581,12 @@ class GreedyPermutationAlignment(_PermutationAlignment):
         """
 
         The time frame dimension is interpreted as vector dimension.
-        The frequency dimension is interpreted as independet dimension.
-        The sources dimension is interpreted as permutated dimension.
+        The frequency dimension is interpreted as independent dimension.
+        The sources dimension is interpreted as permuted dimension.
 
         Args:
             mask:
                 shape: sources (K), frequencies (F), time frames (T)
-            reference_mask:
-                shape: source, frequency, time
 
         Returns:
             mapping:
@@ -671,7 +668,6 @@ class GreedyPermutationAlignment(_PermutationAlignment):
 
 class OraclePermutationAlignment(_PermutationAlignment):
     def __init__(self, similarity_metric='euclidean', algorithm='optimal'):
-        # assert similarity_metric == 'cos', similarity_metric
         assert algorithm in ['greedy', 'optimal'], algorithm
 
         self.get_score_matrix = getattr(_ScoreMatrix, similarity_metric)
@@ -681,12 +677,12 @@ class OraclePermutationAlignment(_PermutationAlignment):
         """
 
         When only a global permutation problem should be solved, join the
-        frequenciy axis and time frame axis.
-        (i.e. `mask.resahpe(*mask.shape[:-2], F*T)`)
+        frequency axis and time frame axis.
+        (i.e. `mask.reshape(*mask.shape[:-2], F*T)`)
 
         The time frame dimension is interpreted as vector dimension.
-        The frequency dimension is interpreted as independet dimension.
-        The sources dimension is interpreted as permutated dimension.
+        The frequency dimension is interpreted as independent dimension.
+        The sources dimension is interpreted as permuted dimension.
 
         Args:
             mask:
