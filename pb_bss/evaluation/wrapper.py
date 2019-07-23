@@ -54,7 +54,7 @@ class Metrics:
             self
         )
         assert K_source in [K_target, K_target+1], _get_err_msg(
-            f'Number of source speakers (K_source) should be equal to'
+            f'Number of source speakers (K_source) should be equal to '
             f'number of target speakers (K_target) or K_target + 1',
             self
         )
@@ -68,7 +68,7 @@ class Metrics:
 
             K_source_, K_target_, samples_ = speech_contribution.shape
             assert samples == samples_, _get_err_msg(
-                'Num samples (N) of speech_contribution do not fit to the'
+                'Num samples (N) of speech_contribution do not fit to the '
                 'shape from speech_prediction',
                 self
             )
@@ -84,7 +84,7 @@ class Metrics:
             )
             K_target_, samples_ = noise_contribution.shape
             assert samples == samples_, _get_err_msg(
-                'Num samples (N) of noise_contribution do not fit to the'
+                'Num samples (N) of noise_contribution do not fit to the '
                 'shape from speech_prediction',
                 self
             )
