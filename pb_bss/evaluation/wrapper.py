@@ -39,26 +39,26 @@ class Metrics:
 
         # The remaining init are only asserts to check the shapes
 
-        samples = self.speech_prediction.shape[-1]
-        K_source = self.speech_source.shape[0]
-        K_target = self.speech_prediction.shape[0]
+        self.samples = self.speech_prediction.shape[-1]
+        self.K_source = self.speech_source.shape[0]
+        self.K_target = self.speech_prediction.shape[0]
 
-        assert K_source <= 5, _get_err_msg(
+        assert self.K_source <= 5, _get_err_msg(
             f'Number of source speakers (K_source) of speech_source is '
-            f'{K_source}. Expect a reasonable value of 5 or less.',
+            f'{self.K_source}. Expect a reasonable value of 5 or less.',
             self
         )
-        assert K_target <= 5, _get_err_msg(
+        assert self.K_target <= 5, _get_err_msg(
             f'Number of target speakers (K_target) of speech_prediction is '
-            f'{K_target}. Expect a reasonable value of 5 or less.',
+            f'{self.K_target}. Expect a reasonable value of 5 or less.',
             self
         )
-        assert K_source in [K_target, K_target+1], _get_err_msg(
+        assert self.K_source in [self.K_target, self.K_target+1], _get_err_msg(
             f'Number of source speakers (K_source) should be equal to '
             f'number of target speakers (K_target) or K_target + 1',
             self
         )
-        assert self.speech_source.shape[0] == samples, _get_err_msg(
+        assert self.speech_source.shape[0] == self.samples, _get_err_msg(
             'Num samples (N) of speech_source do not fit to the'
             'shape from speech_prediction',
             self
@@ -68,7 +68,7 @@ class Metrics:
 
             K_source_, K_target_, samples_ = speech_contribution.shape
             assert samples == samples_, _get_err_msg(
-                'Num samples (N) of speech_contribution do not fit to the '
+                'Num samples (N) of speech_contribution do not fit to the'
                 'shape from speech_prediction',
                 self
             )
@@ -84,7 +84,7 @@ class Metrics:
             )
             K_target_, samples_ = noise_contribution.shape
             assert samples == samples_, _get_err_msg(
-                'Num samples (N) of noise_contribution do not fit to the '
+                'Num samples (N) of noise_contribution do not fit to the'
                 'shape from speech_prediction',
                 self
             )
@@ -102,7 +102,6 @@ class Metrics:
                 f'noise_contribution: {noise_contribution}'
             )
 
-
     @cached_property.cached_property
     def selection(self):
         return self.mir_eval['permutation']
@@ -116,7 +115,8 @@ class Metrics:
 
     @cached_property.cached_property
     def mir_eval(self):
-        return pb_bss.evaluation.mir_eval_sources(
+        import paderbox as pb
+        return pb.evaluation.mir_eval_sources(
             reference=self.speech_source,
             estimation=self.speech_prediction,
             return_dict=True,
