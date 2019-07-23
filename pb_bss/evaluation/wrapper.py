@@ -3,6 +3,7 @@ import cached_property
 import numpy as np
 
 from einops import rearrange
+import pb_bss
 
 
 def _get_err_msg(msg, metrics: 'Metrics'):
@@ -115,8 +116,7 @@ class Metrics:
 
     @cached_property.cached_property
     def mir_eval(self):
-        import paderbox as pb
-        return pb.evaluation.mir_eval_sources(
+        return pb_bss.evaluation.mir_eval_sources(
             reference=self.speech_source,
             estimation=self.speech_prediction,
             return_dict=True,
@@ -192,7 +192,7 @@ class Metrics:
             mir_eval_sxr_sir=self.mir_eval['sir'],
             mir_eval_sxr_sar=self.mir_eval['sar'],
             mir_eval_sxr_selection=self.mir_eval['selection'],
-            pesq=self.pesq_nb,
+            pesq=self.pesq,
             invasive_sxr_sdr=self.sxr['sdr'],
             invasive_sxr_sir=self.sxr['sir'],
             invasive_sxr_snr=self.sxr['snr'],
