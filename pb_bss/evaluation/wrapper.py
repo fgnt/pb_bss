@@ -10,9 +10,11 @@ def _get_err_msg(msg, metrics: 'Metrics'):
     msg = f'{msg}'
     msg += f'\nShapes: (is shape) (symbolic shape)'
     msg += f'\n\tspeech_prediction: {metrics.speech_prediction.shape} (N)'
-    msg += f'\n\tspeech_source: {metrics.speech_source.shape} (K_source, K_target, N)'
-    msg += f'\n\tspeech_contribution: {metrics.speech_contribution.shape} (K_target, N)'
-    msg += f'\n\tnoise_contribution: {metrics.noise_contribution.shape} (K_source, N)'
+    msg += f'\n\tspeech_source: {metrics.speech_source.shape} (K_source, N)'
+    if metrics.speech_contribution is not None:
+        msg += f'\n\tspeech_contribution: {metrics.speech_contribution.shape} (K_source, K_target, N)'
+    if metrics.noise_contribution is not None:
+        msg += f'\n\tnoise_contribution: {metrics.noise_contribution.shape} (K_source, N)'
     return msg
 
 
@@ -34,24 +36,69 @@ class Metrics:
         self.noise_contribution = noise_contribution
         self.sample_rate = sample_rate
 
-        samples = speech_prediction.shape[-1]
+        # The remaining init are only asserts to check the shapes
 
-        # if speech_contribution is not None:
-        #     K_source, K_target, samples_ = speech_contribution.shape
-        #     assert samples == samples_, _get_err_msg()
-        #     ktaget_, samples_ = enhanced_noise_image.shape
-        #     assert samples == samples_, get_msg((samples, samples_))
-        #     assert ktaget == ktaget_, get_msg((ktaget, ktaget_))
-        #
-        #     assert ksource < 5, get_msg(ksource)
-        #     assert ktaget < 5, get_msg(ktaget)
-        #
-        #     ksource_, samples_ = speech_source.shape
-        #     assert samples == samples_, get_msg((samples, samples_))
-        #     assert ksource == ksource_, get_msg((ksource, ksource_))
+        samples = self.speech_prediction.shape[-1]
+        K_source = self.speech_source.shape[0]
+        K_target = self.speech_prediction.shape[0]
+
+        assert K_source <= 5, _get_err_msg(
+            f'Number of source speakers (K_source) of speech_source is '
+            f'{K_source}. Expect a reasonable value of 5 or less.'
+        )
+        assert K_target <= 5, _get_err_msg(
+            f'Number of target speakers (K_target) of speech_prediction is '
+            f'{K_target}. Expect a reasonable value of 5 or less.'
+        )
+        assert K_source in [K_target, K_target+1], _get_err_msg(
+            f'Number of source speakers (K_source) should be equal to'
+            f'number of target speakers (K_target) or K_target + 1'
+        )
+        assert self.speech_source.shape[0] == samples, _get_err_msg(
+            'Num samples (N) of speech_source do not fit to the'
+            'shape from speech_prediction'
+        )
+        if speech_contribution is not None and noise_contribution is not None:
+            assert noise_contribution is not None, noise_contribution
+
+            K_source_, K_target_, samples_ = speech_contribution.shape
+            assert samples == samples_, _get_err_msg(
+                'Num samples (N) of speech_contribution do not fit to the'
+                'shape from speech_prediction'
+            )
+            assert K_target == K_target_, _get_err_msg(
+                'Num target speakers (K_target) of speech_contribution do not '
+                'fit to the shape from speech_prediction'
+            )
+            assert K_source < 5, _get_err_msg(
+                'Num source speakers (K_source) of speech_contribution do not '
+                'fit to the shape from speech_source'
+            )
+            K_target_, samples_ = noise_contribution.shape
+            assert samples == samples_, _get_err_msg(
+                'Num samples (N) of noise_contribution do not fit to the'
+                'shape from speech_prediction'
+            )
+            assert K_target == K_target_, _get_err_msg(
+                'Num target speakers (K_target) of noise_contribution do not '
+                'fit to the shape from speech_prediction'
+            )
+        else:
+            assert speech_contribution is None and noise_contribution is None, (
+                'Expect that speech_contribution and noise_contribution are '
+                'both None or given.\n'
+                'Got\n'
+                f'speech_contribution: {speech_contribution}\n'
+                f'noise_contribution: {noise_contribution}\n'
+            )
+
 
     @cached_property.cached_property
-    def enhanced_speech(self):
+    def selection(self):
+        return self.mir_eval['permutation']
+
+    @cached_property.cached_property
+    def speech_prediction_selection(self):
         assert self.speech_prediction.ndim == 2, self.speech_prediction.shape
         assert self.speech_prediction.shape[0] < 10, self.speech_prediction.shape
         assert self.speech_prediction.shape[0] == len(self.selection) + 1, self.speech_prediction.shape
@@ -66,33 +113,21 @@ class Metrics:
         )
 
     @cached_property.cached_property
-    def pesq_nb(self):
+    def pesq(self):
         import paderbox as pb
+        mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
         try:
             return pb.evaluation.pesq(
                 reference=self.speech_source,
-                degraded=self.enhanced_speech,
+                degraded=self.speech_prediction_selection,
                 rate=self.sample_rate,
-                mode='nb',
+                mode=mode,
             )
         except OSError:
             return np.nan
 
     @cached_property.cached_property
-    def pesq_wb(self):
-        import paderbox as pb
-        try:
-            return pb.evaluation.pesq(
-                reference=self.speech_source,
-                degraded=self.enhanced_speech,
-                rate=self.sample_rate,
-                mode='nb',
-            )
-        except OSError:
-            return np.nan
-
-    @cached_property.cached_property
-    def pypesq_nb(self):
+    def pypesq(self):
         try:
             import pypesq
         except ImportError:
@@ -100,38 +135,17 @@ class Metrics:
                 'To use this pesq, install '
                 'https://github.com/ludlows/python-pesq .'
             )
+        mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
 
-        assert self.speech_source.shape == self.enhanced_speech.shape, (self.speech_source.shape, self.enhanced_speech.shape)
-        assert self.speech_source.ndim == 2, (self.speech_source.shape, self.enhanced_speech.shape)
-        assert self.speech_source.shape[0] < 5, (self.speech_source.shape, self.enhanced_speech.shape)
-
-        return [
-            pypesq.pypesq(ref=ref, deg=deg, fs=self.sample_rate, mode='nb')
-            for ref, deg in zip(self.speech_source, self.enhanced_speech)
-        ]
-
-    @cached_property.cached_property
-    def pypesq_wb(self):
-        try:
-            import pypesq
-        except ImportError:
-            raise AssertionError(
-                'To use this pesq, install '
-                'https://github.com/ludlows/python-pesq .'
-            )
-
-        assert self.speech_source.shape == self.enhanced_speech.shape, (self.speech_source.shape, self.enhanced_speech.shape)
-        assert self.speech_source.ndim == 2, (self.speech_source.shape, self.enhanced_speech.shape)
-        assert self.speech_source.shape[0] < 5, (self.speech_source.shape, self.enhanced_speech.shape)
+        assert self.speech_source.shape == self.speech_prediction_selection.shape, (self.speech_source.shape, self.speech_prediction_selection.shape)
+        assert self.speech_source.ndim == 2, (self.speech_source.shape, self.speech_prediction_selection.shape)
+        assert self.speech_source.shape[0] < 5, (self.speech_source.shape, self.speech_prediction_selection.shape)
 
         return [
-            pypesq.pypesq(ref=ref, deg=deg, fs=self.sample_rate, mode='wb')
-            for ref, deg in zip(self.speech_source, self.enhanced_speech)
+            pypesq.pypesq(ref=ref, deg=deg, fs=self.sample_rate, mode=mode)
+            for ref, deg in zip(
+                self.speech_source, self.speech_prediction_selection)
         ]
-
-    @cached_property.cached_property
-    def selection(self):
-        return self.mir_eval['permutation']
 
     @cached_property.cached_property
     def sxr(self):
