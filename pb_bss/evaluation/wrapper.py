@@ -3,7 +3,6 @@ import cached_property
 import numpy as np
 
 from einops import rearrange
-import pb_bss
 
 
 def _get_err_msg(msg, metrics: 'Metrics'):
@@ -12,9 +11,11 @@ def _get_err_msg(msg, metrics: 'Metrics'):
     msg += f'\n\tspeech_prediction: {metrics.speech_prediction.shape} (N)'
     msg += f'\n\tspeech_source: {metrics.speech_source.shape} (K_source, N)'
     if metrics.speech_contribution is not None:
-        msg += f'\n\tspeech_contribution: {metrics.speech_contribution.shape} (K_source, K_target, N)'
+        msg += (f'\n\tspeech_contribution: '
+                f'{metrics.speech_contribution.shape} (K_source, K_target, N)')
     if metrics.noise_contribution is not None:
-        msg += f'\n\tnoise_contribution: {metrics.noise_contribution.shape} (K_source, N)'
+        msg += (f'\n\tnoise_contribution: '
+                f'{metrics.noise_contribution.shape} (K_source, N)')
     return msg
 
 
@@ -44,19 +45,23 @@ class Metrics:
 
         assert K_source <= 5, _get_err_msg(
             f'Number of source speakers (K_source) of speech_source is '
-            f'{K_source}. Expect a reasonable value of 5 or less.'
+            f'{K_source}. Expect a reasonable value of 5 or less.',
+            self
         )
         assert K_target <= 5, _get_err_msg(
             f'Number of target speakers (K_target) of speech_prediction is '
-            f'{K_target}. Expect a reasonable value of 5 or less.'
+            f'{K_target}. Expect a reasonable value of 5 or less.',
+            self
         )
         assert K_source in [K_target, K_target+1], _get_err_msg(
             f'Number of source speakers (K_source) should be equal to'
-            f'number of target speakers (K_target) or K_target + 1'
+            f'number of target speakers (K_target) or K_target + 1',
+            self
         )
         assert self.speech_source.shape[0] == samples, _get_err_msg(
             'Num samples (N) of speech_source do not fit to the'
-            'shape from speech_prediction'
+            'shape from speech_prediction',
+            self
         )
         if speech_contribution is not None and noise_contribution is not None:
             assert noise_contribution is not None, noise_contribution
@@ -64,32 +69,37 @@ class Metrics:
             K_source_, K_target_, samples_ = speech_contribution.shape
             assert samples == samples_, _get_err_msg(
                 'Num samples (N) of speech_contribution do not fit to the'
-                'shape from speech_prediction'
+                'shape from speech_prediction',
+                self
             )
             assert K_target == K_target_, _get_err_msg(
                 'Num target speakers (K_target) of speech_contribution do not '
-                'fit to the shape from speech_prediction'
+                'fit to the shape from speech_prediction',
+                self
             )
             assert K_source < 5, _get_err_msg(
                 'Num source speakers (K_source) of speech_contribution do not '
-                'fit to the shape from speech_source'
+                'fit to the shape from speech_source',
+                self
             )
             K_target_, samples_ = noise_contribution.shape
             assert samples == samples_, _get_err_msg(
                 'Num samples (N) of noise_contribution do not fit to the'
-                'shape from speech_prediction'
+                'shape from speech_prediction',
+                self
             )
             assert K_target == K_target_, _get_err_msg(
                 'Num target speakers (K_target) of noise_contribution do not '
-                'fit to the shape from speech_prediction'
+                'fit to the shape from speech_prediction',
+                self
             )
         else:
-            assert speech_contribution is None and noise_contribution is None, (
+            assert speech_contribution is None and noise_contribution is None, (  # NOQA
                 'Expect that speech_contribution and noise_contribution are '
                 'both None or given.\n'
-                'Got\n'
+                'Got:\n'
                 f'speech_contribution: {speech_contribution}\n'
-                f'noise_contribution: {noise_contribution}\n'
+                f'noise_contribution: {noise_contribution}'
             )
 
 
@@ -100,8 +110,8 @@ class Metrics:
     @cached_property.cached_property
     def speech_prediction_selection(self):
         assert self.speech_prediction.ndim == 2, self.speech_prediction.shape
-        assert self.speech_prediction.shape[0] < 10, self.speech_prediction.shape
-        assert self.speech_prediction.shape[0] == len(self.selection) + 1, self.speech_prediction.shape
+        assert self.speech_prediction.shape[0] < 10, self.speech_prediction.shape  # NOQA
+        assert self.speech_prediction.shape[0] == len(self.selection) + 1, self.speech_prediction.shape  # NOQA
         return self.speech_prediction[self.selection]
 
     @cached_property.cached_property
@@ -132,14 +142,14 @@ class Metrics:
             import pypesq
         except ImportError:
             raise AssertionError(
-                'To use this pesq, install '
+                'To use this pesq implementation, install '
                 'https://github.com/ludlows/python-pesq .'
             )
         mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
 
-        assert self.speech_source.shape == self.speech_prediction_selection.shape, (self.speech_source.shape, self.speech_prediction_selection.shape)
-        assert self.speech_source.ndim == 2, (self.speech_source.shape, self.speech_prediction_selection.shape)
-        assert self.speech_source.shape[0] < 5, (self.speech_source.shape, self.speech_prediction_selection.shape)
+        assert self.speech_source.shape == self.speech_prediction_selection.shape, (self.speech_source.shape, self.speech_prediction_selection.shape)  # NOQA
+        assert self.speech_source.ndim == 2, (self.speech_source.shape, self.speech_prediction_selection.shape)  # NOQA
+        assert self.speech_source.shape[0] < 5, (self.speech_source.shape, self.speech_prediction_selection.shape)  # NOQA
 
         return [
             pypesq.pypesq(ref=ref, deg=deg, fs=self.sample_rate, mode=mode)
@@ -151,13 +161,12 @@ class Metrics:
     def sxr(self):
         import paderbox as pb
         invasive_sxr = pb.evaluation.output_sxr(
-            # rearrange(beamformed_clean, 'ksource ktaget samples -> ktaget ksource samples'),
             rearrange(
                 self.speech_contribution,
-                'ksource ktaget samples -> ksource ktaget samples'
+                'k_source k_target samples -> k_source k_target samples'
             )[:, self.selection, :],
             rearrange(
-                self.noise_contribution, 'ktaget samples -> ktaget samples'
+                self.noise_contribution, 'k_target samples -> k_target samples'
             )[self.selection, :],
             return_dict=True,
         )
@@ -168,11 +177,11 @@ class Metrics:
         import paderbox as pb
 
         stoi = list()
-        K = self.enhanced_speech.shape[0]
+        K = self.speech_prediction_selection.shape[0]
         for k in range(K):
             stoi.append(pb.evaluation.stoi(
                 self.speech_source[k, :],
-                self.enhanced_speech[k, :],
+                self.speech_prediction_selection[k, :],
                 sample_rate=self.sample_rate,
             ))
         return stoi
