@@ -67,28 +67,28 @@ class Metrics:
             assert noise_contribution is not None, noise_contribution
 
             K_source_, K_target_, samples_ = speech_contribution.shape
-            assert samples == samples_, _get_err_msg(
-                'Num samples (N) of speech_contribution do not fit to the'
+            assert self.samples == samples_, _get_err_msg(
+                'Num samples (N) of speech_contribution do not fit to the '
                 'shape from speech_prediction',
                 self
             )
-            assert K_target == K_target_, _get_err_msg(
+            assert self.K_target == K_target_, _get_err_msg(
                 'Num target speakers (K_target) of speech_contribution do not '
                 'fit to the shape from speech_prediction',
                 self
             )
-            assert K_source < 5, _get_err_msg(
+            assert self.K_source < 5, _get_err_msg(
                 'Num source speakers (K_source) of speech_contribution do not '
                 'fit to the shape from speech_source',
                 self
             )
             K_target_, samples_ = noise_contribution.shape
-            assert samples == samples_, _get_err_msg(
-                'Num samples (N) of noise_contribution do not fit to the'
+            assert self.samples == samples_, _get_err_msg(
+                'Num samples (N) of noise_contribution do not fit to the '
                 'shape from speech_prediction',
                 self
             )
-            assert K_target == K_target_, _get_err_msg(
+            assert self.K_target == K_target_, _get_err_msg(
                 'Num target speakers (K_target) of noise_contribution do not '
                 'fit to the shape from speech_prediction',
                 self
