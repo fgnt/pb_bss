@@ -149,3 +149,34 @@ class Metrics:
             return_dict=True,
         )
         return invasive_sxr
+
+    @cached_property
+    def stoi(self):
+        import paderbox as pb
+
+        stoi = list()
+        K = self.enhanced_speech.shape[0]
+        for k in range(K):
+            stoi.append(pb.evaluation.stoi(
+                self.speech_source[k, :],
+                self.enhanced_speech[k, :],
+                sample_rate=self.sample_rate,
+            ))
+        return stoi
+
+    def as_dict(self):
+
+        mir_eval_dict = self.mir_eval
+        sxr_dict = self.sxr
+
+        return dict(
+            mir_eval_sxr_sdr=mir_eval_dict['sdr'],
+            mir_eval_sxr_sir=mir_eval_dict['sir'],
+            mir_eval_sxr_sar=mir_eval_dict['sar'],
+            mir_eval_sxr_selection=mir_eval_dict['selection'],
+            pesq=self.pypesq_nb,
+            invasive_sxr_sdr=sxr_dict['sdr'],
+            invasive_sxr_sir=sxr_dict['sir'],
+            invasive_sxr_snr=sxr_dict['snr'],
+            stoi=self.stoi,
+        )
