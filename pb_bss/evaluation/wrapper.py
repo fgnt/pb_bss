@@ -7,6 +7,9 @@ import pb_bss
 
 
 # TODO: Should mir_eval_sxr_selection stay in InputMetrics?
+# TODO: Add SI-SDR even though there are arguments against it.
+# TODO: Explain, why we compare BSS-Eval against source and not image.
+# TODO: Explain, why invasive SXR does not work with, e.g., Nara-WPE.
 
 
 def _get_err_msg(msg, metrics: 'OutputMetrics'):
