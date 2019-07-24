@@ -6,7 +6,7 @@ from einops import rearrange
 import pb_bss
 
 
-def _get_err_msg(msg, metrics: 'Metrics'):
+def _get_err_msg(msg, metrics: 'OutputMetrics'):
     msg = f'{msg}'
     msg += f'\nShapes: (is shape) (symbolic shape)'
     msg += f'\n\tspeech_prediction: {metrics.speech_prediction.shape} (K_target, N)'  # noqa
@@ -20,7 +20,16 @@ def _get_err_msg(msg, metrics: 'Metrics'):
     return msg
 
 
-class Metrics:
+class InputMetrics:
+    def __init__(
+            self,
+            *args,
+            **kwargs,
+    ):
+        pass
+
+
+class OutputMetrics:
     def __init__(
             self,
             speech_prediction: 'Shape(K_target, N)',
