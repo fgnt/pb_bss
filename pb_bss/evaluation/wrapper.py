@@ -6,6 +6,9 @@ from einops import rearrange
 import pb_bss
 
 
+# TODO: Should mir_eval_sxr_selection stay in InputMetrics?
+
+
 def _get_err_msg(msg, metrics: 'OutputMetrics'):
     msg = f'{msg}'
     msg += f'\nShapes: (is shape) (symbolic shape)'
@@ -23,10 +26,95 @@ def _get_err_msg(msg, metrics: 'OutputMetrics'):
 class InputMetrics:
     def __init__(
             self,
-            *args,
-            **kwargs,
+            observation: 'Shape(D, N)',
+            speech_source: 'Shape(K_source, N)',
+            speech_image: 'Shape(K_source, D, N)'=None,
+            noise_image: 'Shape(D, N)'=None,
+            sample_rate: int = None,
+            reference_channel: int = 0,
     ):
-        pass
+        self.observation = observation
+        self.speech_source = speech_source
+        self.speech_image = speech_image
+        self.noise_image = noise_image
+        self.sample_rate = sample_rate
+        self.reference_channel = reference_channel
+
+        self.samples = self.observation.shape[-1]
+        self.K_source = self.speech_source.shape[0]
+
+        self.check_inputs()
+
+    def check_inputs(self):
+        assert self.observation.ndim == 2, self.observation.shape
+        assert self.speech_source.ndim == 2, self.speech_source.shape
+
+    @cached_property.cached_property
+    def mir_eval(self):
+        return pb_bss.evaluation.mir_eval_sources(
+            reference=self.speech_source,
+            estimation=np.tile(
+                self.observation[self.reference_channel],
+                (self.K_source, 1)
+            ),
+            return_dict=True,
+        )
+
+    @cached_property.cached_property
+    def pesq(self):
+        import paderbox as pb
+        mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
+        try:
+            return pb.evaluation.pesq(
+                reference=self.speech_source,
+                degraded=np.tile(
+                    self.observation[self.reference_channel],
+                    (self.K_source, 1)
+                ),
+                rate=self.sample_rate,
+                mode=mode,
+            )
+        except OSError:
+            return np.nan
+
+    @cached_property.cached_property
+    def sxr(self):
+        import paderbox as pb
+        invasive_sxr = pb.evaluation.input_sxr(
+            rearrange(
+                self.speech_image,
+                'sources sensors samples -> sources sensors samples'
+            ),
+            rearrange(self.noise_image, 'sensors samples -> sensors samples'),
+            return_dict=True,
+        )
+        return invasive_sxr
+
+    @cached_property.cached_property
+    def stoi(self):
+        from pystoi.stoi import stoi as pystoi_stoi
+
+        stoi = list()
+        for k in range(self.K_source):
+            stoi.append(pystoi_stoi(
+                self.speech_source[k, :],
+                self.observation[self.reference_channel],
+                fs_sig=self.sample_rate,
+            ))
+        return stoi
+
+    def as_dict(self):
+        return dict(
+            pesq=self.pesq,
+            stoi=self.stoi,
+            mir_eval_sxr_sdr=self.mir_eval['sdr'],
+            mir_eval_sxr_sir=self.mir_eval['sir'],
+            mir_eval_sxr_sar=self.mir_eval['sar'],
+            mir_eval_sxr_selection=self.mir_eval['selection'],
+            invasive_sxr_sdr=self.sxr['sdr'],
+            invasive_sxr_sir=self.sxr['sir'],
+            invasive_sxr_snr=self.sxr['snr'],
+        )
 
 
 class OutputMetrics:
@@ -38,20 +126,21 @@ class OutputMetrics:
             noise_contribution: 'Shape(K_target, N)'=None,
             sample_rate: int = None,
     ):
-        assert speech_prediction.ndim == 2, speech_prediction.shape
-        assert speech_source.ndim == 2, speech_source.shape
-
         self.speech_prediction = speech_prediction
         self.speech_source = speech_source
         self.speech_contribution = speech_contribution
         self.noise_contribution = noise_contribution
         self.sample_rate = sample_rate
 
-        # The remaining init are only asserts to check the shapes
-
         self.samples = self.speech_prediction.shape[-1]
         self.K_source = self.speech_source.shape[0]
         self.K_target = self.speech_prediction.shape[0]
+
+        self.check_inputs()
+
+    def check_inputs(self):
+        assert self.speech_prediction.ndim == 2, self.speech_prediction.shape
+        assert self.speech_source.ndim == 2, self.speech_source.shape
 
         assert self.K_source <= 5, _get_err_msg(
             f'Number of source speakers (K_source) of speech_source is '
@@ -73,10 +162,13 @@ class OutputMetrics:
             'shape from speech_prediction',
             self
         )
-        if speech_contribution is not None and noise_contribution is not None:
-            assert noise_contribution is not None, noise_contribution
+        if (
+            self.speech_contribution is not None
+            and self.noise_contribution is not None
+        ):
+            assert self.noise_contribution is not None, self.noise_contribution
 
-            K_source_, K_target_, samples_ = speech_contribution.shape
+            K_source_, K_target_, samples_ = self.speech_contribution.shape
             assert self.samples == samples_, _get_err_msg(
                 'Num samples (N) of speech_contribution does not fit to the'
                 'shape from speech_prediction',
@@ -92,7 +184,7 @@ class OutputMetrics:
                 'not fit to the shape from speech_source',
                 self
             )
-            K_target_, samples_ = noise_contribution.shape
+            K_target_, samples_ = self.noise_contribution.shape
             assert self.samples == samples_, _get_err_msg(
                 'Num samples (N) of noise_contribution does not fit to the '
                 'shape from speech_prediction',
@@ -108,12 +200,15 @@ class OutputMetrics:
                 - np.sum(self.speech_contribution, axis=0)
                 - self.noise_contribution
             ))
-            assert deviation < 1e-6, (
+            assert deviation < 1e-3, (
                 'The deviation of speech prediction and the sum of individual '
-                'contributions is expected to be low: {deviation}'
+                f'contributions is expected to be low: {deviation}'
             )
         else:
-            assert speech_contribution is None and noise_contribution is None, (  # NOQA
+            assert (
+                self.speech_contribution is None
+                and self.noise_contribution is None
+            ), (
                 'Expect that speech_contribution and noise_contribution are '
                 'both None or given.\n'
                 'Got:\n'
@@ -129,7 +224,10 @@ class OutputMetrics:
     def speech_prediction_selection(self):
         assert self.speech_prediction.ndim == 2, self.speech_prediction.shape
         assert self.speech_prediction.shape[0] < 10, self.speech_prediction.shape  # NOQA
-        assert self.speech_prediction.shape[0] == len(self.selection) + 1, self.speech_prediction.shape  # NOQA
+        assert (
+            self.speech_prediction.shape[0]
+            in (len(self.selection), len(self.selection) + 1)
+        ), self.speech_prediction.shape
         return self.speech_prediction[self.selection]
 
     @cached_property.cached_property
@@ -195,8 +293,7 @@ class OutputMetrics:
         from pystoi.stoi import stoi as pystoi_stoi
 
         stoi = list()
-        K = self.speech_prediction_selection.shape[0]
-        for k in range(K):
+        for k in range(self.K_source):
             stoi.append(pystoi_stoi(
                 self.speech_source[k, :],
                 self.speech_prediction_selection[k, :],
