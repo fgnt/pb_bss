@@ -82,19 +82,16 @@ class CACGMM(_ProbabilisticModel):
 
         log_pdf, quadratic_form = self.cacg._log_pdf(y[..., None, :, :])
 
-        log_pdf = log_pdf + np.log(np.maximum(
-            self.weight,
-            np.finfo(self.weight.dtype).tiny,
-        ))
-
         # The value of affiliation max exceed float64 range.
         # Scaling (add in log domain) does not change the final affiliation.
         affiliation = log_pdf - np.amax(log_pdf, axis=-2, keepdims=True)
 
         np.exp(affiliation, out=affiliation)  # inplace
 
+        affiliation *= self.weight
+
         if source_activity_mask is not None:
-            assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
+            assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype  # noqa
             affiliation *= source_activity_mask
 
         denominator = np.maximum(
@@ -191,8 +188,6 @@ class CACGMMTrainer:
                 the sample dimension. Note that averaging over an independent
                 axis is supported. Averaging over -2 is identical to
                 dirichlet_prior_concentration == np.inf.
-            dirichlet_prior_concentration:
-                Prior for the mixture weight
             hermitize:
             covariance_norm: 'eigenvalue', 'trace' or False
             affiliation_eps:
