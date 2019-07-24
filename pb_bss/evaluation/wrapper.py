@@ -9,14 +9,14 @@ import pb_bss
 def _get_err_msg(msg, metrics: 'Metrics'):
     msg = f'{msg}'
     msg += f'\nShapes: (is shape) (symbolic shape)'
-    msg += f'\n\tspeech_prediction: {metrics.speech_prediction.shape} (N)'
+    msg += f'\n\tspeech_prediction: {metrics.speech_prediction.shape} (K_target, N)'  # noqa
     msg += f'\n\tspeech_source: {metrics.speech_source.shape} (K_source, N)'
     if metrics.speech_contribution is not None:
         msg += (f'\n\tspeech_contribution: '
                 f'{metrics.speech_contribution.shape} (K_source, K_target, N)')
     if metrics.noise_contribution is not None:
         msg += (f'\n\tnoise_contribution: '
-                f'{metrics.noise_contribution.shape} (K_source, N)')
+                f'{metrics.noise_contribution.shape} (K_target, N)')
     return msg
 
 
@@ -54,13 +54,13 @@ class Metrics:
             f'{self.K_target}. Expect a reasonable value of 5 or less.',
             self
         )
-        assert self.K_source in [self.K_target, self.K_target+1], _get_err_msg(
-            f'Number of source speakers (K_source) should be equal to '
-            f'number of target speakers (K_target) or K_target + 1',
+        assert self.K_target in [self.K_source, self.K_source+1], _get_err_msg(
+            f'Number of target speakers (K_target) should be equal to '
+            f'number of source speakers (K_source) or K_target + 1',
             self
         )
-        assert self.speech_source.shape[0] == self.samples, _get_err_msg(
-            'Num samples (N) of speech_source do not fit to the'
+        assert self.speech_source.shape[1] == self.samples, _get_err_msg(
+            'Num samples (N) of speech_source does not fit to the'
             'shape from speech_prediction',
             self
         )
@@ -69,30 +69,39 @@ class Metrics:
 
             K_source_, K_target_, samples_ = speech_contribution.shape
             assert self.samples == samples_, _get_err_msg(
-                'Num samples (N) of speech_contribution do not fit to the '
+                'Num samples (N) of speech_contribution does not fit to the'
                 'shape from speech_prediction',
                 self
             )
             assert self.K_target == K_target_, _get_err_msg(
-                'Num target speakers (K_target) of speech_contribution do not '
-                'fit to the shape from speech_prediction',
+                'Num target speakers (K_target) of speech_contribution does '
+                'not fit to the shape from speech_prediction',
                 self
             )
             assert self.K_source < 5, _get_err_msg(
-                'Num source speakers (K_source) of speech_contribution do not '
-                'fit to the shape from speech_source',
+                'Num source speakers (K_source) of speech_contribution does '
+                'not fit to the shape from speech_source',
                 self
             )
             K_target_, samples_ = noise_contribution.shape
             assert self.samples == samples_, _get_err_msg(
-                'Num samples (N) of noise_contribution do not fit to the '
+                'Num samples (N) of noise_contribution does not fit to the '
                 'shape from speech_prediction',
                 self
             )
             assert self.K_target == K_target_, _get_err_msg(
-                'Num target speakers (K_target) of noise_contribution do not '
-                'fit to the shape from speech_prediction',
+                'Num target speakers (K_target) of noise_contribution does '
+                'not fit to the shape from speech_prediction',
                 self
+            )
+            deviation = np.std(np.abs(
+                self.speech_prediction
+                - np.sum(self.speech_contribution, axis=0)
+                - self.noise_contribution
+            ))
+            assert deviation < 1e-6, (
+                'The deviation of speech prediction and the sum of individual '
+                'contributions is expected to be low: {deviation}'
             )
         else:
             assert speech_contribution is None and noise_contribution is None, (  # NOQA
@@ -105,7 +114,7 @@ class Metrics:
 
     @cached_property.cached_property
     def selection(self):
-        return self.mir_eval['permutation']
+        return self.mir_eval['selection']
 
     @cached_property.cached_property
     def speech_prediction_selection(self):
@@ -163,10 +172,10 @@ class Metrics:
         invasive_sxr = pb.evaluation.output_sxr(
             rearrange(
                 self.speech_contribution,
-                'k_source k_target samples -> k_source k_target samples'
+                'sources targets samples -> sources targets samples'
             )[:, self.selection, :],
             rearrange(
-                self.noise_contribution, 'k_target samples -> k_target samples'
+                self.noise_contribution, 'targets samples -> targets samples'
             )[self.selection, :],
             return_dict=True,
         )
@@ -174,27 +183,27 @@ class Metrics:
 
     @cached_property.cached_property
     def stoi(self):
-        import paderbox as pb
+        from pystoi.stoi import stoi as pystoi_stoi
 
         stoi = list()
         K = self.speech_prediction_selection.shape[0]
         for k in range(K):
-            stoi.append(pb.evaluation.stoi(
+            stoi.append(pystoi_stoi(
                 self.speech_source[k, :],
                 self.speech_prediction_selection[k, :],
-                sample_rate=self.sample_rate,
+                fs_sig=self.sample_rate,
             ))
         return stoi
 
     def as_dict(self):
         return dict(
+            pesq=self.pesq,
+            stoi=self.stoi,
             mir_eval_sxr_sdr=self.mir_eval['sdr'],
             mir_eval_sxr_sir=self.mir_eval['sir'],
             mir_eval_sxr_sar=self.mir_eval['sar'],
             mir_eval_sxr_selection=self.mir_eval['selection'],
-            pesq=self.pesq,
             invasive_sxr_sdr=self.sxr['sdr'],
             invasive_sxr_sir=self.sxr['sir'],
             invasive_sxr_snr=self.sxr['snr'],
-            stoi=self.stoi,
         )
