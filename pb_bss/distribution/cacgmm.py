@@ -4,7 +4,6 @@ import numpy as np
 import scipy.special
 from dataclasses import dataclass
 from pb_bss.distribution.utils import (
-    _unit_norm,
     _ProbabilisticModel,
     estimate_mixture_weight,
 )
@@ -19,6 +18,7 @@ __all__ = [
     'CACGMM',
     'CACGMMTrainer',
     'sample_cacgmm',
+    'normalize_observation',
 ]
 
 
@@ -35,7 +35,7 @@ def sample_cacgmm(
     num_classes, = weight.shape
 
     D = covariance.shape[-1]
-    assert covariance.shape == (num_classes, D, D), (covariance.shape, num_classes, D)
+    assert covariance.shape == (num_classes, D, D), (covariance.shape, num_classes, D)  # noqa
 
     labels = np.random.choice(range(num_classes), size=size, p=weight)
 
