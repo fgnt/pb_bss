@@ -113,7 +113,7 @@ class GCACGMMTrainer:
         weight_constant_axis=(-1,),
         spatial_weight=1.,
         spectral_weight=1.
-    ):
+    ) -> GCACGMM:
         """
 
         Args:

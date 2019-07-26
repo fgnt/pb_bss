@@ -48,7 +48,9 @@ class VMFCACGMM(_ProbabilisticModel):
         _, _, E = embedding.shape
 
         observation_ = observation[..., None, :, :]
-        cacg_log_pdf, quadratic_form = self.cacg._log_pdf(observation_)
+        cacg_log_pdf, quadratic_form = self.cacg._log_pdf(
+            np.swapaxes(observation_, -1, -2)
+        )
 
         embedding_ = np.reshape(embedding, (1, F * T, E))
         vmf_log_pdf = self.vmf.log_pdf(embedding_)
@@ -84,7 +86,7 @@ class VMFCACGMMTrainer:
         min_concentration=1e-10,
         max_concentration=500,
         hermitize=True,
-        trace_norm=True,
+        covariance_norm='eigenvalue',
         eigenvalue_floor=1e-10,
         affiliation_eps=1e-10,
         weight_constant_axis=(-1,),
@@ -103,7 +105,6 @@ class VMFCACGMMTrainer:
             min_concentration:
             max_concentration:
             hermitize:
-            trace_norm:
             eigenvalue_floor:
             affiliation_eps: Used in M-step to clip saliency.
             weight_constant_axis: Axis, along which weight is constant. The
@@ -158,7 +159,7 @@ class VMFCACGMMTrainer:
                 min_concentration=min_concentration,
                 max_concentration=max_concentration,
                 hermitize=hermitize,
-                trace_norm=trace_norm,
+                covariance_norm=covariance_norm,
                 eigenvalue_floor=eigenvalue_floor,
                 weight_constant_axis=weight_constant_axis,
                 spatial_weight=spatial_weight,
@@ -182,7 +183,7 @@ class VMFCACGMMTrainer:
         min_concentration,
         max_concentration,
         hermitize,
-        trace_norm,
+        covariance_norm,
         eigenvalue_floor,
         weight_constant_axis,
         spatial_weight,
@@ -215,11 +216,11 @@ class VMFCACGMMTrainer:
             max_concentration=max_concentration
         )
         cacg = ComplexAngularCentralGaussianTrainer()._fit(
-            y=observation[..., None, :, :],
+            y=np.swapaxes(observation[..., None, :, :], -1, -2),
             saliency=masked_affiliation,
             quadratic_form=quadratic_form,
             hermitize=hermitize,
-            trace_norm=trace_norm,
+            covariance_norm=covariance_norm,
             eigenvalue_floor=eigenvalue_floor,
         )
         return VMFCACGMM(
