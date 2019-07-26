@@ -205,7 +205,6 @@ class ComplexAngularCentralGaussianTrainer:
                Shape (..., D, N), e.g. (1, D, N) for mixture models
             saliency: Shape (..., N), e.g. (K, N) for mixture models
             hermitize:
-            trace_norm:
             eigenvalue_floor:
             iterations:
 
@@ -255,7 +254,6 @@ class ComplexAngularCentralGaussianTrainer:
             saliency: Shape (..., N), e.g. (K, N) for mixture models
             quadratic_form: (..., N), e.g. (K, N) for mixture models
             hermitize:
-            trace_norm:
             eigenvalue_floor:
 
         Returns:
