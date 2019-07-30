@@ -106,6 +106,16 @@ class InputMetrics:
             ))
         return stoi
 
+    @cached_property.cached_property
+    def si_sdr(self):
+        return pb_bss.evaluation.si_sdr(
+            reference=self.speech_source,
+            estimation=np.tile(
+                self.observation[self.reference_channel],
+                (self.K_source, 1)
+            ),
+        )
+
     def as_dict(self):
         return dict(
             pesq=self.pesq,
@@ -117,6 +127,7 @@ class InputMetrics:
             invasive_sxr_sdr=self.sxr['sdr'],
             invasive_sxr_sir=self.sxr['sir'],
             invasive_sxr_snr=self.sxr['snr'],
+            si_sdr=self.si_sdr,
         )
 
 
@@ -304,6 +315,13 @@ class OutputMetrics:
             ))
         return stoi
 
+    @cached_property.cached_property
+    def si_sdr(self):
+        return pb_bss.evaluation.si_sdr(
+            reference=self.speech_source,
+            estimation=self.speech_prediction_selection,
+        )
+
     def as_dict(self):
         return dict(
             pesq=self.pesq,
@@ -315,4 +333,5 @@ class OutputMetrics:
             invasive_sxr_sdr=self.sxr['sdr'],
             invasive_sxr_sir=self.sxr['sir'],
             invasive_sxr_snr=self.sxr['snr'],
+            si_sdr=self.si_sdr,
         )

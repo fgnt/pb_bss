@@ -12,7 +12,7 @@ def si_sdr(reference, estimation):
     Returns:
         SI-SDR
 
-    SDR– Half- Baked or Well Done?
+    [1] SDR– Half- Baked or Well Done?
     http://www.merl.com/publications/docs/TR2019-013.pdf
 
     >>> np.random.seed(0)
@@ -42,10 +42,17 @@ def si_sdr(reference, estimation):
     assert estimation.dtype == np.float64, estimation.dtype
     assert reference.shape == estimation.shape, (reference, estimation)
 
-    ref_energy = np.sum(reference ** 2, axis=-1, keepdims=True)
-    proj = np.sum(reference * estimation, axis=-1, keepdims=True) * reference / ref_energy
-    noise = estimation - proj
-    ratio = np.sum(proj ** 2, axis=-1) / (np.sum(noise ** 2, axis=-1))
-    si_sdr = 10 * np.log10(ratio)
+    reference_energy = np.sum(reference ** 2, axis=-1, keepdims=True)
 
-    return si_sdr
+    # This is $\alpha$ after Equation (3) in [1].
+    optimal_scaling = np.sum(reference * estimation, axis=-1, keepdims=True) \
+        / reference_energy
+
+    # This is $e_{\text{target}}$ in Equation (4) in [1].
+    projection = optimal_scaling * reference
+
+    # This is $e_{\text{res}}$ in Equation (4) in [1].
+    noise = estimation - projection
+
+    ratio = np.sum(projection ** 2, axis=-1) / np.sum(noise ** 2, axis=-1)
+    return 10 * np.log10(ratio)
