@@ -154,6 +154,8 @@ class InputMetrics:
         if self.enable_si_sdr:
             metrics['si_sdr'] = self.si_sdr
 
+        return metrics
+
 
 class OutputMetrics:
     def __init__(
@@ -383,3 +385,5 @@ class OutputMetrics:
 
         if self.enable_si_sdr:
             metrics['si_sdr'] = self.si_sdr
+
+        return metrics
