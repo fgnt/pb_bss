@@ -35,7 +35,20 @@ class InputMetrics:
             noise_image: 'Shape(D, N)'=None,
             sample_rate: int = None,
             reference_channel: int = 0,
+            enable_si_sdr: bool = False,
     ):
+        """
+
+        Args:
+            observation:
+            speech_source:
+            speech_image:
+            noise_image:
+            sample_rate:
+            reference_channel:
+            enable_si_sdr: Since SI-SDR is only well defined for non-reverb
+                single-channel data, it is disabled by default.
+        """
         self.observation = observation
         self.speech_source = speech_source
         self.speech_image = speech_image
@@ -45,6 +58,8 @@ class InputMetrics:
 
         self.samples = self.observation.shape[-1]
         self.K_source = self.speech_source.shape[0]
+
+        self.enable_si_sdr = enable_si_sdr
 
         self.check_inputs()
 
@@ -108,16 +123,23 @@ class InputMetrics:
 
     @cached_property.cached_property
     def si_sdr(self):
-        return pb_bss.evaluation.si_sdr(
-            reference=self.speech_source,
-            estimation=np.tile(
-                self.observation[self.reference_channel],
-                (self.K_source, 1)
-            ),
-        )
+        if self.enable_si_sdr:
+            return pb_bss.evaluation.si_sdr(
+                reference=self.speech_source,
+                estimation=np.tile(
+                    self.observation[self.reference_channel],
+                    (self.K_source, 1)
+                ),
+            )
+        else:
+            raise ValueError(
+                'SI-SDR is disabled by default since it is only well-defined '
+                'for non-reverberant single-channel data. Enable it with '
+                '`enable_si_sdr=True`.'
+            )
 
     def as_dict(self):
-        return dict(
+        metrics = dict(
             pesq=self.pesq,
             stoi=self.stoi,
             mir_eval_sxr_sdr=self.mir_eval['sdr'],
@@ -127,8 +149,10 @@ class InputMetrics:
             invasive_sxr_sdr=self.sxr['sdr'],
             invasive_sxr_sir=self.sxr['sir'],
             invasive_sxr_snr=self.sxr['snr'],
-            si_sdr=self.si_sdr,
         )
+
+        if self.enable_si_sdr:
+            metrics['si_sdr'] = self.si_sdr
 
 
 class OutputMetrics:
@@ -139,7 +163,19 @@ class OutputMetrics:
             speech_contribution: 'Shape(K_source, K_target, N)'=None,
             noise_contribution: 'Shape(K_target, N)'=None,
             sample_rate: int = None,
+            enable_si_sdr: bool = False,
     ):
+        """
+
+        Args:
+            speech_prediction:
+            speech_source:
+            speech_contribution:
+            noise_contribution:
+            sample_rate:
+            enable_si_sdr: Since SI-SDR is only well defined for non-reverb
+                single-channel data, it is disabled by default.
+        """
         self.speech_prediction = speech_prediction
         self.speech_source = speech_source
         self.speech_contribution = speech_contribution
@@ -149,6 +185,8 @@ class OutputMetrics:
         self.samples = self.speech_prediction.shape[-1]
         self.K_source = self.speech_source.shape[0]
         self.K_target = self.speech_prediction.shape[0]
+
+        self.enable_si_sdr = enable_si_sdr
 
         self.check_inputs()
 
@@ -317,13 +355,20 @@ class OutputMetrics:
 
     @cached_property.cached_property
     def si_sdr(self):
-        return pb_bss.evaluation.si_sdr(
-            reference=self.speech_source,
-            estimation=self.speech_prediction_selection,
-        )
+        if self.enable_si_sdr:
+            return pb_bss.evaluation.si_sdr(
+                reference=self.speech_source,
+                estimation=self.speech_prediction_selection,
+            )
+        else:
+            raise ValueError(
+                'SI-SDR is disabled by default since it is only well-defined '
+                'for non-reverberant single-channel data. Enable it with '
+                '`enable_si_sdr=True`.'
+            )
 
     def as_dict(self):
-        return dict(
+        metrics = dict(
             pesq=self.pesq,
             stoi=self.stoi,
             mir_eval_sxr_sdr=self.mir_eval['sdr'],
@@ -335,3 +380,6 @@ class OutputMetrics:
             invasive_sxr_snr=self.sxr['snr'],
             si_sdr=self.si_sdr,
         )
+
+        if self.enable_si_sdr:
+            metrics['si_sdr'] = self.si_sdr
