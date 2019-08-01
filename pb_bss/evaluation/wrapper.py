@@ -170,19 +170,40 @@ class OutputMetrics:
         """
 
         Args:
-            speech_prediction:
-            speech_source:
-            speech_contribution:
-            noise_contribution:
-            sample_rate:
+            speech_prediction: Shape(K_target, N)
+                The prediction of the source signal.
+            speech_source: Shape(K_source, N)
+                The true source signal, before the reverberation.
+            speech_contribution: Shape(K_source, K_target, N)
+                Optional for linear enhancements. See below.
+            noise_contribution: Shape(K_target, N)
+                Optional for linear enhancements. See below.
+            sample_rate: int
+                pesq and stoi need the sample rate.
+                In pesq the sample rate defines the mode:
+                    8000: narrow band (nb)
+                    8000: wide band (wb)
             enable_si_sdr: Since SI-SDR is only well defined for non-reverb
                 single-channel data, it is disabled by default.
+
+        speech_contribution and noise_contribution can only be calculated for
+        linear system and are used for the calculation of invasive_sxr.
+        Use speech image (reverberated speech source) and apply for each source
+        the enhancement for each target speaker enhancement. The same for the
+        noise and each target speaker.
+
         """
         self.speech_prediction = speech_prediction
         self.speech_source = speech_source
         self.speech_contribution = speech_contribution
         self.noise_contribution = noise_contribution
         self.sample_rate = sample_rate
+
+        self._has_contribution_signals = (
+            speech_contribution is not None
+            and
+            noise_contribution is not None
+        )
 
         self.samples = self.speech_prediction.shape[-1]
         self.K_source = self.speech_source.shape[0]
@@ -266,8 +287,8 @@ class OutputMetrics:
                 'Expect that speech_contribution and noise_contribution are '
                 'both None or given.\n'
                 'Got:\n'
-                f'speech_contribution: {speech_contribution}\n'
-                f'noise_contribution: {noise_contribution}'
+                f'speech_contribution: {self.speech_contribution}\n'
+                f'noise_contribution: {self.noise_contribution}'
             )
 
     @cached_property.cached_property
@@ -328,7 +349,7 @@ class OutputMetrics:
         ]
 
     @cached_property.cached_property
-    def sxr(self):
+    def invasive_sxr(self):
         import paderbox as pb
         invasive_sxr = pb.evaluation.output_sxr(
             rearrange(
@@ -377,13 +398,14 @@ class OutputMetrics:
             mir_eval_sxr_sir=self.mir_eval['sir'],
             mir_eval_sxr_sar=self.mir_eval['sar'],
             mir_eval_sxr_selection=self.mir_eval['selection'],
-            invasive_sxr_sdr=self.sxr['sdr'],
-            invasive_sxr_sir=self.sxr['sir'],
-            invasive_sxr_snr=self.sxr['snr'],
-            si_sdr=self.si_sdr,
         )
 
         if self.enable_si_sdr:
             metrics['si_sdr'] = self.si_sdr
+
+        if self._has_contribution_signals:
+            metrics['invasive_sxr_sdr'] = self.invasive_sxr['sdr']
+            metrics['invasive_sxr_sir'] = self.invasive_sxr['sir']
+            metrics['invasive_sxr_snr'] = self.invasive_sxr['snr']
 
         return metrics
