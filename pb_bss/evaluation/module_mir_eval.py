@@ -69,9 +69,9 @@ def mir_eval_sources(
         ]
 
         if compute_permutation:
-            sdr, sir, sar, selection = zip(*results)
+            sdr, sir, sar, selection = map(np.array, zip(*results))
         else:
-            sdr, sir, sar = zip(*results)
+            sdr, sir, sar = map(np.array, zip(*results))
             selection = None
     else:
         raise ValueError(f'Strange input shape: {reference.shape}')
