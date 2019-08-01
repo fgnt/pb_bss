@@ -2,7 +2,7 @@ import cached_property
 
 import numpy as np
 
-from einops import rearrange
+from einops import rearrange, reduce
 import pb_bss
 
 
@@ -34,7 +34,7 @@ class InputMetrics:
             speech_image: 'Shape(K_source, D, N)'=None,
             noise_image: 'Shape(D, N)'=None,
             sample_rate: int = None,
-            reference_channel: int = 0,
+            channel_score_reduce: [int, str] = 'mean',
             enable_si_sdr: bool = False,
     ):
         """
@@ -45,7 +45,7 @@ class InputMetrics:
             speech_image:
             noise_image:
             sample_rate:
-            reference_channel:
+            channel_score_reduce:
             enable_si_sdr: Since SI-SDR is only well defined for non-reverb
                 single-channel data, it is disabled by default.
         """
@@ -54,9 +54,10 @@ class InputMetrics:
         self.speech_image = speech_image
         self.noise_image = noise_image
         self.sample_rate = sample_rate
-        self.reference_channel = reference_channel
+        self.channel_score_reduce = channel_score_reduce
 
         self.samples = self.observation.shape[-1]
+        self.channels = self.observation.shape[-2]
         self.K_source = self.speech_source.shape[0]
 
         self.enable_si_sdr = enable_si_sdr
@@ -67,31 +68,92 @@ class InputMetrics:
         assert self.observation.ndim == 2, self.observation.shape
         assert self.speech_source.ndim == 2, self.speech_source.shape
 
+    def _recude_score(self, scores):
+        reduction = {
+            'best': 'max',
+            'worst': 'min',
+            'median': 'median',
+            'mean': 'mean',
+        }[self.channel_score_reduce]
+
+        return reduce(
+            scores,
+            'sources channels -> sources',
+            reduction=reduction,
+            sources=self.K_source,
+            channels=self.channels,
+        )
+
     @cached_property.cached_property
     def mir_eval(self):
-        return pb_bss.evaluation.mir_eval_sources(
-            reference=self.speech_source,
-            estimation=np.tile(
-                self.observation[self.reference_channel],
-                (self.K_source, 1)
-            ),
-            return_dict=True,
-        )
+        if isinstance(self.channel_score_reduce, int):
+            return pb_bss.evaluation.mir_eval_sources(
+                reference=self.speech_source,
+                estimation=np.tile(
+                    self.observation[self.channel_score_reduce],
+                    (self.K_source, 1)
+                ),
+                return_dict=True,
+                compute_permutation=False,
+            )
+        elif isinstance(self.channel_score_reduce, str):
+            scores = pb_bss.evaluation.mir_eval_sources(
+                reference=rearrange(
+                    [self.speech_source] * self.channels,
+                    'channels sources sampels -> (sources channels) sampels'
+                ),
+                estimation=rearrange(
+                    [self.observation] * self.K_source,
+                    'sources channels sampels -> (sources channels) sampels'
+                ),
+                return_dict=True,
+                compute_permutation=False,
+            )
+            return {
+                k:
+                    self._recude_score(np.reshape(
+                        s, [self.K_source, self.channels]))
+                    if k != 'selection'
+                    else
+                    s
+                for k, s in scores.items()
+            }
+        else:
+            raise ValueError(self.channel_score_reduce)
 
     @cached_property.cached_property
     def pesq(self):
         import paderbox as pb
         mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
         try:
-            return pb.evaluation.pesq(
-                reference=self.speech_source,
-                degraded=np.tile(
-                    self.observation[self.reference_channel],
-                    (self.K_source, 1)
-                ),
-                rate=self.sample_rate,
-                mode=mode,
-            )
+            if isinstance(self.channel_score_reduce, int):
+                return pb.evaluation.pesq(
+                    reference=self.speech_source,
+                    degraded=np.tile(
+                        self.observation[self.channel_score_reduce],
+                        (self.K_source, 1)
+                    ),
+                    rate=self.sample_rate,
+                    mode=mode,
+                )
+            elif isinstance(self.channel_score_reduce, str):
+                scores =  pb.evaluation.pesq(
+                    reference=rearrange(
+                        [self.speech_source] * self.channels,
+                        'channels sources sampels -> (sources channels) sampels'
+                    ),
+                    degraded=rearrange(
+                        [self.observation] * self.K_source,
+                        'sources channels sampels -> (sources channels) sampels'
+                    ),
+                    rate=self.sample_rate,
+                    mode=mode,
+                )
+                scores = np.reshape(
+                    scores, [self.K_source, self.channels])
+                return self._recude_score(scores)
+            else:
+                raise ValueError(self.channel_score_reduce)
         except OSError:
             return np.nan
 
@@ -112,14 +174,41 @@ class InputMetrics:
     def stoi(self):
         from pystoi.stoi import stoi as pystoi_stoi
 
-        stoi = list()
-        for k in range(self.K_source):
-            stoi.append(pystoi_stoi(
-                self.speech_source[k, :],
-                self.observation[self.reference_channel],
+        def loopy_stoi(x, y, fs_sig):
+            assert x.shape == y.shape, (x.shape, y.shape)
+            if x.ndim >= 2:
+                return np.array([loopy_stoi(
+                    x_entry, y_entry, fs_sig=fs_sig
+                ) for x_entry, y_entry in zip(x, y)])
+            else:
+                return pystoi_stoi(x, y, fs_sig=fs_sig)
+
+        if isinstance(self.channel_score_reduce, int):
+            return loopy_stoi(
+                self.speech_source,
+                np.tile(
+                    self.observation[self.channel_score_reduce],
+                    (self.K_source, 1)
+                ),
+                # self.speech_source[k, :],
+                # self.observation[self.channel_score_reduce],
                 fs_sig=self.sample_rate,
-            ))
-        return stoi
+            )
+        elif isinstance(self.channel_score_reduce, str):
+            scores = loopy_stoi(
+                rearrange(
+                    [self.speech_source] * self.channels,
+                    'channels sources sampels -> sources channels sampels'
+                ),
+                rearrange(
+                    [self.observation] * self.K_source,
+                    'sources channels sampels -> sources channels sampels'
+                ),
+                fs_sig=self.sample_rate,
+            )
+            return self._recude_score(scores)
+        else:
+            raise ValueError(self.channel_score_reduce)
 
     @cached_property.cached_property
     def si_sdr(self):
@@ -145,7 +234,7 @@ class InputMetrics:
             mir_eval_sxr_sdr=self.mir_eval['sdr'],
             mir_eval_sxr_sir=self.mir_eval['sir'],
             mir_eval_sxr_sar=self.mir_eval['sar'],
-            mir_eval_sxr_selection=self.mir_eval['selection'],
+            # mir_eval_sxr_selection=self.mir_eval['selection'],
             invasive_sxr_sdr=self.sxr['sdr'],
             invasive_sxr_sir=self.sxr['sir'],
             invasive_sxr_snr=self.sxr['snr'],
