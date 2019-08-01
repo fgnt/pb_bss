@@ -761,7 +761,6 @@ def get_lcmv_vector_souden(
         return beamformer
 
 
-
 def block_online_beamforming(
         observation,
         target_mask,
@@ -857,3 +856,19 @@ def block_online_beamforming(
             morph('t...b->...t*b', cleaned)[..., :shape[-1]],
             axis1=-1, axis2=-2
         )
+
+
+def get_bf_vector(target_psd_matrix, noise_psd_matrix, bf_fn,
+                  atf_estimation_fn, **bf_kwargs):
+    """
+
+    :param target_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
+        with the covariance statistics for the target signal.
+    :param noise_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
+        with the covariance statistics for the interference signal.
+    :param bf_fn: string mapping to the desired beamformer
+    :param atf_estimation_fn: string mapping to the desired atf estimation
+    :param bf_kwargs: option for the beamformer
+    :return: beamforming vector
+    """
+    raise NotImplementedError
