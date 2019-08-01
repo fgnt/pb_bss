@@ -51,10 +51,16 @@ def mir_eval_sources(
             f"Shapes do not fit: {reference.shape} vs. {estimation.shape}"
         )
 
-    if return_dict is True:
-        return {"sdr": sdr, "sir": sir, "sar": sar, "selection": selection}
+    if return_dict:
+        if compute_permutation:
+            return {"sdr": sdr, "sir": sir, "sar": sar, "selection": selection}
+        else:
+            return {"sdr": sdr, "sir": sir, "sar": sar}
     else:
-        return sdr, sir, sar, selection
+        if compute_permutation:
+            return sdr, sir, sar, selection
+        else:
+            return sdr, sir, sar
 
 
 def _bss_eval_sources_and_noise(reference_sources, estimated_sources):

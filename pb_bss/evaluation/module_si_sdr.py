@@ -35,12 +35,10 @@ def si_sdr(reference, estimation):
     array([6.3704606, 6.3704606])
 
     """
-    reference = np.asanyarray(reference)
-    estimation = np.asanyarray(estimation)
+    estimation, reference = np.broadcast_arrays(estimation, reference)
 
     assert reference.dtype == np.float64, reference.dtype
     assert estimation.dtype == np.float64, estimation.dtype
-    assert reference.shape == estimation.shape, (reference, estimation)
 
     reference_energy = np.sum(reference ** 2, axis=-1, keepdims=True)
 
