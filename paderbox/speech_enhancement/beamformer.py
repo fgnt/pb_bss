@@ -608,7 +608,9 @@ def _evd_rank_one_estimate(cov):
 
 
 def _gevd_rank_one_estimate(cov_a, cov_b):
-    """Estimates the matrix as the outer product of the dominant eigenvector."""
+    """
+    Estimates the matrix as the outer product of the dominant eigenvector.
+    """
     w = get_gev_vector(cov_a, cov_b)
     a = np.einsum('...ab,...b->...a', cov_b, w)
     cov_rank1 = np.einsum('...a,...b->...ab', a, a.conj())
@@ -627,19 +629,16 @@ def get_wmwf_vector(
     `min E[|h^{H}x - X_{k}|^2] + mu E[|h^{H}n|^2]`.
     I.e. it minimizes the MSE between the filtered signal and the target image
     from channel k. The parameter mu allows for a trade-off between speech
-    distortion and noise supression. For mu = 0, it resambles the MVDR filter.
+    distortion and noise suppression. For mu = 0, it resambles the MVDR filter.
 
     Args:
-      target_psd: `Tensor` of shape (batch, frequency, sensor, sensor) with the
-        covariance statistics for the target signal.
-      noise_psd: `Tensor` of shape (batch, frequency, sensor, sensor) with the
-        covariance statistics for the noise signal.
+      target_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
+        with the covariance statistics for the target signal.
+      noise_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
+        with the covariance statistics for the noise signal.
       reference_channel: Reference channel for minimization. See describtion
         above. Has no effect if a channel selection vector is provided.
-      rank_one_estimate: Approximate the target covarinace
-        matrix with a rank-1 matrix with the pricipal eigenvector of the
-        estimatate covariance matrix.
-      rank_one_estimate_type: Can be "evd" for an estimate based on the
+      target_psd_constraints: Can be "evd" for an estimate based on the
         decomposition of the target matrix only, or "gevd" for a generalized
         decomposition based on the target and noise matrix.
       channel_selection_vector: A vector of shape (batch, channel) to
@@ -648,7 +647,6 @@ def get_wmwf_vector(
         surpression. Passing -1 will use an frequency-dependent trade-off
         factor inspired by the Max-SNR criterion.
         See https://arxiv.org/abs/1707.00201 for details.
-      scope: The scope for the operations.
 
     Raises:
       ValueError: Wrong rank_one_estimation_type
@@ -675,7 +673,7 @@ def get_wmwf_vector(
     if distortion_weight == 'frequency_dependent':
         phi_x1x1 = target_psd_matrix[..., 0:1, 0:1]
         distortion_weight = np.sqrt(phi_x1x1 * lambda_)
-        filter_ = phi / (distortion_weight)
+        filter_ = phi / distortion_weight
     else:
         filter_ = phi / (distortion_weight + lambda_)
     if channel_selection_vector is not None:
@@ -778,22 +776,27 @@ def block_online_beamforming(
         return_bf_vector=False
 ):
 
-    '''
+    """
     :param observation: Observed signal
         with shape (..., bins, sensors, frames)
     :param target_mask: Target mask
         with shape (..., bins, frames)
     :param noise_mask: Noise mask
         with shape(..., bins, frames)
+    :param block_size:
     :param target_psd_init: Target PSD matrix initalization
         with shape (..., bins, sensors, sensors)
     :param noise_psd_init: Noise PSD matrix initialization
         with shape (..., bins, sensors, sensors)
     :param get_bf_fn: function for bf vector estimation
-    :param decay_factor:
-    :param block_size:
+    :param apply_ban
+    :param target_decay_factor:
+    :param noise_decay_factor:
+    :param noise_psd_normalization:
+    :param eps:
+    :param return_bf_vector:
     :return:
-    '''
+    """
     # split the inputs to segments of block_size
     shape = observation.shape
     ndims = observation.ndim
