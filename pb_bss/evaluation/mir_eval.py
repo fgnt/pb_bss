@@ -18,6 +18,7 @@ def mir_eval_sources(
     :param reference: Time domain signal with shape (K, T)
     :param estimation: Time domain signal with shape (K, T) or (K + 1, T)
     :param return_dict:
+    :param compute_permutation:
     :return: SXRs ignoring noise reconstruction performance
         with shape (K,), where the dimension is the total number of
         speakers in the source signal.
@@ -35,7 +36,10 @@ def mir_eval_sources(
 
     if reference.shape == estimation.shape:
         sdr, sir, sar, selection = _bss_eval_sources(
-            reference, estimation, compute_permutation=compute_permutation)
+            reference,
+            estimation,
+            compute_permutation=compute_permutation
+        )
     elif reference.shape[0] == estimation.shape[0] - 1:
         if not compute_permutation:
             raise NotImplementedError(compute_permutation, 'with K + 1')
