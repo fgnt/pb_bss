@@ -352,14 +352,16 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
         Phi_inverse_times_H
     )  # f, k, K
 
-    temp = solve(
+    response_vector = response_vector[None, :, None].astype(np.complex64)
+    response_vector = np.repeat(response_vector, 257, axis=0)
+    temp = stable_solve(
         H_times_Phi_inverse_times_H,
-        response_vector[None, ...],  # 1, K
+        response_vector,  # F, K, 1
     )  # f, k
     beamforming_vector = np.einsum(
         'k...d,...k->...d',
         Phi_inverse_times_H,
-        temp
+        np.squeeze(temp, axis=-1)
     )
 
     return beamforming_vector
@@ -493,157 +495,6 @@ def apply_online_beamforming_vector(vector, mix):
     """
     vector = vector.transpose(1, 2, 0)
     return np.einsum('...at,...at->...t', vector.conj(), mix)
-
-
-def gev_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
-                         normalization=False):
-    """Performs GEV beamforming given observation and masks.
-    
-    Args:
-        mix (np.array): (frames, source, bins)
-        noise_mask (np.array, optional): (frames, bins)
-        target_mask (np.array, optional): (frames, bins)
-        normalization (bool, optional): Defaults to False. [description]
-    
-    Returns:
-        beamformed signal: (frames, bins)
-    """
-
-    if noise_mask is None and target_mask is None:
-        raise ValueError('At least one mask needs to be present.')
-
-    mix = mix.T
-    if noise_mask is not None:
-        noise_mask = noise_mask.T
-    if target_mask is not None:
-        target_mask = target_mask.T
-
-    if target_mask is None:
-        target_mask = np.clip(1 - noise_mask, 1e-6, 1)
-    if noise_mask is None:
-        noise_mask = np.clip(1 - target_mask, 1e-6, 1)
-
-    target_psd_matrix = get_power_spectral_density_matrix(mix, target_mask)
-    noise_psd_matrix = get_power_spectral_density_matrix(mix, noise_mask)
-
-    W_gev = get_gev_vector(target_psd_matrix, noise_psd_matrix)
-
-    if normalization:
-        W_gev = blind_analytic_normalization(W_gev, noise_psd_matrix)
-
-    output = apply_beamforming_vector(W_gev, mix)
-
-    return output.T
-
-
-def pca_wrapper_on_masks(mix, noise_mask=None, target_mask=None):
-    if noise_mask is None and target_mask is None:
-        raise ValueError('At least one mask needs to be present.')
-
-    mix = mix.T
-    if noise_mask is not None:
-        noise_mask = noise_mask.T
-    if target_mask is not None:
-        target_mask = target_mask.T
-
-    if target_mask is None:
-        target_mask = np.clip(1 - noise_mask, 1e-6, 1)
-
-    target_psd_matrix = get_power_spectral_density_matrix(mix, target_mask)
-
-    W_pca = get_pca_vector(target_psd_matrix)
-
-    output = apply_beamforming_vector(W_pca, mix)
-
-    return output.T
-
-
-def pca_mvdr_wrapper_on_masks(mix, noise_mask=None, target_mask=None,
-                              regularization=None):
-    if noise_mask is None and target_mask is None:
-        raise ValueError('At least one mask needs to be present.')
-
-    mix = mix.T
-    if noise_mask is not None:
-        noise_mask = noise_mask.T
-    if target_mask is not None:
-        target_mask = target_mask.T
-
-    if target_mask is None:
-        target_mask = np.clip(1 - noise_mask, 1e-6, 1)
-    if noise_mask is None:
-        noise_mask = np.clip(1 - target_mask, 1e-6, 1)
-
-    target_psd_matrix = get_power_spectral_density_matrix(mix, target_mask)
-    noise_psd_matrix = get_power_spectral_density_matrix(mix, noise_mask)
-
-    if regularization is not None:
-        noise_psd_matrix += np.tile(
-            regularization * np.eye(noise_psd_matrix.shape[1]),
-            (noise_psd_matrix.shape[0], 1, 1)
-        )
-
-    W_pca = get_pca_vector(target_psd_matrix)
-    W_mvdr = get_mvdr_vector(W_pca, noise_psd_matrix)
-
-    output = apply_beamforming_vector(W_mvdr, mix)
-
-    return output.T
-
-
-def get_mvdr_vector_souden_old(
-        target_psd_matrix,
-        noise_psd_matrix,
-        ref_channel=0,
-        eps=1e-5,
-):
-    """
-    Returns the MVDR beamforming vector described in [Souden10].
-
-    :param target_psd_matrix: Target PSD matrix
-        with shape (..., bins, sensors, sensors)
-    :param noise_psd_matrix: Noise PSD matrix
-        with shape (..., bins, sensors, sensors)
-    :param ref_channel:
-    :param eps:
-    :return: Set of beamforming vectors with shape (..., bins, sensors)
-    """
-
-    # Make sure matrix is hermitian
-    shape = target_psd_matrix.shape
-    noise_psd_matrix = 0.5 * (
-        noise_psd_matrix + np.conj(noise_psd_matrix.swapaxes(-1, -2))
-    )
-    assert target_psd_matrix.shape == noise_psd_matrix.shape
-    assert target_psd_matrix.shape[-2] == target_psd_matrix.shape[-1]
-    sensors = target_psd_matrix.shape[-1]
-
-    target_psd_matrix = target_psd_matrix.reshape((-1, sensors, sensors))
-    noise_psd_matrix = noise_psd_matrix.reshape((-1, sensors, sensors))
-
-    bins = target_psd_matrix.shape[0]
-    numerator = np.empty((bins, sensors, sensors), dtype=np.complex128)
-    for f in range(bins):
-        try:
-            numerator[f, :, :] = np.linalg.solve(
-                noise_psd_matrix[f, :, :], target_psd_matrix[f, :, :])
-
-        except ValueError:
-            raise ValueError('Error for frequency {}\n'
-                             'phi_xx: {}\n'
-                             'phi_nn: {}'.format(
-                f, target_psd_matrix[f, :, :],
-                noise_psd_matrix[f, :, :]))
-        except np.linalg.LinAlgError:
-            raise np.linalg.LinAlgError('Error for frequency {}\n'
-                                        'phi_xx: {}\n'
-                                        'phi_nn: {}'.format(
-                f, target_psd_matrix[f, :, :],
-                noise_psd_matrix[f, :, :]))
-    denominator = np.trace(numerator, axis1=-1, axis2=-2)
-    beamforming_vector = numerator[:, ref_channel] / np.expand_dims(denominator + eps, axis=-1)
-    beamforming_vector = beamforming_vector.reshape(shape[:-1])
-    return beamforming_vector
 
 
 def get_optimal_reference_channel(w_mat, target_psd_matrix, noise_psd_matrix,
