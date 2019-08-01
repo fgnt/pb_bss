@@ -55,23 +55,26 @@ def mir_eval_sources(
             )
 
     elif reference.ndim >= 3:
-        assert reference.shape[:-2] == estimation.shape[:-2], (
+        assert reference.shape[1:] == estimation.shape[1:], (
             reference.shape,
             estimation.shape,
         )
-        results = [
+        results = np.moveaxis(np.array([
             mir_eval_sources(
                 reference[:, d, ..., :],
                 estimation[:, d, ..., :],
                 compute_permutation=compute_permutation
             )
             for d in range(reference.shape[1])
-        ]
+        ]), source=0, destination=2)
+        # D, (sdr, sir, ...), K
+        # (sdr, sir, ...), K, D  <- after moveaxis
 
         if compute_permutation:
-            sdr, sir, sar, selection = map(np.array, zip(*results))
+            sdr, sir, sar, selection = results
+            selection = selection.astype(np.int)
         else:
-            sdr, sir, sar = map(np.array, zip(*results))
+            sdr, sir, sar = results
             selection = None
     else:
         raise ValueError(f'Strange input shape: {reference.shape}')
