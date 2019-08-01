@@ -15,8 +15,9 @@ def mir_eval_sources(
     that permutation is calculated correctly, even when noise is confused with
     a speaker.
 
-    :param reference: Time domain signal with shape (K, T)
-    :param estimation: Time domain signal with shape (K, T) or (K + 1, T)
+    :param reference: Time domain signal with shape (K, ..., T)
+    :param estimation: Time domain signal
+        with shape (K, ..., T) or (K + 1, ..., T)
     :param return_dict:
     :param compute_permutation:
     :return: SXRs ignoring noise reconstruction performance
@@ -27,29 +28,53 @@ def mir_eval_sources(
         speakers.
     """
     from mir_eval.separation import bss_eval_sources as _bss_eval_sources
-    assert reference.ndim == 2, reference.shape
-    assert estimation.ndim == 2, estimation.shape
-    assert reference.shape[1] == estimation.shape[1], (
-        reference.shape,
-        estimation.shape,
-    )
 
-    if reference.shape == estimation.shape:
-        sdr, sir, sar, selection = _bss_eval_sources(
-            reference,
-            estimation,
-            compute_permutation=compute_permutation
+    if reference.ndim == 2:
+        assert reference.ndim == 2, reference.shape
+        assert estimation.ndim == 2, estimation.shape
+        assert reference.shape[1] == estimation.shape[1], (
+            reference.shape,
+            estimation.shape,
         )
-    elif reference.shape[0] == estimation.shape[0] - 1:
-        if not compute_permutation:
-            raise NotImplementedError(compute_permutation, 'with K + 1')
-        sdr, sir, sar, selection = _bss_eval_sources_and_noise(
-            reference, estimation
+
+        if reference.shape == estimation.shape:
+            sdr, sir, sar, selection = _bss_eval_sources(
+                reference,
+                estimation,
+                compute_permutation=compute_permutation
+            )
+        elif reference.shape[0] == estimation.shape[0] - 1:
+            if not compute_permutation:
+                raise NotImplementedError(compute_permutation, 'with K + 1')
+            sdr, sir, sar, selection = _bss_eval_sources_and_noise(
+                reference, estimation
+            )
+        else:
+            raise ValueError(
+                f"Shapes do not fit: {reference.shape} vs. {estimation.shape}"
+            )
+
+    elif reference.ndim >= 3:
+        assert reference.shape[:-2] == estimation.shape[:-2], (
+            reference.shape,
+            estimation.shape,
         )
+        results = [
+            mir_eval_sources(
+                reference[:, d, ..., :],
+                estimation[:, d, ..., :],
+                compute_permutation=compute_permutation
+            )
+            for d in range(reference.shape[1])
+        ]
+
+        if compute_permutation:
+            sdr, sir, sar, selection = zip(*results)
+        else:
+            sdr, sir, sar = zip(*results)
+            selection = None
     else:
-        raise ValueError(
-            f"Shapes do not fit: {reference.shape} vs. {estimation.shape}"
-        )
+        raise ValueError(f'Strange input shape: {reference.shape}')
 
     if return_dict:
         if compute_permutation:

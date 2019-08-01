@@ -34,7 +34,6 @@ class InputMetrics:
             speech_image: 'Shape(K_source, D, N)'=None,
             noise_image: 'Shape(D, N)'=None,
             sample_rate: int = None,
-            channel_score_reduce: [int, str] = 'mean',
             enable_si_sdr: bool = False,
     ):
         """
@@ -47,7 +46,6 @@ class InputMetrics:
             speech_image:
             noise_image:
             sample_rate:
-            channel_score_reduce:
             enable_si_sdr: Since SI-SDR is only well defined for non-reverb
                 single-channel data, it is disabled by default.
         """
@@ -56,7 +54,6 @@ class InputMetrics:
         self.speech_image = speech_image
         self.noise_image = noise_image
         self.sample_rate = sample_rate
-        self.channel_score_reduce = channel_score_reduce
 
         self._has_image_signals \
             = (speech_image is not None and noise_image is not None)
@@ -75,22 +72,18 @@ class InputMetrics:
 
     @cached_property.cached_property
     def mir_eval(self):
-        scores = pb_bss.evaluation.mir_eval_sources(
+        return pb_bss.evaluation.mir_eval_sources(
             reference=rearrange(
                 [self.speech_source] * self.channels,
-                'channels sources samples -> (sources channels) samples'
+                'channels sources samples -> sources channels samples'
             ),
             estimation=rearrange(
                 [self.observation] * self.K_source,
-                'sources channels samples -> (sources channels) samples'
+                'sources channels samples -> sources channels samples'
             ),
             return_dict=True,
             compute_permutation=False,
         )
-        return {
-            k: np.reshape(s, [self.K_source, self.channels])
-            for k, s in scores.items()
-        }
 
     @cached_property.cached_property
     def pesq(self):
@@ -122,6 +115,8 @@ class InputMetrics:
                 'sources sensors samples -> sources sensors samples'
             ),
             rearrange(self.noise_image, 'sensors samples -> sensors samples'),
+            average_sources=False,
+            average_channels=False,
             return_dict=True,
         )
         return invasive_sxr
