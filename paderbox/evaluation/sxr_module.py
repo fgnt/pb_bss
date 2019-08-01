@@ -26,7 +26,14 @@ def _sxr(S, X):
     return result
 
 
-def input_sxr(images, noise, average_sources=True, *, return_dict=False):
+def input_sxr(
+        images,
+        noise,
+        average_sources=True,
+        average_channels=True,
+        *,
+        return_dict=False
+):
     """ Calculate input SXR values according to Tran Vu.
 
     The SXR definition is inspired by E. Vincent but the
@@ -68,17 +75,17 @@ def input_sxr(images, noise, average_sources=True, *, return_dict=False):
                 axis=0
             )
 
-    # Average out the channel axis
-    S, I, N = [np.mean(power, axis=-1) for power in (S, I, N)]
+    if average_channels:
+        S, I, N = [np.mean(power, axis=-1) for power in (S, I, N)]
 
     SDR = _sxr(S, I + N)
     SIR = _sxr(S, I)
     SNR = _sxr(S, N)
 
     if average_sources:
-        SDR = np.mean(SDR)
-        SIR = np.mean(SIR)
-        SNR = np.mean(SNR)
+        SDR = np.mean(SDR, axis=0)
+        SIR = np.mean(SIR, axis=0)
+        SNR = np.mean(SNR, axis=0)
         
     if return_dict:
         if return_dict is True:
