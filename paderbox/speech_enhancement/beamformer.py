@@ -437,7 +437,8 @@ def mvdr_snr_postfilter(vector, target_psd_matrix, noise_psd_matrix):
 
 
 def zero_degree_normalization(vector, reference_channel):
-    return vector * np.exp(-1j * np.tile(np.angle(vector[:, reference_channel]), (vector.shape[-1],1))).transpose()
+    return vector * np.exp(
+        -1j * np.angle(vector[..., reference_channel, None]))
 
 
 def phase_correction(vector):
