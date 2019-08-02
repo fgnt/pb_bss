@@ -85,6 +85,14 @@ class TestBeamformerWrapper(unittest.TestCase):
         output = get_pca_vector(uniform(self.shape_psd))
         assert output.shape == self.shape_vector
 
+    def test_scaled_trace_pca_dimensions(self):
+        output = get_pca_vector(uniform(self.shape_psd), 'trace')
+        assert output.shape == self.shape_vector
+
+    def test_scaled_eigenvalue_pca_dimensions(self):
+        output = get_pca_vector(uniform(self.shape_psd), 'eigenvalue')
+        assert output.shape == self.shape_vector
+
     def test_mvdr_dimensions(self):
         output = get_mvdr_vector(uniform(self.shape_vector), uniform(self.shape_psd))
         assert output.shape == self.shape_vector
