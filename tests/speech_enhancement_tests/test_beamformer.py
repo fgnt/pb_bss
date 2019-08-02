@@ -10,6 +10,7 @@ from paderbox.speech_enhancement.beamformer import get_mvdr_vector
 from paderbox.speech_enhancement.beamformer import get_pca_vector
 from paderbox.speech_enhancement.beamformer import get_mvdr_vector_souden
 from paderbox.speech_enhancement.beamformer import get_wmwf_vector
+from paderbox.speech_enhancement.beamformer import blind_analytic_normalization
 from paderbox.math.vector import cos_similarity
 from paderbox.utils.random_utils import uniform, hermitian, pos_def_hermitian
 
@@ -27,6 +28,15 @@ class TestBeamformerWrapper(unittest.TestCase):
             pos_def_hermitian(
                 self.shape_psd), pos_def_hermitian(
                 self.shape_psd))
+        tc.assert_equal(output.shape, self.shape_vector)
+
+    def test_gev_ban_dimensions(self):
+        output = blind_analytic_normalization(get_gev_vector(
+            pos_def_hermitian(
+                self.shape_psd), pos_def_hermitian(
+                self.shape_psd)), pos_def_hermitian(
+                self.shape_psd)
+        )
         tc.assert_equal(output.shape, self.shape_vector)
 
     def test_mvdr_souden_dimensions(self):
