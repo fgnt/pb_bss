@@ -799,15 +799,17 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
         beamformer: string defining the kind of beamforming vector.
             Different steps of the beamforming vector estimation have to be
             separated with a ´+´ e.g. ´rank1_gev+mvdr_souden+ban´
-        target_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
+        target_psd_matrix: `Array` of shape (..., sensor, sensor)
             with the covariance statistics for the target signal.
-        noise_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
+        noise_psd_matrix: `Array` of shape (..., sensor, sensor)
             with the covariance statistics for the interference signal.
         **bf_kwargs: option for the beamformer estimation
 
     Returns: beamforming vector
 
     """
+
+    assert isinstance(beamformer, str), beamformer
 
     if beamformer.endswith('+ban'):
         ban = True
