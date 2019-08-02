@@ -367,20 +367,17 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     return beamforming_vector
 
 
-def blind_analytic_normalization(vector, noise_psd_matrix,
-                                 target_psd_matrix=None):
+def blind_analytic_normalization(vector, noise_psd_matrix):
     """Reduces distortions in beamformed ouptput.
     Args:
         vector: Beamforming vector with shape (..., sensors)
         noise_psd_matrix: With shape (..., sensors, sensors)
+
     """
     nominator = np.einsum(
         '...a,...ab,...bc,...c->...',
         vector.conj(), noise_psd_matrix, noise_psd_matrix, vector
     )
-    if target_psd_matrix is not None:
-        atf = get_pca_vector(target_psd_matrix)
-        nominator /= atf
     nominator = np.sqrt(nominator)
 
     denominator = np.einsum(
