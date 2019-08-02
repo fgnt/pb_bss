@@ -608,32 +608,37 @@ def get_mvdr_vector_souden(
         return beamformer
 
 
-def _evd_rank_one_estimate(cov):
+def get_pca_rank_one_estimate(covariance_matrix, **atf_kwargs):
     """
     Estimates the matrix as the outer product of the dominant eigenvector.
     """
-    shape = cov.shape
-
-    # Reduce independent dims to 1 independent dim
-    target_psd_matrix = np.reshape(cov, (-1,) + shape[-2:])
-
     # Calculate eigenvals/vecs
-    eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
-    a = np.reshape(eigenvecs[..., -1], shape[:-1])
-    cov_rank1 = np.einsum('...a,...b->...ab', a, a.conj())
-    scale = np.trace(cov, axis1=-1, axis2=-2) / np.trace(
+    a = get_pca_vector(covariance_matrix, **atf_kwargs)
+    cov_rank1 = np.einsum('...d,...D->...dD', a, a.conj())
+    scale = np.trace(covariance_matrix, axis1=-1, axis2=-2) / np.trace(
         cov_rank1, axis1=-1, axis2=-2)
     return scale[..., None, None] * cov_rank1
 
 
-def _gevd_rank_one_estimate(cov_a, cov_b):
+def _get_gev_atf_vector(covariance_matrix, noise_covariance_matrix,
+                        **gev_kwargs):
     """
-    Estimates the matrix as the outer product of the dominant eigenvector.
+    Get the dominant generalized eigenvector
     """
-    w = get_gev_vector(cov_a, cov_b)
-    a = np.einsum('...ab,...b->...a', cov_b, w)
-    cov_rank1 = np.einsum('...a,...b->...ab', a, a.conj())
-    scale = np.trace(cov_a, axis1=-1, axis2=-2) / np.trace(
+    w = get_gev_vector(covariance_matrix, noise_covariance_matrix,
+                       **gev_kwargs)
+    return np.einsum('...dD,...D->...d', covariance_matrix, w)
+
+
+def get_gev_rank_one_estimate(covariance_matrix, noise_covariance_matrix,
+                              **gev_kwargs):
+    """
+    Estimates the matrix as the outer product of the generalized eigenvector.
+    """
+    a =_get_gev_atf_vector(covariance_matrix, noise_covariance_matrix,
+                           **gev_kwargs)
+    cov_rank1 = np.einsum('...d,...D->...dD', a, a.conj())
+    scale = np.trace(covariance_matrix, axis1=-1, axis2=-2) / np.trace(
         cov_rank1, axis1=-1, axis2=-2)
     return scale[..., None, None] * cov_rank1
 
