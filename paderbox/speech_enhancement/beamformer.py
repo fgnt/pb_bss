@@ -900,13 +900,13 @@ def block_online_beamforming(
         block_size=5,
         target_psd_init=None,
         noise_psd_init=None,
-        get_bf_fn=get_mvdr_vector_souden,
-        apply_ban=False,
+        beamformer='mvdr_souden',
         target_decay_factor=0.95,
         noise_decay_factor=0.95,
         noise_psd_normalization=False,
         eps=1e-10,
-        return_bf_vector=False
+        return_bf_vector=False,
+        **beamformer_kwargs
 ):
 
     """
@@ -921,13 +921,13 @@ def block_online_beamforming(
         with shape (..., bins, sensors, sensors)
     :param noise_psd_init: Noise PSD matrix initialization
         with shape (..., bins, sensors, sensors)
-    :param get_bf_fn: function for bf vector estimation
-    :param apply_ban
+    :param beamformer: name of the beamformer used
     :param target_decay_factor:
     :param noise_decay_factor:
     :param noise_psd_normalization:
     :param eps:
     :param return_bf_vector:
+    :param beamformer_kwargs:
     :return:
     """
     # split the inputs to segments of block_size
@@ -975,11 +975,13 @@ def block_online_beamforming(
             np.arange(1, target_psd.shape[0]+1), ([-1] + ndims*[1])
         ))
     unbiased_noise_psd = condition_covariance(unbiased_noise_psd, 1e-10)
-    bf_vector = get_bf_fn(unbiased_targed_psd.reshape(-1, shape[-2], shape[-2]),
-                          unbiased_noise_psd.reshape(-1, shape[-2], shape[-2]))
+    bf_vector = get_bf_vector(
+        beamformer,
+        unbiased_targed_psd.reshape(-1, shape[-2], shape[-2]),
+        unbiased_noise_psd.reshape(-1, shape[-2], shape[-2]),
+        **beamformer_kwargs
+    )
     bf_vector = bf_vector.reshape(observation.shape[:-1])
-    if apply_ban:
-        bf_vector = blind_analytic_normalization(bf_vector, unbiased_noise_psd)
     cleaned = apply_beamforming_vector(bf_vector, observation)
     if return_bf_vector:
         bf_vector = np.repeat(bf_vector[..., None], block_size, axis=-1)
@@ -992,25 +994,3 @@ def block_online_beamforming(
             morph('t...b->...t*b', cleaned)[..., :shape[-1]],
             axis1=-1, axis2=-2
         )
-
-
-def get_bf_vector(target_psd_matrix, noise_psd_matrix, bf_fn,
-                  atf_estimation_fn=None, **bf_kwargs):
-    """
-    Wrapper for all beamformer, atf_estimation_fn is used for
-    rank-1 approximation of the target_psd_matrix.
-    If additionall options have to be added to the atf_estimation_fn, they may
-    be added to the bf_kwargs under the key `atf_estimation`
-
-    :param target_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
-        with the covariance statistics for the target signal.
-    :param noise_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
-        with the covariance statistics for the interference signal.
-    :param bf_fn: string mapping to the desired beamformer
-    :param atf_estimation_fn: string mapping to the desired atf estimation
-        this is used to get a rank-1 approximation of the target_psd_matrix
-    :param bf_kwargs: option for the beamformer
-    :return: beamforming vector
-    """
-
-    raise NotImplementedError
