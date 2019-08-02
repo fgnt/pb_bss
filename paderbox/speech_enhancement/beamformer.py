@@ -14,7 +14,7 @@ The functions themselves are written more generic, though.
 """
 
 import warnings
-from scipy.linalg import sqrtm
+
 import numpy as np
 from numpy.linalg import solve
 from scipy.linalg import eig
@@ -23,6 +23,7 @@ from scipy.signal import lfilter
 from paderbox.math.correlation import covariance  # as shortcut!
 from paderbox.math.solve import stable_solve
 from paderbox.utils.numpy_utils import morph
+
 __all__ = [
     'get_power_spectral_density_matrix',
     'get_mvdr_vector_souden',
@@ -36,6 +37,7 @@ __all__ = [
     'apply_beamforming_vector',
     'block_online_beamforming',
 ]
+
 
 try:
     from .cythonized.get_gev_vector import _c_get_gev_vector
@@ -646,8 +648,7 @@ def get_gev_rank_one_estimate(covariance_matrix, noise_covariance_matrix,
 
 def get_wmwf_vector(
         target_psd_matrix, noise_psd_matrix, reference_channel=None,
-        target_psd_constraints=None, channel_selection_vector=None,
-        distortion_weight=1.):
+        channel_selection_vector=None, distortion_weight=1.):
     """Speech distortion weighted multichannel Wiener filter.
 
     This filter is the solution to the optimization problem
@@ -663,9 +664,6 @@ def get_wmwf_vector(
         with the covariance statistics for the noise signal.
       reference_channel: Reference channel for minimization. See describtion
         above. Has no effect if a channel selection vector is provided.
-      target_psd_constraints: Can be "evd" for an estimate based on the
-        decomposition of the target matrix only, or "gevd" for a generalized
-        decomposition based on the target and noise matrix.
       channel_selection_vector: A vector of shape (batch, channel) to
         select a weighted "reference" channel for each batch.
       distortion_weight: `float` or -1 to trade-off distortion and
@@ -680,18 +678,6 @@ def get_wmwf_vector(
       `Tensor` of shape (batch, frequency, channel) with filter coefficients
 
     """
-
-    # See https://arxiv.org/abs/1707.00201 for details
-    if target_psd_constraints:
-        if target_psd_constraints == "rank1_evd":
-            target_psd_matrix = _evd_rank_one_estimate(target_psd_matrix)
-        elif target_psd_constraints == "rank1_gevd":
-            target_psd_matrix = _gevd_rank_one_estimate(
-                target_psd_matrix, noise_psd_matrix)
-        else:
-            raise ValueError(
-                "Unknown target psd constraints estimate type {}".format(
-                    target_psd_constraints))
 
     phi = stable_solve(noise_psd_matrix, target_psd_matrix)
     lambda_ = np.trace(phi, axis1=-1, axis2=-2)[..., None, None]
