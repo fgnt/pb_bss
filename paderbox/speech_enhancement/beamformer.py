@@ -791,7 +791,7 @@ def _get_rank_1_appoximation(atf_type, target_psd_matrix, noise_psd_matrix,
         raise ValueError(atf_type)
 
 
-def get_bf_vector(target_psd_matrix, beamformer, noise_psd_matrix=None,
+def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
                   **bf_kwargs):
     """
      Wrapper for all beamformer
