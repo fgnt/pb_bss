@@ -168,15 +168,35 @@ def get_pca(target_psd_matrix, return_all_vecs=False):
     return beamforming_vector, eigenvalues
 
 
-def get_pca_vector(target_psd_matrix):
+def get_pca_vector(target_psd_matrix, scaling=None):
     """
     Returns the beamforming vector of a PCA beamformer.
+    Args:
+        target_psd_matrix: Target PSD matrix
+            with shape (..., sensors, sensors)
+        scaling: defines the used scaling post filter
 
-    :param target_psd_matrix: Target PSD matrix
-        with shape (..., sensors, sensors)
-    :return: Set of beamforming vectors with shape (..., sensors)
+    Returns:Set of beamforming vectors with shape (..., sensors)
+
     """
-    return get_pca(target_psd_matrix)[0]
+    eigenvectors, eigenvalues = get_pca(target_psd_matrix)
+    if scaling is None:
+        scale = 1
+    elif scaling == 'trace':
+        # ToDo: check whether this improves bf results
+        scale = np.sqrt(
+            np.trace(target_psd_matrix, axis1=-1, axis2=-2)
+        ) / np.linalg.norm(eigenvectors, axis=-1)
+        scale = scale[..., None]
+        print(scale.shape)
+    elif scaling == 'eigenvalue':
+        # ToDo: check whether this improves bf results
+        scale = eigenvalues / np.linalg.norm(
+            eigenvectors, axis=-1)
+        scale = scale[..., None]
+    else:
+        raise ValueError
+    return eigenvectors * scale
 
 
 # TODO: Possible test case: Assert W^H * H = 1.
