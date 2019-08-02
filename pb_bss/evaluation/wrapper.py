@@ -374,6 +374,7 @@ class OutputMetrics:
             rearrange(
                 self.noise_contribution, 'targets samples -> targets samples'
             )[self.selection, :],
+            average_sources=False,
             return_dict=True,
         )
         return invasive_sxr
