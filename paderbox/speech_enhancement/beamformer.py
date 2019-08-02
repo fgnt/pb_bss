@@ -592,7 +592,9 @@ def get_mvdr_vector_souden(
 
 
 def _evd_rank_one_estimate(cov):
-    """Estimates the matrix as the outer product of the dominant eigenvector."""
+    """
+    Estimates the matrix as the outer product of the dominant eigenvector.
+    """
     shape = cov.shape
 
     # Reduce independent dims to 1 independent dim
@@ -629,7 +631,7 @@ def get_wmwf_vector(
     `min E[|h^{H}x - X_{k}|^2] + mu E[|h^{H}n|^2]`.
     I.e. it minimizes the MSE between the filtered signal and the target image
     from channel k. The parameter mu allows for a trade-off between speech
-    distortion and noise suppression. For mu = 0, it resambles the MVDR filter.
+    distortion and noise suppression. For mu = 0, it resembles the MVDR filter.
 
     Args:
       target_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
@@ -862,8 +864,12 @@ def block_online_beamforming(
 
 
 def get_bf_vector(target_psd_matrix, noise_psd_matrix, bf_fn,
-                  atf_estimation_fn, **bf_kwargs):
+                  atf_estimation_fn=None, **bf_kwargs):
     """
+    Wrapper for all beamformer, atf_estimation_fn is used for
+    rank-1 approximation of the target_psd_matrix.
+    If additionall options have to be added to the atf_estimation_fn, they may
+    be added to the bf_kwargs under the key `atf_estimation`
 
     :param target_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
         with the covariance statistics for the target signal.
@@ -871,7 +877,9 @@ def get_bf_vector(target_psd_matrix, noise_psd_matrix, bf_fn,
         with the covariance statistics for the interference signal.
     :param bf_fn: string mapping to the desired beamformer
     :param atf_estimation_fn: string mapping to the desired atf estimation
+        this is used to get a rank-1 approximation of the target_psd_matrix
     :param bf_kwargs: option for the beamformer
     :return: beamforming vector
     """
+
     raise NotImplementedError
