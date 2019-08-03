@@ -771,12 +771,20 @@ def get_lcmv_vector_souden(
         return beamformer
 
 
-def _get_atf_vector(atf_type, target_psd_matrix, noise_psd_matrix, atf_kwargs):
+def _get_atf_vector(
+        atf_type,
+        target_psd_matrix,
+        noise_psd_matrix,
+        **atf_kwargs
+):
     if atf_type == 'pca':
         return get_pca_vector(target_psd_matrix, **atf_kwargs)
     elif atf_type == 'scaled_gev_atf':
-        return _get_gev_atf_vector(target_psd_matrix, noise_psd_matrix,
-                                   **atf_kwargs)
+        return _get_gev_atf_vector(
+            target_psd_matrix,
+            noise_psd_matrix,
+            **atf_kwargs,
+        )
     else:
         raise ValueError(atf_type)
 
