@@ -67,20 +67,6 @@ class TestBeamformerWrapper(unittest.TestCase):
             reference_channel=1, distortion_weight='frequency_dependent')
         tc.assert_equal(output.shape, self.shape_vector)
 
-    def test_wmwf_dimensions_rank1_evd(self):
-        output = get_wmwf_vector(
-            pos_def_hermitian(self.shape_psd),
-            pos_def_hermitian(self.shape_psd),
-            reference_channel=1, target_psd_constraints='rank1_evd')
-        tc.assert_equal(output.shape, self.shape_vector)
-
-    def test_wmwf_dimensions_rank1_gevd(self):
-        output = get_wmwf_vector(
-            pos_def_hermitian(self.shape_psd),
-            pos_def_hermitian(self.shape_psd),
-            reference_channel=1, target_psd_constraints='rank1_gevd')
-        tc.assert_equal(output.shape, self.shape_vector)
-
     def test_pca_dimensions(self):
         output = get_pca_vector(uniform(self.shape_psd))
         assert output.shape == self.shape_vector
