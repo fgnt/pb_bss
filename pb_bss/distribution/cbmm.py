@@ -21,7 +21,7 @@ class CBMM(_ProbabilisticModel):
     weight: np.array  # (..., K)
     complex_bingham: ComplexBingham
 
-    def predict(self, y):
+    def predict(self, y, affiliation_eps=0):
         """Predict class affiliation posteriors from given model.
 
         Args:
@@ -33,9 +33,9 @@ class CBMM(_ProbabilisticModel):
         y = y / np.maximum(
             np.linalg.norm(y, axis=-1, keepdims=True), np.finfo(y.dtype).tiny
         )
-        return self._predict(y)
+        return self._predict(y, affiliation_eps=affiliation_eps)
 
-    def _predict(self, y):
+    def _predict(self, y, affiliation_eps):
         """Predict class affiliation posteriors from given model.
 
         Args:
@@ -53,12 +53,19 @@ class CBMM(_ProbabilisticModel):
             np.finfo(affiliation.dtype).tiny,
         )
         affiliation /= denominator
+
+        if affiliation_eps != 0:
+            affiliation = np.clip(
+                affiliation, affiliation_eps, 1 - affiliation_eps
+            )
+
         return affiliation
 
 
 class CBMMTrainer:
     def __init__(
-        self, dimension=None
+        self, dimension=None, max_concentration=np.inf,
+            eignevalue_eps=1e-8,
     ):
         """
 
@@ -71,6 +78,8 @@ class CBMMTrainer:
 
         """
         self.dimension = dimension
+        self.max_concentration = max_concentration
+        self.eignevalue_eps = eignevalue_eps
 
     def fit(
             self,
@@ -150,11 +159,11 @@ class CBMMTrainer:
             weight_constant_axis,
             affiliation_eps,
     ) -> CBMM:
-        assert affiliation_eps == 0, affiliation_eps
+        # assert affiliation_eps == 0, affiliation_eps
         affiliation = initialization  # TODO: Do we need np.copy here?
         for iteration in range(iterations):
             if iteration != 0:
-                affiliation = model.predict(y)
+                affiliation = model.predict(y, affiliation_eps=affiliation_eps)
 
             model = self._m_step(
                 y,
@@ -174,6 +183,8 @@ class CBMMTrainer:
     def complex_bingham_trainer(self):
         return ComplexBinghamTrainer(
             self.dimension,
+            max_concentration=self.max_concentration,
+            eignevalue_eps=self.eignevalue_eps,
         )
 
     def _m_step(
