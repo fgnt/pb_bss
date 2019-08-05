@@ -781,6 +781,9 @@ def _get_atf_vector(
     if atf_type == 'pca':
         return get_pca_vector(target_psd_matrix, **atf_kwargs)
     elif atf_type == 'scaled_gev_atf':
+        # this atf type is called scaled_gev_atf to clarify that it is not
+        # a gev beamforming vector but a scaled atf estimated using the same
+        # projection used in the gev cholseky decomposition
         return _get_gev_atf_vector(
             target_psd_matrix,
             noise_psd_matrix,
