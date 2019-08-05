@@ -790,7 +790,7 @@ def _get_atf_vector(
             **atf_kwargs,
         )
     else:
-        raise ValueError(atf_type)
+        raise ValueError(atf_type, 'use either pca or scaled_gev_atf')
 
 
 def _get_rank_1_appoximation(atf_type, target_psd_matrix, noise_psd_matrix,
@@ -801,12 +801,13 @@ def _get_rank_1_appoximation(atf_type, target_psd_matrix, noise_psd_matrix,
         return get_gev_rank_one_estimate(
             target_psd_matrix, noise_psd_matrix, **atf_kwargs)
     else:
-        raise ValueError(atf_type)
+        raise ValueError(atf_type, 'use either rank1_pca or rank1_gev')
 
 
 def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
                   **bf_kwargs):
     """
+    # ToDo: how do we use the lcmv beamformer in this context?
      Wrapper for all beamformer
     Args:
         beamformer: string defining the kind of beamforming vector.
@@ -833,10 +834,9 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
     else:
         ban = False
 
-
     if beamformer == 'pca':
         bf_vec = get_pca_vector(target_psd_matrix, **bf_kwargs)
-    elif beamformer in ['pca+mvdr', 'scaled_atf_gev+mvdr']:
+    elif beamformer in ['pca+mvdr', 'scaled_gev_atf+mvdr']:
         atf, _ = beamformer.split('+')
         atf_vector = _get_atf_vector(
             atf, target_psd_matrix,
@@ -879,7 +879,7 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
             )
         bf_vec = get_wmwf_vector(target_psd_matrix, noise_psd_matrix,
                                  **bf_kwargs)
-    elif beamformer in ['pca+lcmv', 'scaled_atf_gev+lcmv']:
+    elif beamformer in ['pca+lcmv', 'scaled_gev_atf+lcmv']:
         assert 'response_vector' in bf_kwargs, bf_kwargs
         atf, _ = beamformer.split('+')
         atf_vector = _get_atf_vector(
