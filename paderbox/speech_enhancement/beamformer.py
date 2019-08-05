@@ -817,6 +817,9 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
         noise_psd_matrix: `Array` of shape (..., sensor, sensor)
             with the covariance statistics for the interference signal.
         **bf_kwargs: option for the beamformer estimation
+            if necessary, options for atf vector estimation may be added to
+            the bf_kwargs under the key atf_kwargs. If no atf kwargs are
+            added the code falls back to the defaults.
 
     Returns: beamforming vector
 
@@ -830,23 +833,27 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
     else:
         ban = False
 
-    atf_kwargs = bf_kwargs.pop('atf_estimation_kwargs', {})
 
     if beamformer == 'pca':
-        assert len(atf_kwargs) == 0, bf_kwargs
         bf_vec = get_pca_vector(target_psd_matrix, **bf_kwargs)
     elif beamformer in ['pca+mvdr', 'scaled_atf_gev+mvdr']:
         assert len(bf_kwargs) == 0, bf_kwargs
         atf, _ = beamformer.split('+')
-        atf_vector = _get_atf_vector(atf, target_psd_matrix,
-                                     noise_psd_matrix, **atf_kwargs)
+        atf_vector = _get_atf_vector(
+            atf, target_psd_matrix,
+            noise_psd_matrix,
+            **bf_kwargs.pop('atf_kwargs', {})
+        )
         bf_vec = get_mvdr_vector(atf_vector, noise_psd_matrix)
     elif beamformer in ['mvdr_souden', 'rank1_pca+mvdr_souden',
                         'rank1_gev+mvdr_souden']:
         if not beamformer == 'mvdr_souden':
             rank1_type, _ = beamformer.split('+')
             target_psd_matrix = _get_rank_1_appoximation(
-                rank1_type, target_psd_matrix, noise_psd_matrix, **atf_kwargs
+                rank1_type,
+                target_psd_matrix,
+                noise_psd_matrix,
+                **bf_kwargs.pop('atf_kwargs', {})
             )
         bf_vec = get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix,
                                         **bf_kwargs)
@@ -855,7 +862,10 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
         if not beamformer == 'gev':
             rank1_type, _ = beamformer.split('+')
             target_psd_matrix = _get_rank_1_appoximation(
-                rank1_type, target_psd_matrix, noise_psd_matrix, **atf_kwargs
+                rank1_type,
+                target_psd_matrix,
+                noise_psd_matrix,
+                **bf_kwargs.pop('atf_kwargs', {})
             )
         bf_vec = get_gev_vector(target_psd_matrix, noise_psd_matrix,
                                 **bf_kwargs)
@@ -863,15 +873,22 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
         if not beamformer == 'wmwf':
             rank1_type, _ = beamformer.split('+')
             target_psd_matrix = _get_rank_1_appoximation(
-                rank1_type, target_psd_matrix, noise_psd_matrix, **atf_kwargs
+                rank1_type,
+                target_psd_matrix,
+                noise_psd_matrix,
+                **bf_kwargs.pop('atf_kwargs', {})
             )
         bf_vec = get_wmwf_vector(target_psd_matrix, noise_psd_matrix,
                                  **bf_kwargs)
     elif beamformer in ['pca+lcmv', 'scaled_atf_gev+lcmv']:
         assert 'response_vector' in bf_kwargs, bf_kwargs
         atf, _ = beamformer.split('+')
-        atf_vector = _get_atf_vector(atf, target_psd_matrix,
-                                     noise_psd_matrix, **atf_kwargs)
+        atf_vector = _get_atf_vector(
+            atf,
+            target_psd_matrix,
+            noise_psd_matrix,
+            **bf_kwargs.pop('atf_kwargs', {})
+        )
         bf_vec = get_lcmv_vector(atf_vector, noise_psd_matrix=noise_psd_matrix,
                                  **bf_kwargs)
     elif beamformer in ['lcmv_souden', 'rank1_pca+lcmv_souden',
@@ -880,7 +897,10 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
         if not beamformer == 'lcmv_souden':
             rank1_type, _ = beamformer.split('+')
             target_psd_matrix = _get_rank_1_appoximation(
-                rank1_type, target_psd_matrix, noise_psd_matrix, **atf_kwargs
+                rank1_type,
+                target_psd_matrix,
+                noise_psd_matrix,
+                **bf_kwargs.pop('atf_kwargs', {})
             )
         bf_vec = get_lcmv_vector_souden(
             target_psd_matrix, noise_psd_matrix=noise_psd_matrix, **bf_kwargs)
