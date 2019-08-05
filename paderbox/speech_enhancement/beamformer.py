@@ -856,7 +856,7 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
             )
         bf_vec = get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix,
                                         **bf_kwargs)
-    elif beamformer in ['gev', 'rank1_pca+gev']:
+    elif beamformer in ['gev', 'rank1_pca+gev', 'rank1_gev+gev']:
         # rank1_gev+gev is not supported since it should no differ from gev
         if not beamformer == 'gev':
             rank1_type, _ = beamformer.split('+')
