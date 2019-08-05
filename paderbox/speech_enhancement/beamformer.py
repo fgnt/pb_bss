@@ -363,6 +363,7 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     """
     response_vector = np.asarray(response_vector)
     # TODO: If it is a list, a list of response_vectors is returned.
+    K, F, D = atf_vectors.shape
 
     Phi_inverse_times_H = solve(
         noise_psd_matrix[None, ...],  # 1, f, d, D
@@ -376,7 +377,7 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
     )  # f, k, K
 
     response_vector = response_vector[None, :, None].astype(np.complex64)
-    response_vector = np.repeat(response_vector, 257, axis=0)
+    response_vector = np.repeat(response_vector, F, axis=0)
     temp = stable_solve(
         H_times_Phi_inverse_times_H,
         response_vector,  # F, K, 1
