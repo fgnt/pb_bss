@@ -191,7 +191,6 @@ def get_pca_vector(target_psd_matrix, scaling=None):
             np.trace(target_psd_matrix, axis1=-1, axis2=-2)
         ) / np.linalg.norm(eigenvectors, axis=-1)
         scale = scale[..., None]
-        print(scale.shape)
     elif scaling == 'eigenvalue':
         # ToDo: check whether this improves bf results
         scale = eigenvalues / np.linalg.norm(
