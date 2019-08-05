@@ -27,6 +27,59 @@ def get_model_class_from_parameter(parameter):
     return getattr(distribution, name)
 
 
+def _phase_norm(signal, reference_channel=0):
+    """Unit normalization.
+    Args:
+        signal: STFT signal with shape (..., T, D).
+    Returns:
+        Normalized STFT signal with same shape.
+    """
+    angles = np.angle(signal[..., [reference_channel]])
+    return signal * np.exp(-1j * angles)
+
+
+def _frequency_norm(
+        signal,
+        max_sensor_distance=None, shrink_factor=1.2,
+        fft_size=1024, sample_rate=16000, sound_velocity=343
+):
+    """Frequency normalization.
+    This function is not really tested, since the use case vanished.
+    Args:
+        signal: STFT signal with shape (F, T, D).
+        max_sensor_distance: Distance in meter.
+        shrink_factor: Heuristic shrink factor to move further away from
+            the wrapping boarder.
+        fft_size:
+        sample_rate: In hertz.
+        sound_velocity: Speed in meter per second.
+    Returns:
+        Normalized STFT signal with same shape.
+    """
+    import paderbox as pb
+    frequency = pb.transform.get_stft_center_frequencies(
+        fft_size, sample_rate
+    )
+    F, _, _ = signal.shape
+    assert len(frequency) == F
+    norm_factor = sound_velocity / (
+        2 * frequency * shrink_factor * max_sensor_distance
+    )
+
+    # Norm factor can become NaN when one center frequency is zero.
+    norm_factor = np.nan_to_num(norm_factor)
+    if norm_factor[-1] < 1:
+        raise ValueError(
+            'Distance between the sensors too high: {:.2} > {:.2}'.format(
+                max_sensor_distance, sound_velocity / (2 * frequency[-1])
+            )
+        )
+
+    norm_factor = norm_factor[:, None, None]
+    signal = np.abs(signal) * np.exp(1j * np.angle(signal) * norm_factor)
+    return signal
+
+
 def parameter_from_dict(parameter_class_or_str, d: dict):
     """
 

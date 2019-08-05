@@ -34,3 +34,6 @@ from .cacgmm import CACGMM, CACGMMTrainer, sample_cacgmm, normalize_observation
 from .gcacgmm import GCACGMM, GCACGMMTrainer, PartiallySharedGCACGMMTrainer
 from .cwmm import CWMM, CWMMTrainer
 from .ccsgmm import CCSGMM, CCSGMMTrainer
+from .cbmm import CBMM, CBMMTrainer
+
+from . import utils
