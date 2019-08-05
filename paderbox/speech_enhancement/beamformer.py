@@ -837,7 +837,6 @@ def get_bf_vector(beamformer, target_psd_matrix, noise_psd_matrix=None,
     if beamformer == 'pca':
         bf_vec = get_pca_vector(target_psd_matrix, **bf_kwargs)
     elif beamformer in ['pca+mvdr', 'scaled_atf_gev+mvdr']:
-        assert len(bf_kwargs) == 0, bf_kwargs
         atf, _ = beamformer.split('+')
         atf_vector = _get_atf_vector(
             atf, target_psd_matrix,
