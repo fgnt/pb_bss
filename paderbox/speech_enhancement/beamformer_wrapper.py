@@ -248,13 +248,16 @@ def get_multi_source_bf_vector(
 
     if beamformer in ['pca+lcmv', 'scaled_gev_atf+lcmv']:
         if beamformer == 'pca+lcmv':
-            assert denominator_matrix_for_atf is None
+            assert denominator_matrix_for_atf is None, \
+                denominator_matrix_for_atf
         else:
             if denominator_matrix_for_atf == 'noise':
                 denominator_matrix_for_atf \
                     = np.repeat(noise_psd_matrix, K, axis=0)
             elif denominator_matrix_for_atf == 'interference':
                 denominator_matrix_for_atf = interference_psd_matrix
+            else:
+                raise ValueError(denominator_matrix_for_atf)
 
         atf, _ = beamformer.split('+')
         atf_vector = _get_atf_vector(
@@ -268,6 +271,8 @@ def get_multi_source_bf_vector(
             denominator_matrix_for_bf = noise_psd_matrix
         elif denominator_matrix_for_bf == 'interference':
             denominator_matrix_for_bf = interference_psd_matrix[k, :, :, :]
+        else:
+            raise ValueError(denominator_matrix_for_bf)
 
         response_vector = _get_response_vector(
             source_index=source_index,
@@ -296,6 +301,8 @@ def get_multi_source_bf_vector(
             denominator_matrix_for_ban = noise_psd_matrix
         elif denominator_matrix_for_ban == 'interference':
             denominator_matrix_for_ban = interference_psd_matrix[k, :, :, :]
+        else:
+            raise ValueError(denominator_matrix_for_ban)
 
         beamforming_vector = blind_analytic_normalization(
             beamforming_vector,
@@ -357,7 +364,6 @@ def get_multi_source_bf_vector_from_masks(
 
     if 'lcmv' in method.split('+'):
         # Assumes that the noise class is the last one.
-        K_out = 2
         beamforming_vector = np.stack(list(
             pb.speech_enhancement.get_multi_source_bf_vector(
                 method,
@@ -369,8 +375,16 @@ def get_multi_source_bf_vector_from_masks(
                 denominator_matrix_for_atf=lcmv_denominator_matrix_for_atf,
                 denominator_matrix_for_bf=lcmv_denominator_matrix_for_bf,
                 denominator_matrix_for_ban=lcmv_denominator_matrix_for_ban,
-            ) for k in range(K_out)
+            ) for k in range(K - 1)
         ), axis=1)
+
+        value = np.max(np.abs(beamforming_vector))
+        if value > 1e10:
+            import warnings
+            warnings.warn(
+                'You seem to have encountered instabilities: '
+                f'np.max(np.abs(beamforming_vector)) = {value}'
+            )
     else:
         beamforming_vector = np.stack(list(
             pb.speech_enhancement.get_single_source_bf_vector(
@@ -380,7 +394,6 @@ def get_multi_source_bf_vector_from_masks(
             ) for k in range(K)
         ), axis=1)
 
-    np.testing.assert_equal(beamforming_vector.shape, (F, K, D))
     return beamforming_vector
 
 
