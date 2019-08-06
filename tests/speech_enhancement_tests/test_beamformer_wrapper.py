@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from paderbox.speech_enhancement.beamformer import get_bf_vector
+from paderbox.speech_enhancement.beamformer_wrapper import get_bf_vector
 from paderbox.speech_enhancement.beamformer import zero_degree_normalization
 from paderbox.utils.random_utils import pos_def_hermitian
 
@@ -56,6 +56,18 @@ class TestBeamformerWrapper(unittest.TestCase):
             output = get_bf_vector(
                 f'{rank1}+{bf}', self.target_psd, self.noise_psd)
             assert output.shape == self.output_shape
+
+    def test_gev_shape(self):
+        bf = 'gev'
+        for rank1 in ['rank1_pca', 'rank1_gev']:
+            output = get_bf_vector(
+                f'{rank1}+{bf}', self.target_psd, self.noise_psd)
+            assert output.shape == self.output_shape
+
+    def test_gev_ban_shape(self):
+        bf = 'gev'
+        output = get_bf_vector(f'{bf}+ban', self.target_psd, self.noise_psd)
+        assert output.shape == self.output_shape
 
     def test_rank1_gev_gev(self):
         gev_rank1 = get_bf_vector(
