@@ -1,3 +1,53 @@
+import numpy as np
+from typing import Optional
+
+import paderbox as pb
+from .beamformer import *
+from paderbox.utils.numpy_utils import morph
+
+
+def get_pca_rank_one_estimate(covariance_matrix, **atf_kwargs):
+    """
+    Estimates the matrix as the outer product of the dominant eigenvector.
+    """
+    # Calculate eigenvals/vecs
+    a = get_pca_vector(covariance_matrix, **atf_kwargs)
+    cov_rank1 = np.einsum('...d,...D->...dD', a, a.conj())
+    scale = np.trace(covariance_matrix, axis1=-1, axis2=-2) / np.trace(
+        cov_rank1, axis1=-1, axis2=-2)
+    return scale[..., None, None] * cov_rank1
+
+
+def _get_gev_atf_vector(
+        covariance_matrix,
+        noise_covariance_matrix,
+        **gev_kwargs
+):
+    """
+    Get the dominant generalized eigenvector
+    """
+    w = get_gev_vector(covariance_matrix, noise_covariance_matrix,
+                       **gev_kwargs)
+    return np.einsum('...dD,...D->...d', covariance_matrix, w)
+
+
+def get_gev_rank_one_estimate(
+        covariance_matrix,
+        noise_covariance_matrix,
+        **gev_kwargs,
+):
+    """
+    Estimates the matrix as the outer product of the generalized eigenvector.
+    """
+    a = _get_gev_atf_vector(
+        covariance_matrix, noise_covariance_matrix, **gev_kwargs
+    )
+    cov_rank1 = np.einsum('...d,...D->...dD', a, a.conj())
+    scale = np.trace(covariance_matrix, axis1=-1, axis2=-2)
+    scale /= np.trace(cov_rank1, axis1=-1, axis2=-2)
+    return scale[..., None, None] * cov_rank1
+
+
 def _get_atf_vector(
         atf_type,
         target_psd_matrix,
@@ -19,8 +69,12 @@ def _get_atf_vector(
         raise ValueError(atf_type, 'use either pca or scaled_gev_atf')
 
 
-def _get_rank_1_appoximation(atf_type, target_psd_matrix, noise_psd_matrix,
-                             **atf_kwargs):
+def _get_rank_1_approximation(
+        atf_type,
+        target_psd_matrix,
+        noise_psd_matrix,
+        **atf_kwargs
+):
     if atf_type == 'rank1_pca':
         return get_pca_rank_one_estimate(target_psd_matrix, **atf_kwargs)
     elif atf_type == 'rank1_gev':
@@ -28,6 +82,16 @@ def _get_rank_1_appoximation(atf_type, target_psd_matrix, noise_psd_matrix,
             target_psd_matrix, noise_psd_matrix, **atf_kwargs)
     else:
         raise ValueError(atf_type, 'use either rank1_pca or rank1_gev')
+
+
+def _get_response_vector(source_index, num_sources, epsilon=0.):
+        response_vector = pb.utils.numpy_utils.labels_to_one_hot(
+            np.array(source_index),
+            num_sources,
+            dtype=np.float64
+        )
+        response_vector = np.clip(response_vector, epsilon, 1.)
+        return response_vector
 
 
 def get_bf_vector(
@@ -69,7 +133,7 @@ def get_bf_vector(
         ban = False
 
     if beamformer == 'pca':
-        bf_vec = get_pca_vector(target_psd_matrix, **bf_kwargs)
+        beamforming_vector = get_pca_vector(target_psd_matrix, **bf_kwargs)
     elif beamformer in ['pca+mvdr', 'scaled_gev_atf+mvdr']:
         atf, _ = beamformer.split('+')
         atf_vector = _get_atf_vector(
@@ -77,83 +141,247 @@ def get_bf_vector(
             noise_psd_matrix,
             **bf_kwargs.pop('atf_kwargs', {})
         )
-        bf_vec = get_mvdr_vector(atf_vector, noise_psd_matrix)
-    elif beamformer in ['mvdr_souden', 'rank1_pca+mvdr_souden',
-                        'rank1_gev+mvdr_souden']:
+        beamforming_vector = get_mvdr_vector(atf_vector, noise_psd_matrix)
+    elif beamformer in [
+        'mvdr_souden',
+        'rank1_pca+mvdr_souden',
+        'rank1_gev+mvdr_souden',
+    ]:
         if not beamformer == 'mvdr_souden':
             rank1_type, _ = beamformer.split('+')
-            target_psd_matrix = _get_rank_1_appoximation(
+            target_psd_matrix = _get_rank_1_approximation(
                 rank1_type,
                 target_psd_matrix,
                 noise_psd_matrix,
                 **bf_kwargs.pop('atf_kwargs', {})
             )
-        bf_vec = get_mvdr_vector_souden(target_psd_matrix, noise_psd_matrix,
-                                        **bf_kwargs)
+        beamforming_vector = get_mvdr_vector_souden(
+            target_psd_matrix,
+            noise_psd_matrix,
+            **bf_kwargs,
+        )
     elif beamformer in ['gev', 'rank1_pca+gev', 'rank1_gev+gev']:
         # rank1_gev+gev is not supported since it should no differ from gev
         if not beamformer == 'gev':
             rank1_type, _ = beamformer.split('+')
-            target_psd_matrix = _get_rank_1_appoximation(
+            target_psd_matrix = _get_rank_1_approximation(
                 rank1_type,
                 target_psd_matrix,
                 noise_psd_matrix,
                 **bf_kwargs.pop('atf_kwargs', {})
             )
-        bf_vec = get_gev_vector(target_psd_matrix, noise_psd_matrix,
-                                **bf_kwargs)
+        beamforming_vector = get_gev_vector(
+            target_psd_matrix,
+            noise_psd_matrix,
+            **bf_kwargs,
+        )
     elif beamformer in ['wmwf', 'rank1_pca+wmwf', 'rank1_gev+wmwf']:
         if not beamformer == 'wmwf':
             rank1_type, _ = beamformer.split('+')
-            target_psd_matrix = _get_rank_1_appoximation(
+            target_psd_matrix = _get_rank_1_approximation(
                 rank1_type,
                 target_psd_matrix,
                 noise_psd_matrix,
                 **bf_kwargs.pop('atf_kwargs', {})
             )
-        bf_vec = get_wmwf_vector(target_psd_matrix, noise_psd_matrix,
-                                 **bf_kwargs)
+        beamforming_vector = get_wmwf_vector(
+            target_psd_matrix,
+            noise_psd_matrix,
+            **bf_kwargs,
+        )
     else:
-        raise ValueError('Unknown beamformer name', beamformer)
+        raise ValueError(f'Unknown beamformer: {beamformer}')
 
     if ban:
-        bf_vec = blind_analytic_normalization(bf_vec, noise_psd_matrix)
+        beamforming_vector = blind_analytic_normalization(
+            beamforming_vector,
+            noise_psd_matrix
+        )
 
-    return bf_vec
+    return beamforming_vector
 
 
 def get_multi_source_bf_vector(
-        beamformer,
-        target_psd_matrix,
-        noise_psd_matrix=None,
+        beamformer: str,
+        target_psd_matrix: np.array,
+        interference_psd_matrix: np.array,
+        noise_psd_matrix: np.array,
+        source_index: int,
+        epsilon: float = 0.,
+        *,
+        denominator_matrix_for_atf: Optional[str]=None,
+        denominator_matrix_for_bf: str,
+        denominator_matrix_for_ban: Optional[str]=None,
         **bf_kwargs
 ):
+    """Wrapper for LCMV and friends.
+
+    This wrapper has a similar interface as `get_bf_vector()`.
+
+    Args:
+        beamformer:
+        target_psd_matrix: Shape (K, F, D, D)
+        interference_psd_matrix: Shape (K, F, D, D)
+        noise_psd_matrix: Shape (F, D, D)
+        source_index: Int in {0, ... K - 1}.
+        epsilon: Sharon Gannot recommends values larger than zero to avoid
+            over-suppression of the interference speaker. You may want to
+            compare this to zero-forcing equalizer in our EDK lectures.
+        denominator_matrix_for_atf: Either 'noise' or 'interference'.
+        denominator_matrix_for_bf: Either 'noise' or 'interference'.
+        denominator_matrix_for_ban: Either 'noise' or 'interference'.
+        **bf_kwargs:
+
+    Returns:
+
+    """
+    k = source_index
+    K = target_psd_matrix.shape[0]
+
+    assert isinstance(beamformer, str), beamformer
+
+    if beamformer.endswith('+ban'):
+        ban = True
+        beamformer.replace('+ban', '')
+    else:
+        ban = False
+
     if beamformer in ['pca+lcmv', 'scaled_gev_atf+lcmv']:
-        assert 'response_vector' in bf_kwargs, bf_kwargs
+        if beamformer == 'pca+lcmv':
+            assert denominator_matrix_for_atf is None
+        else:
+            if denominator_matrix_for_atf == 'noise':
+                denominator_matrix_for_atf \
+                    = np.repeat(noise_psd_matrix, K, axis=0)
+            elif denominator_matrix_for_atf == 'interference':
+                denominator_matrix_for_atf = interference_psd_matrix
+
         atf, _ = beamformer.split('+')
         atf_vector = _get_atf_vector(
             atf,
             target_psd_matrix,
-            noise_psd_matrix,
+            denominator_matrix_for_atf,
             **bf_kwargs.pop('atf_kwargs', {})
         )
-        bf_vec = get_lcmv_vector(atf_vector, noise_psd_matrix=noise_psd_matrix,
-                                 **bf_kwargs)
-    elif beamformer in ['lcmv_souden', 'rank1_pca+lcmv_souden',
-                        'rank1_gev+lcmv_souden']:
-        assert 'interference_psd_matrix' in bf_kwargs, bf_kwargs
-        if not beamformer == 'lcmv_souden':
-            rank1_type, _ = beamformer.split('+')
-            target_psd_matrix = _get_rank_1_appoximation(
-                rank1_type,
-                target_psd_matrix,
-                noise_psd_matrix,
-                **bf_kwargs.pop('atf_kwargs', {})
-            )
-        bf_vec = get_lcmv_vector_souden(
-            target_psd_matrix, noise_psd_matrix=noise_psd_matrix, **bf_kwargs)
+
+        if denominator_matrix_for_bf == 'noise':
+            denominator_matrix_for_bf = noise_psd_matrix
+        elif denominator_matrix_for_bf == 'interference':
+            denominator_matrix_for_bf = interference_psd_matrix[k, :, :, :]
+
+        response_vector = _get_response_vector(
+            source_index=source_index,
+            num_sources=target_psd_matrix.shape[0],
+            epsilon=epsilon,
+        )
+
+        beamforming_vector = get_lcmv_vector(
+            atf_vectors=atf_vector,
+            response_vector=response_vector,
+            noise_psd_matrix=denominator_matrix_for_bf,
+        )
+    elif beamformer in [
+        'lcmv_souden',
+        'rank1_pca+lcmv_souden',
+        'rank1_gev+lcmv_souden',
+    ]:
+        raise NotImplementedError(
+            f'All Souden LCMV variants not yet implemented: {beamformer}'
+        )
     else:
-        raise ValueError('Unknown beamformer name', beamformer)
+        raise ValueError(f'Unknown beamformer: {beamformer}')
+
+    if ban:
+        if denominator_matrix_for_ban == 'noise':
+            denominator_matrix_for_ban = noise_psd_matrix
+        elif denominator_matrix_for_ban == 'interference':
+            denominator_matrix_for_ban = interference_psd_matrix[k, :, :, :]
+
+        beamforming_vector = blind_analytic_normalization(
+            beamforming_vector,
+            denominator_matrix_for_ban,
+        )
+
+    return beamforming_vector
+
+
+def get_multi_source_bf_vector_from_masks(
+        observation_stft,
+        mask,
+        method,
+        lcmv_denominator_matrix_for_atf,
+        lcmv_denominator_matrix_for_bf,
+        lcmv_denominator_matrix_for_ban,
+        lcmv_epsilon=None,
+):
+    """
+
+    Args:
+        observation_stft: Shape (F, T, D)
+        mask: Shape (F, K, T)
+        method: Strings. See `get_bf_vector()`.
+        lcmv_denominator_matrix_for_atf:
+        lcmv_denominator_matrix_for_bf:
+        lcmv_denominator_matrix_for_ban:
+        lcmv_epsilon: None or float scalar
+
+    Returns: Beamforming vector with shape (F, K, D)
+
+    """
+    F, T, D = observation_stft.shape
+    _, K, _ = mask.shape
+    np.testing.assert_equal(mask.shape[0], observation_stft.shape[0])
+    np.testing.assert_equal(mask.shape[2], observation_stft.shape[1])
+
+    interference_mask = np.stack(
+        [np.sum(np.delete(mask, k, axis=1), axis=1) for k in range(K)],
+        axis=1
+    )
+    np.testing.assert_equal(mask.shape, interference_mask.shape)
+
+    mask = np.clip(mask, 1e-10, 1)
+    interference_mask = np.clip(interference_mask, 1e-10, 1)
+
+    target_psd \
+        = pb.speech_enhancement.beamformer.get_power_spectral_density_matrix(
+            morph('ftd->fdt', observation_stft),
+            morph('fkt->fkt', mask)
+        )
+    interference_psd \
+        = pb.speech_enhancement.beamformer.get_power_spectral_density_matrix(
+            morph('ftd->fdt', observation_stft),
+            morph('fkt->fkt', interference_mask)
+        )
+    np.testing.assert_equal(target_psd.shape, (F, K, D, D))
+    np.testing.assert_equal(interference_psd.shape, (F, K, D, D))
+
+    if 'lcmv' in method.split('+'):
+        # Assumes that the noise class is the last one.
+        K_out = 2
+        beamforming_vector = np.stack(list(
+            pb.speech_enhancement.get_multi_source_bf_vector(
+                method,
+                target_psd_matrix=morph('fkdD->kfdD', target_psd),
+                interference_psd_matrix=morph('fkdD->kfdD', interference_psd),
+                noise_psd_matrix=target_psd[:, -1, :, :],
+                source_index=k,
+                epsilon=lcmv_epsilon,
+                denominator_matrix_for_atf=lcmv_denominator_matrix_for_atf,
+                denominator_matrix_for_bf=lcmv_denominator_matrix_for_bf,
+                denominator_matrix_for_ban=lcmv_denominator_matrix_for_ban,
+            ) for k in range(K_out)
+        ), axis=1)
+    else:
+        beamforming_vector = np.stack(list(
+            pb.speech_enhancement.get_single_source_bf_vector(
+                method,
+                target_psd_matrix=target_psd[:, k, :, :],
+                noise_psd_matrix=interference_psd[:, k, :, :],
+            ) for k in range(K)
+        ), axis=1)
+
+    np.testing.assert_equal(beamforming_vector.shape, (F, K, D))
+    return beamforming_vector
 
 
 def block_online_beamforming(

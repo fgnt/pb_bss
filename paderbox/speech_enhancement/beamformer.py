@@ -31,11 +31,11 @@ __all__ = [
     'get_wmwf_vector',
     'get_pca_vector',
     'get_gev_vector',
-    'get_bf_vector',
     'blind_analytic_normalization',
     'condition_covariance',
     'apply_beamforming_vector',
-    'block_online_beamforming',
+    'get_lcmv_vector',
+    'get_lcmv_vector_souden',
 ]
 
 
@@ -610,41 +610,6 @@ def get_mvdr_vector_souden(
         return beamformer, ref_channel
     else:
         return beamformer
-
-
-def get_pca_rank_one_estimate(covariance_matrix, **atf_kwargs):
-    """
-    Estimates the matrix as the outer product of the dominant eigenvector.
-    """
-    # Calculate eigenvals/vecs
-    a = get_pca_vector(covariance_matrix, **atf_kwargs)
-    cov_rank1 = np.einsum('...d,...D->...dD', a, a.conj())
-    scale = np.trace(covariance_matrix, axis1=-1, axis2=-2) / np.trace(
-        cov_rank1, axis1=-1, axis2=-2)
-    return scale[..., None, None] * cov_rank1
-
-
-def _get_gev_atf_vector(covariance_matrix, noise_covariance_matrix,
-                        **gev_kwargs):
-    """
-    Get the dominant generalized eigenvector
-    """
-    w = get_gev_vector(covariance_matrix, noise_covariance_matrix,
-                       **gev_kwargs)
-    return np.einsum('...dD,...D->...d', covariance_matrix, w)
-
-
-def get_gev_rank_one_estimate(covariance_matrix, noise_covariance_matrix,
-                              **gev_kwargs):
-    """
-    Estimates the matrix as the outer product of the generalized eigenvector.
-    """
-    a =_get_gev_atf_vector(covariance_matrix, noise_covariance_matrix,
-                           **gev_kwargs)
-    cov_rank1 = np.einsum('...d,...D->...dD', a, a.conj())
-    scale = np.trace(covariance_matrix, axis1=-1, axis2=-2) / np.trace(
-        cov_rank1, axis1=-1, axis2=-2)
-    return scale[..., None, None] * cov_rank1
 
 
 def get_wmwf_vector(
