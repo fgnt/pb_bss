@@ -4,6 +4,8 @@ from typing import Optional
 import paderbox as pb
 from .beamformer import *
 from paderbox.utils.numpy_utils import morph
+from paderbox.math.correlation import covariance
+from scipy.signal import lfilter
 
 
 def get_pca_rank_one_estimate(covariance_matrix, **atf_kwargs):
