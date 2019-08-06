@@ -128,7 +128,7 @@ def get_bf_vector(
 
     if beamformer.endswith('+ban'):
         ban = True
-        beamformer.replace('+ban', '')
+        beamformer = beamformer.replace('+ban', '')
     else:
         ban = False
 
@@ -242,7 +242,7 @@ def get_multi_source_bf_vector(
 
     if beamformer.endswith('+ban'):
         ban = True
-        beamformer.replace('+ban', '')
+        beamformer = beamformer.replace('+ban', '')
     else:
         ban = False
 
