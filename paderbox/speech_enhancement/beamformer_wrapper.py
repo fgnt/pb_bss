@@ -128,27 +128,28 @@ def get_bf_vector(
 
     if beamformer.endswith('+ban'):
         ban = True
-        beamformer.replace('+ban', '')
+        beamformer_core = beamformer[:-len('+ban')]
     else:
         ban = False
+        beamformer_core = beamformer
 
-    if beamformer == 'pca':
+    if beamformer_core == 'pca':
         beamforming_vector = get_pca_vector(target_psd_matrix, **bf_kwargs)
-    elif beamformer in ['pca+mvdr', 'scaled_gev_atf+mvdr']:
-        atf, _ = beamformer.split('+')
+    elif beamformer_core in ['pca+mvdr', 'scaled_gev_atf+mvdr']:
+        atf, _ = beamformer_core.split('+')
         atf_vector = _get_atf_vector(
             atf, target_psd_matrix,
             noise_psd_matrix,
             **bf_kwargs.pop('atf_kwargs', {})
         )
         beamforming_vector = get_mvdr_vector(atf_vector, noise_psd_matrix)
-    elif beamformer in [
+    elif beamformer_core in [
         'mvdr_souden',
         'rank1_pca+mvdr_souden',
         'rank1_gev+mvdr_souden',
     ]:
-        if not beamformer == 'mvdr_souden':
-            rank1_type, _ = beamformer.split('+')
+        if not beamformer_core == 'mvdr_souden':
+            rank1_type, _ = beamformer_core.split('+')
             target_psd_matrix = _get_rank_1_approximation(
                 rank1_type,
                 target_psd_matrix,
@@ -160,10 +161,10 @@ def get_bf_vector(
             noise_psd_matrix,
             **bf_kwargs,
         )
-    elif beamformer in ['gev', 'rank1_pca+gev', 'rank1_gev+gev']:
+    elif beamformer_core in ['gev', 'rank1_pca+gev', 'rank1_gev+gev']:
         # rank1_gev+gev is not supported since it should no differ from gev
-        if not beamformer == 'gev':
-            rank1_type, _ = beamformer.split('+')
+        if not beamformer_core == 'gev':
+            rank1_type, _ = beamformer_core.split('+')
             target_psd_matrix = _get_rank_1_approximation(
                 rank1_type,
                 target_psd_matrix,
@@ -175,9 +176,9 @@ def get_bf_vector(
             noise_psd_matrix,
             **bf_kwargs,
         )
-    elif beamformer in ['wmwf', 'rank1_pca+wmwf', 'rank1_gev+wmwf']:
-        if not beamformer == 'wmwf':
-            rank1_type, _ = beamformer.split('+')
+    elif beamformer_core in ['wmwf', 'rank1_pca+wmwf', 'rank1_gev+wmwf']:
+        if not beamformer_core == 'wmwf':
+            rank1_type, _ = beamformer_core.split('+')
             target_psd_matrix = _get_rank_1_approximation(
                 rank1_type,
                 target_psd_matrix,
@@ -190,7 +191,10 @@ def get_bf_vector(
             **bf_kwargs,
         )
     else:
-        raise ValueError(f'Unknown beamformer: {beamformer}')
+        raise ValueError(
+            f'Could not find implementation for {beamformer_core}.\n'
+            f'Original call contained {beamformer}.'
+        )
 
     if ban:
         beamforming_vector = blind_analytic_normalization(
@@ -242,12 +246,13 @@ def get_multi_source_bf_vector(
 
     if beamformer.endswith('+ban'):
         ban = True
-        beamformer.replace('+ban', '')
+        beamformer_core = beamformer[:-len('+ban')]
     else:
         ban = False
+        beamformer_core = beamformer
 
-    if beamformer in ['pca+lcmv', 'scaled_gev_atf+lcmv']:
-        if beamformer == 'pca+lcmv':
+    if beamformer_core in ['pca+lcmv', 'scaled_gev_atf+lcmv']:
+        if beamformer_core == 'pca+lcmv':
             assert denominator_matrix_for_atf is None, \
                 denominator_matrix_for_atf
         else:
@@ -259,7 +264,7 @@ def get_multi_source_bf_vector(
             else:
                 raise ValueError(denominator_matrix_for_atf)
 
-        atf, _ = beamformer.split('+')
+        atf, _ = beamformer_core.split('+')
         atf_vector = _get_atf_vector(
             atf,
             target_psd_matrix,
@@ -285,16 +290,19 @@ def get_multi_source_bf_vector(
             response_vector=response_vector,
             noise_psd_matrix=denominator_matrix_for_bf,
         )
-    elif beamformer in [
+    elif beamformer_core in [
         'lcmv_souden',
         'rank1_pca+lcmv_souden',
         'rank1_gev+lcmv_souden',
     ]:
         raise NotImplementedError(
-            f'All Souden LCMV variants not yet implemented: {beamformer}'
+            f'All Souden LCMV variants not yet implemented: {beamformer_core}'
         )
     else:
-        raise ValueError(f'Unknown beamformer: {beamformer}')
+        raise ValueError(
+            f'Could not find implementation for {beamformer_core}.\n'
+            f'Original call contained {beamformer}.'
+        )
 
     if ban:
         if denominator_matrix_for_ban == 'noise':
@@ -308,6 +316,8 @@ def get_multi_source_bf_vector(
             beamforming_vector,
             denominator_matrix_for_ban,
         )
+    else:
+        assert denominator_matrix_for_ban is None, denominator_matrix_for_ban
 
     return beamforming_vector
 
@@ -340,6 +350,7 @@ def get_multi_source_bf_vector_from_masks(
     np.testing.assert_equal(mask.shape[0], observation_stft.shape[0])
     np.testing.assert_equal(mask.shape[2], observation_stft.shape[1])
 
+    # Sums up all other masks (all masks but mask k).
     interference_mask = np.stack(
         [np.sum(np.delete(mask, k, axis=1), axis=1) for k in range(K)],
         axis=1
