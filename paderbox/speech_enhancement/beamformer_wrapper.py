@@ -25,12 +25,19 @@ def _get_gev_atf_vector(
         noise_covariance_matrix,
         **gev_kwargs
 ):
+    """Get the dominant generalized eigenvector as an ATF estimate.
+
+    [1] https://arxiv.org/pdf/1707.00201.pdf
     """
-    Get the dominant generalized eigenvector
-    """
-    w = get_gev_vector(covariance_matrix, noise_covariance_matrix,
-                       **gev_kwargs)
-    return np.einsum('...dD,...D->...d', covariance_matrix, w)
+    # [1] Equation (27)
+    w = get_gev_vector(
+        covariance_matrix,
+        noise_covariance_matrix,
+        **gev_kwargs
+    )
+
+    # [1] Equation (27)
+    return np.einsum('...dD,...D->...d', noise_covariance_matrix, w)
 
 
 def get_gev_rank_one_estimate(
@@ -260,7 +267,7 @@ def get_multi_source_bf_vector(
         else:
             if denominator_matrix_for_atf == 'noise':
                 denominator_matrix_for_atf \
-                    = np.repeat(noise_psd_matrix, K, axis=0)
+                    = np.repeat(noise_psd_matrix[None, :, :, :], K, axis=0)
             elif denominator_matrix_for_atf == 'interference':
                 denominator_matrix_for_atf = interference_psd_matrix
             else:
@@ -380,8 +387,8 @@ def get_multi_source_bf_vector_from_masks(
         beamforming_vector = np.stack(list(
             pb.speech_enhancement.get_multi_source_bf_vector(
                 method,
-                target_psd_matrix=morph('fkdD->kfdD', target_psd),
-                interference_psd_matrix=morph('fkdD->kfdD', interference_psd),
+                target_psd_matrix=morph('fkdD->kfdD', target_psd)[:K - 1],
+                interference_psd_matrix=morph('fkdD->kfdD', interference_psd)[:K - 1],
                 noise_psd_matrix=target_psd[:, -1, :, :],
                 source_index=k,
                 epsilon=lcmv_epsilon,
