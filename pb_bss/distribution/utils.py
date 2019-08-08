@@ -60,6 +60,7 @@ def _frequency_norm(
     frequency = pb.transform.get_stft_center_frequencies(
         fft_size, sample_rate
     )
+    # frequency = frequency[1:40]
     F, _, _ = signal.shape
     assert len(frequency) == F
     norm_factor = sound_velocity / (
@@ -74,7 +75,6 @@ def _frequency_norm(
                 max_sensor_distance, sound_velocity / (2 * frequency[-1])
             )
         )
-
     norm_factor = norm_factor[:, None, None]
     signal = np.abs(signal) * np.exp(1j * np.angle(signal) * norm_factor)
     return signal
@@ -340,7 +340,7 @@ def estimate_mixture_weight(
     weight_constant_axis=-1,
 ):
     """
-    Estimates the mixture weight of a mxture model.
+    Estimates the mixture weight of a mixture model.
 
     The simplest version (without saliency and prior):
 

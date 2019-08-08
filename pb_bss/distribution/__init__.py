@@ -37,3 +37,4 @@ from .ccsgmm import CCSGMM, CCSGMMTrainer
 from .cbmm import CBMM, CBMMTrainer
 
 from . import utils
+from . import mixture_model_utils

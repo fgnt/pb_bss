@@ -18,6 +18,10 @@ from pb_bss.distribution import (
 )
 from pb_bss.distribution.utils import _ProbabilisticModel
 from pb_bss.utils import unsqueeze
+from pb_bss.distribution.mixture_model_utils import (
+    log_pdf_to_affiliation,
+    log_pdf_to_affiliation_for_integration_models_with_inline_pa,
+)
 
 
 @dataclass
@@ -43,7 +47,12 @@ class VMFCACGMM(_ProbabilisticModel):
         affiliation, quadratic_form = self._predict(observation, embedding)
         return affiliation
 
-    def _predict(self, observation, embedding):
+    def _predict(
+            self,
+            observation,
+            embedding,
+            inline_permutation_alignment=False,
+    ):
         F, T, D = observation.shape
         _, _, E = embedding.shape
 
@@ -59,18 +68,22 @@ class VMFCACGMM(_ProbabilisticModel):
             np.reshape(vmf_log_pdf, (num_classes, F, T)), (1, 0, 2)
         )
 
-        affiliation = (
-            unsqueeze(np.log(self.weight), self.weight_constant_axis)
-            + self.spatial_weight * cacg_log_pdf
-            + self.spectral_weight * vmf_log_pdf
-        )
-        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
-        np.exp(affiliation, out=affiliation)
-        denominator = np.maximum(
-            np.einsum("...kt->...t", affiliation)[..., None, :],
-            np.finfo(affiliation.dtype).tiny,
-        )
-        affiliation /= denominator
+        if inline_permutation_alignment:
+            affiliation \
+                = log_pdf_to_affiliation_for_integration_models_with_inline_pa(
+                    weight=unsqueeze(self.weight, self.weight_constant_axis),
+                    spatial_log_pdf=self.spatial_weight * cacg_log_pdf,
+                    spectral_log_pdf=self.spectral_weight * vmf_log_pdf,
+                )
+        else:
+            affiliation = log_pdf_to_affiliation(
+                weight=unsqueeze(self.weight, self.weight_constant_axis),
+                log_pdf=(
+                    self.spatial_weight * cacg_log_pdf
+                    + self.spectral_weight * vmf_log_pdf
+                ),
+            )
+
         return affiliation, quadratic_form
 
 
@@ -91,7 +104,8 @@ class VMFCACGMMTrainer:
         affiliation_eps=1e-10,
         weight_constant_axis=(-1,),
         spatial_weight=1.,
-        spectral_weight=1.
+        spectral_weight=1.,
+        inline_permutation_alignment=False,
     ) -> VMFCACGMM:
         """
 
@@ -168,7 +182,9 @@ class VMFCACGMMTrainer:
 
             if iteration < iterations - 1:
                 affiliation, quadratic_form = model._predict(
-                    observation=observation, embedding=embedding
+                    observation=observation,
+                    embedding=embedding,
+                    inline_permutation_alignment=inline_permutation_alignment,
                 )
 
         return model

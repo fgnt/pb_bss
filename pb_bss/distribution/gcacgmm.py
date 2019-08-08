@@ -8,7 +8,6 @@ This also explains, why concrete variable names (i.e. F, T, embedding) are used.
 Maybe, it is not so nice, that the Gaussians are assumed to be spherical by
 default.
 """
-
 from operator import xor
 from typing import Any
 
@@ -22,6 +21,10 @@ from pb_bss.distribution import (
 )
 from pb_bss.distribution.utils import _ProbabilisticModel
 from pb_bss.utils import unsqueeze
+from pb_bss.distribution.mixture_model_utils import (
+    log_pdf_to_affiliation,
+    log_pdf_to_affiliation_for_integration_models_with_inline_pa,
+)
 
 
 @dataclass
@@ -53,7 +56,12 @@ class GCACGMM(_ProbabilisticModel):
         affiliation, quadratic_form = self._predict(observation, embedding)
         return affiliation
 
-    def _predict(self, observation, embedding):
+    def _predict(
+            self,
+            observation,
+            embedding,
+            inline_permutation_alignment=False,
+    ):
         """
 
         Args:
@@ -80,18 +88,22 @@ class GCACGMM(_ProbabilisticModel):
             np.reshape(gaussian_log_pdf, (num_classes, F, T)), (1, 0, 2)
         )
 
-        affiliation = (
-            unsqueeze(np.log(self.weight), self.weight_constant_axis)
-            + self.spatial_weight * cacg_log_pdf
-            + self.spectral_weight * gaussian_log_pdf
-        )
-        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
-        np.exp(affiliation, out=affiliation)
-        denominator = np.maximum(
-            np.einsum("...kt->...t", affiliation)[..., None, :],
-            np.finfo(affiliation.dtype).tiny,
-        )
-        affiliation /= denominator
+        if inline_permutation_alignment:
+            affiliation \
+                = log_pdf_to_affiliation_for_integration_models_with_inline_pa(
+                    weight=unsqueeze(self.weight, self.weight_constant_axis),
+                    spatial_log_pdf=self.spatial_weight * cacg_log_pdf,
+                    spectral_log_pdf=self.spectral_weight * gaussian_log_pdf,
+                )
+        else:
+            affiliation = log_pdf_to_affiliation(
+                weight=unsqueeze(self.weight, self.weight_constant_axis),
+                log_pdf=(
+                    self.spatial_weight * cacg_log_pdf
+                    + self.spectral_weight * gaussian_log_pdf
+                ),
+            )
+
         return affiliation, quadratic_form
 
 
@@ -112,7 +124,8 @@ class GCACGMMTrainer:
         affiliation_eps=1e-10,
         weight_constant_axis=(-1,),
         spatial_weight=1.,
-        spectral_weight=1.
+        spectral_weight=1.,
+        inline_permutation_alignment=False,
     ) -> GCACGMM:
         """
 
@@ -191,7 +204,9 @@ class GCACGMMTrainer:
 
             if iteration < iterations - 1:
                 affiliation, quadratic_form = model._predict(
-                    observation=observation, embedding=embedding
+                    observation=observation,
+                    embedding=embedding,
+                    inline_permutation_alignment=inline_permutation_alignment,
                 )
 
         return model
@@ -255,124 +270,6 @@ class GCACGMMTrainer:
             covariance_norm=covariance_norm,
             eigenvalue_floor=eigenvalue_floor,
         )
-        return GCACGMM(
-            weight=weight,
-            gaussian=gaussian,
-            cacg=cacg,
-            weight_constant_axis=weight_constant_axis,
-            spatial_weight=spatial_weight,
-            spectral_weight=spectral_weight
-        )
-
-
-class PartiallySharedGCACGMMTrainer(GCACGMMTrainer):
-    def _m_step(
-        self,
-        observation,
-        embedding,
-        quadratic_form,
-        affiliation,
-        saliency,
-        hermitize,
-        trace_norm,
-        eigenvalue_floor,
-        covariance_type,
-        fixed_covariance,
-        weight_constant_axis,
-        spatial_weight,
-        spectral_weight
-    ):
-        F, T, D = observation.shape
-        _, _, E = embedding.shape
-        _, K, _ = affiliation.shape
-
-        assert K == 4, f'This fancy sharing is just tested for K == 4 != {K}.'
-
-        masked_affiliation = affiliation * saliency[..., None, :]
-
-        if -2 in weight_constant_axis:
-            weight = 1 / K
-        else:
-            weight = np.sum(
-                masked_affiliation, axis=weight_constant_axis, keepdims=True
-            )
-            weight /= np.sum(weight, axis=-2, keepdims=True)
-            weight = np.squeeze(weight, axis=weight_constant_axis)
-
-        embedding_ = np.reshape(embedding, (1, F * T, E))
-
-        masked_affiliation_for_gaussian = np.stack((
-            masked_affiliation[:, 0, :] + masked_affiliation[:, 1, :],
-            masked_affiliation[:, 2, :] + masked_affiliation[:, 3, :]
-        ), axis=1)
-        masked_affiliation_for_gaussian = np.reshape(
-            np.transpose(masked_affiliation_for_gaussian, (1, 0, 2)),
-            (2, F * T)
-        )  # 'fkt->k,ft'
-        gaussian = GaussianTrainer()._fit(
-            y=embedding_,
-            saliency=masked_affiliation_for_gaussian,
-            covariance_type=covariance_type,
-        )
-
-        if fixed_covariance is not None:
-            assert fixed_covariance.shape == gaussian.covariance.shape, (
-                f'{fixed_covariance.shape} != {gaussian.covariance.shape}'
-            )
-            gaussian = gaussian.__class__(
-                mean=gaussian.mean,
-                covariance=fixed_covariance
-            )
-
-        # There are 4 classes in quadratic_form. Entry 1 and 2 are equal.
-        assert np.mean(
-            np.abs(quadratic_form[:, 1, :] - quadratic_form[:, 2, :])
-        ) < 1e-4
-        quadratic_form = quadratic_form[:, [0, 1, 3], :]
-
-        masked_affiliation_for_cacg = np.stack((
-            masked_affiliation[:, 0, :],
-            masked_affiliation[:, 1, :] + masked_affiliation[:, 2, :],
-            masked_affiliation[:, 3, :]
-        ), axis=1)
-        cacg = ComplexAngularCentralGaussianTrainer()._fit(
-            y=observation[..., None, :, :],
-            saliency=masked_affiliation_for_cacg,
-            quadratic_form=quadratic_form,
-            hermitize=hermitize,
-            trace_norm=trace_norm,
-            eigenvalue_floor=eigenvalue_floor,
-        )
-
-        # Expand again
-        gaussian = gaussian.__class__(
-            mean=np.stack((
-                gaussian.mean[0, :],
-                gaussian.mean[0, :],
-                gaussian.mean[1, :],
-                gaussian.mean[1, :]
-            )),
-            covariance=np.stack((
-                gaussian.covariance[0],
-                gaussian.covariance[0],
-                gaussian.covariance[1],
-                gaussian.covariance[1],
-            ))
-        )
-        # print('gaussian.mean.shape', gaussian.mean.shape)
-        # print('gaussian.covariance.shape', gaussian.covariance.shape)
-
-        # Expand again
-        cacg = ComplexAngularCentralGaussian.from_covariance(
-            covariance=np.stack((
-                cacg.covariance[:, 0, :, :],
-                cacg.covariance[:, 1, :, :],
-                cacg.covariance[:, 1, :, :],
-                cacg.covariance[:, 2, :, :]
-            ), axis=1)
-        )
-        # print('cacg.covariance.shape', cacg.covariance.shape)
-
         return GCACGMM(
             weight=weight,
             gaussian=gaussian,
