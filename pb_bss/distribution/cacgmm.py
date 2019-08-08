@@ -7,6 +7,7 @@ from pb_bss.distribution.utils import (
     _ProbabilisticModel,
     estimate_mixture_weight,
 )
+from pb_bss.permutation_alignment import _PermutationAlignment
 
 from pb_bss.distribution.complex_angular_central_gaussian import (
     ComplexAngularCentralGaussian,
@@ -166,6 +167,7 @@ class CACGMMTrainer:
             affiliation_eps=1e-10,
             eigenvalue_floor=1e-10,
             return_affiliation=False,
+            inline_permutation_aligner: _PermutationAlignment = False
     ):
         """
 
@@ -193,6 +195,10 @@ class CACGMMTrainer:
             affiliation_eps:
             eigenvalue_floor: Relative flooring of the covariance eigenvalues
             return_affiliation:
+            inline_permutation_aligner: In rare cases you may want to run a
+                permutation alignment solver after each E-step. You can
+                instantiate a permutation alignment solver outside of the
+                fit function and pass it to this function.
 
         Returns:
 
@@ -246,11 +252,11 @@ class CACGMMTrainer:
             weight_constant_axis = tuple(weight_constant_axis)
 
         if source_activity_mask is not None:
-            assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype
-            assert source_activity_mask.shape[-2:] == (num_classes, num_observations), (source_activity_mask.shape, independent, num_classes, num_observations)
+            assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype  # noqa
+            assert source_activity_mask.shape[-2:] == (num_classes, num_observations), (source_activity_mask.shape, independent, num_classes, num_observations)  # noqa
 
             if isinstance(initialization, np.ndarray):
-                assert source_activity_mask.shape == initialization.shape, (source_activity_mask.shape, initialization.shape)
+                assert source_activity_mask.shape == initialization.shape, (source_activity_mask.shape, initialization.shape)  # noqa
 
         assert num_classes < 20, f'num_classes: {num_classes}, sure?'
         assert D < 35, f'Channels: {D}, sure?'
@@ -262,6 +268,22 @@ class CACGMMTrainer:
                     source_activity_mask=source_activity_mask,
                     affiliation_eps=affiliation_eps,
                 )
+
+                if inline_permutation_aligner is not None:
+                    assert affiliation.ndim == 3, affiliation.shape
+                    assert weight_constant_axis in ((-3,), (-3, -1), -3), weight_constant_axis  # noqa
+                    # F, K, T -> K, F, T
+                    mapping = inline_permutation_aligner.calculate_mapping(
+                        np.transpose(affiliation, (1, 0, 2))
+                    )
+                    affiliation = inline_permutation_aligner.apply_mapping(
+                        np.transpose(affiliation, (1, 0, 2)), mapping
+                    )
+                    affiliation = np.transpose(affiliation, (1, 0, 2))
+                    quadratic_form = inline_permutation_aligner.apply_mapping(
+                        np.transpose(quadratic_form, (1, 0, 2)), mapping
+                    )
+                    quadratic_form = np.transpose(quadratic_form, (1, 0, 2))
 
             model = self._m_step(
                 y,
