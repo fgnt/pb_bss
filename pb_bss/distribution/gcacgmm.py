@@ -147,8 +147,8 @@ class GCACGMMTrainer:
                 axis indices are based on affiliation shape. Consequently:
                 (-3, -2, -1) == constant = ''
                 (-3, -1) == 'k'
-                (-1) == vanilla == 'fk'
-                (-3) == 'kt'
+                (-1,) == vanilla == 'fk'
+                (-3,) == 'kt'
             spatial_weight:
             spectral_weight:
 
