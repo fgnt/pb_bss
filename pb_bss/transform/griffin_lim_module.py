@@ -31,8 +31,8 @@ class GriffinLim:
     """
     def __init__(
             self,
-            X,
-            y=None,
+            X: 'Shape: (K, T, F)',
+            y: 'Shape: (num_samples,)' = None,
             first_guess='istft',
             size=512, shift=128, fading=False,
     ):
@@ -50,6 +50,8 @@ class GriffinLim:
 
         if first_guess == 'istft':
             self.x_hat = self.istft(X)
+        elif first_guess == 'white_gaussian_noise':
+            self.x_hat = np.random.randn(size=self.istft(X).shape)
         elif first_guess == 'y':
             K = X.shape[0]
             # Text just under [Gunawan2010MISI] Equation 5
