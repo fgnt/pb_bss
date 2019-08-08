@@ -335,9 +335,9 @@ def get_multi_source_bf_vector_from_masks(
         observation_stft,
         mask,
         method,
-        lcmv_denominator_matrix_for_atf,
-        lcmv_denominator_matrix_for_bf,
-        lcmv_denominator_matrix_for_ban,
+        denominator_matrix_for_atf,
+        denominator_matrix_for_bf,
+        denominator_matrix_for_ban,
         lcmv_epsilon=None,
 ):
     """
@@ -346,9 +346,9 @@ def get_multi_source_bf_vector_from_masks(
         observation_stft: Shape (F, T, D)
         mask: Shape (F, K, T)
         method: Strings. See `get_bf_vector()`.
-        lcmv_denominator_matrix_for_atf:
-        lcmv_denominator_matrix_for_bf:
-        lcmv_denominator_matrix_for_ban:
+        denominator_matrix_for_atf:
+        denominator_matrix_for_bf:
+        denominator_matrix_for_ban:
         lcmv_epsilon: None or float scalar
 
     Returns: Beamforming vector with shape (F, K, D)
@@ -392,9 +392,9 @@ def get_multi_source_bf_vector_from_masks(
                 noise_psd_matrix=target_psd[:, -1, :, :],
                 source_index=k,
                 epsilon=lcmv_epsilon,
-                denominator_matrix_for_atf=lcmv_denominator_matrix_for_atf,
-                denominator_matrix_for_bf=lcmv_denominator_matrix_for_bf,
-                denominator_matrix_for_ban=lcmv_denominator_matrix_for_ban,
+                denominator_matrix_for_atf=denominator_matrix_for_atf,
+                denominator_matrix_for_bf=denominator_matrix_for_bf,
+                denominator_matrix_for_ban=denominator_matrix_for_ban,
             ) for k in range(K - 1)
         ), axis=1)
 
@@ -406,13 +406,33 @@ def get_multi_source_bf_vector_from_masks(
                 f'np.max(np.abs(beamforming_vector)) = {value}'
             )
     else:
-        beamforming_vector = np.stack(list(
-            pb.speech_enhancement.get_single_source_bf_vector(
-                method,
-                target_psd_matrix=target_psd[:, k, :, :],
-                noise_psd_matrix=interference_psd[:, k, :, :],
-            ) for k in range(K)
-        ), axis=1)
+        if denominator_matrix_for_atf is not None:
+            assert denominator_matrix_for_atf == denominator_matrix_for_bf, (
+                denominator_matrix_for_atf, denominator_matrix_for_bf
+            )
+        if denominator_matrix_for_ban is not None:
+            assert denominator_matrix_for_ban == denominator_matrix_for_bf, (
+                denominator_matrix_for_ban, denominator_matrix_for_bf
+            )
+
+        beamforming_vector = list()
+        for k in range(K - 1):
+            if denominator_matrix_for_bf is None:
+                denominator_matrix = None
+            elif denominator_matrix_for_bf == 'noise':
+                denominator_matrix = target_psd[:, -1, :, :]
+            elif denominator_matrix_for_bf == 'interference':
+                denominator_matrix = interference_psd[:, k, :, :]
+
+            beamforming_vector.append(
+                pb.speech_enhancement.get_single_source_bf_vector(
+                    method,
+                    target_psd_matrix=target_psd[:, k, :, :],
+                    noise_psd_matrix=denominator_matrix,
+                )
+            )
+
+        beamforming_vector = np.stack(beamforming_vector, axis=1)
 
     return beamforming_vector
 
