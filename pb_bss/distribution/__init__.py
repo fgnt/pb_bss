@@ -30,6 +30,7 @@ from .complex_angular_central_gaussian import (
 from .complex_watson import ComplexWatson, ComplexWatsonTrainer
 from .vmfmm import VMFMM, VMFMMTrainer
 from .vmfcacgmm import VMFCACGMM, VMFCACGMMTrainer
+from .gcacgmm import GCACGMM, GCACGMMTrainer
 from .cacgmm import CACGMM, CACGMMTrainer, sample_cacgmm, normalize_observation
 from .cwmm import CWMM, CWMMTrainer
 from .ccsgmm import CCSGMM, CCSGMMTrainer

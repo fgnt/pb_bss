@@ -56,6 +56,9 @@ def log_pdf_to_affiliation_for_integration_models_with_inline_pa(
 ):
     """Inline permutation alignment as in [1] Equation (11) - (12).
 
+    The idea is to reduce disagreement between the spatial and the spectral
+    model.
+
     It is worth knowing that this code can alternatively be realized by a
     tricky application of the permutation solver.
 

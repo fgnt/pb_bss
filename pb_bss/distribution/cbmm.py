@@ -1,5 +1,5 @@
 from operator import xor
-
+from cached_property import cached_property
 from dataclasses import dataclass
 
 import numpy as np
@@ -13,7 +13,7 @@ from pb_bss.distribution.utils import (
     _ProbabilisticModel,
     estimate_mixture_weight,
 )
-from cached_property import cached_property
+from pb_bss.distribution.mixture_model_utils import log_pdf_to_affiliation
 
 
 @dataclass
@@ -27,6 +27,7 @@ class CBMM(_ProbabilisticModel):
         Args:
             y: Observations with shape (..., N, D).
                 Observations are expected to are unit norm normalized.
+            affiliation_eps:
         Returns: Affiliations with shape (..., K, T).
         """
         assert np.iscomplexobj(y), y.dtype
@@ -41,31 +42,25 @@ class CBMM(_ProbabilisticModel):
         Args:
             y: Observations with shape (..., N, D).
                 Observations are expected to are unit norm normalized.
+            affiliation_eps:
         Returns: Affiliations with shape (..., K, T).
         """
-        log_pdf = self.complex_bingham.log_pdf(y[..., None, :, :])
-
-        affiliation = np.log(self.weight) + log_pdf
-        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
-        np.exp(affiliation, out=affiliation)
-        denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
-            np.finfo(affiliation.dtype).tiny,
+        affiliation = log_pdf_to_affiliation(
+                self.weight,
+                self.complex_bingham.log_pdf(y[..., None, :, :]),
+                source_activity_mask=None,
+                affiliation_eps=affiliation_eps,
         )
-        affiliation /= denominator
-
-        if affiliation_eps != 0:
-            affiliation = np.clip(
-                affiliation, affiliation_eps, 1 - affiliation_eps
-            )
 
         return affiliation
 
 
 class CBMMTrainer:
     def __init__(
-        self, dimension=None, max_concentration=np.inf,
-            eignevalue_eps=1e-8,
+            self,
+            dimension=None,
+            max_concentration=np.inf,
+            eigenvalue_eps=1e-8,
     ):
         """
 
@@ -79,7 +74,7 @@ class CBMMTrainer:
         """
         self.dimension = dimension
         self.max_concentration = max_concentration
-        self.eignevalue_eps = eignevalue_eps
+        self.eigenvalue_eps = eigenvalue_eps
 
     def fit(
             self,
@@ -184,7 +179,7 @@ class CBMMTrainer:
         return ComplexBinghamTrainer(
             self.dimension,
             max_concentration=self.max_concentration,
-            eignevalue_eps=self.eignevalue_eps,
+            eignevalue_eps=self.eigenvalue_eps,
         )
 
     def _m_step(

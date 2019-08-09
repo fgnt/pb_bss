@@ -151,6 +151,9 @@ class GCACGMMTrainer:
                 (-3,) == 'kt'
             spatial_weight:
             spectral_weight:
+            inline_permutation_alignment: Bool to enable inline permutation
+                alignment for integration models. The idea is to reduce
+                disagreement between the spatial and the spectral model.
 
         Returns:
 
