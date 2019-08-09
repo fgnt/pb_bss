@@ -1,14 +1,14 @@
 from operator import xor
 
+import numpy as np
 from dataclasses import dataclass
 
-import numpy as np
 from .complex_circular_symmetric_gaussian import (
     ComplexCircularSymmetricGaussian,
     ComplexCircularSymmetricGaussianTrainer,
 )
-
-from pb_bss.distribution.utils import _ProbabilisticModel
+from .mixture_model_utils import log_pdf_to_affiliation
+from .utils import _ProbabilisticModel
 
 
 @dataclass
@@ -38,17 +38,12 @@ class CCSGMM(_ProbabilisticModel):
                 Observations are expected to are unit norm normalized.
         Returns: Affiliations with shape (..., K, T).
         """
-        log_pdf = self.complex_gaussian.log_pdf(y[..., None, :, :])
-
-        affiliation = np.log(self.weight)[..., :, None] + log_pdf
-        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
-        np.exp(affiliation, out=affiliation)
-        denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
-            np.finfo(affiliation.dtype).tiny,
+        return log_pdf_to_affiliation(
+                self.weight[..., :, None],
+                self.complex_gaussian.log_pdf(y[..., None, :, :]),
+                source_activity_mask=None,
+                affiliation_eps=0.,
         )
-        affiliation /= denominator
-        return affiliation
 
 
 class CCSGMMTrainer:

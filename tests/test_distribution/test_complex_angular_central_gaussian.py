@@ -1,5 +1,4 @@
 import numpy as np
-from numpy.testing import assert_allclose
 import unittest
 from pb_bss.distribution import (
     ComplexAngularCentralGaussian,
@@ -15,9 +14,14 @@ class TestComplexAngularCentralGaussian(unittest.TestCase):
             [[10, 1 + 1j, 1 + 1j], [1 - 1j, 5, 1], [1 - 1j, 1, 2]]
         )
         covariance /= np.trace(covariance)
-        model = ComplexAngularCentralGaussian.from_covariance(covariance=covariance)
+        model = ComplexAngularCentralGaussian.from_covariance(
+            covariance=covariance
+        )
         x = model.sample(size=(10000,))
-        model = ComplexAngularCentralGaussianTrainer().fit(x, covariance_norm='trace')
+        model = ComplexAngularCentralGaussianTrainer().fit(
+            x,
+            covariance_norm='trace'
+        )
         np.testing.assert_allclose(model.covariance, covariance, atol=atol)
 
         model = ComplexAngularCentralGaussianTrainer().fit(x)

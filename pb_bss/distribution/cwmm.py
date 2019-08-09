@@ -1,19 +1,16 @@
 from operator import xor
 
+import numpy as np
+from cached_property import cached_property
 from dataclasses import dataclass
 
-import numpy as np
 from .complex_watson import (
     ComplexWatson,
     ComplexWatsonTrainer,
     normalize_observation,
 )
-
-from pb_bss.distribution.utils import (
-    _ProbabilisticModel,
-    estimate_mixture_weight,
-)
-from cached_property import cached_property
+from .mixture_model_utils import log_pdf_to_affiliation
+from .utils import _ProbabilisticModel, estimate_mixture_weight
 
 
 @dataclass
@@ -43,17 +40,12 @@ class CWMM(_ProbabilisticModel):
                 Observations are expected to are unit norm normalized.
         Returns: Affiliations with shape (..., K, T).
         """
-        log_pdf = self.complex_watson.log_pdf(y[..., None, :, :])
-
-        affiliation = np.log(self.weight) + log_pdf
-        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
-        np.exp(affiliation, out=affiliation)
-        denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
-            np.finfo(affiliation.dtype).tiny,
+        return log_pdf_to_affiliation(
+                self.weight,
+                self.complex_watson.log_pdf(y[..., None, :, :]),
+                source_activity_mask=None,
+                affiliation_eps=0.,
         )
-        affiliation /= denominator
-        return affiliation
 
 
 class CWMMTrainer:

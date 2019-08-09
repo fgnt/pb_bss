@@ -1,30 +1,37 @@
 """Gaussian complex-Angular-Centric-Gaussian mixture model
 
-This is a specific mixture model to integrate DANs and spatial observations. It
-does and will not support independent dimensions.
+This is a specific mixture model to integrate DC and spatial observations. It
+does and will not support independent dimensions. This also explains, why
+concrete variable names (i.e. F, T, embedding) are used instead of unnamed
+independent axes.
 
-This also explains, why concrete variable names (i.e. F, T, embedding) are used.
+The Gaussian distributions are assumed to be spherical (scaled identity).
 
-Maybe, it is not so nice, that the Gaussians are assumed to be spherical by
-default.
+@article{Drude2019Integration,
+  title={Integration of neural networks and probabilistic spatial models for acoustic blind source separation},
+  author={Drude, Lukas and Haeb-Umbach, Reinhold},
+  journal={IEEE Journal of Selected Topics in Signal Processing},
+  year={2019},
+  publisher={IEEE}
+}
 """
 from operator import xor
 from typing import Any
 
 import numpy as np
 from dataclasses import dataclass
+from pb_bss.utils import unsqueeze
 
-from pb_bss.distribution import GaussianTrainer
 from pb_bss.distribution import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
 )
-from pb_bss.distribution.utils import _ProbabilisticModel
-from pb_bss.utils import unsqueeze
-from pb_bss.distribution.mixture_model_utils import (
+from pb_bss.distribution import GaussianTrainer
+from .mixture_model_utils import (
     log_pdf_to_affiliation,
     log_pdf_to_affiliation_for_integration_models_with_inline_pa,
 )
+from .utils import _ProbabilisticModel
 
 
 @dataclass

@@ -1,27 +1,34 @@
 """von-Mises-Fisher complex-Angular-Centric-Gaussian mixture model
 
 This is a specific mixture model to integrate DC and spatial observations. It
-does and will not support independent dimensions.
+does and will not support independent dimensions. This also explains, why
+concrete variable names (i.e. F, T, embedding) are used instead of unnamed
+independent axes.
 
-This also explains, why concrete variable names (i.e. F, T, embedding) are used.
+@article{Drude2019Integration,
+  title={Integration of neural networks and probabilistic spatial models for acoustic blind source separation},
+  author={Drude, Lukas and Haeb-Umbach, Reinhold},
+  journal={IEEE Journal of Selected Topics in Signal Processing},
+  year={2019},
+  publisher={IEEE}
+}
 """
 from operator import xor
-from dataclasses import dataclass
 
 import numpy as np
-
-from pb_bss.distribution import VonMisesFisher
-from pb_bss.distribution import VonMisesFisherTrainer
+from dataclasses import dataclass
 from pb_bss.distribution import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
 )
-from pb_bss.distribution.utils import _ProbabilisticModel
-from pb_bss.utils import unsqueeze
+from pb_bss.distribution import VonMisesFisher
+from pb_bss.distribution import VonMisesFisherTrainer
 from pb_bss.distribution.mixture_model_utils import (
     log_pdf_to_affiliation,
     log_pdf_to_affiliation_for_integration_models_with_inline_pa,
 )
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.utils import unsqueeze
 
 
 @dataclass

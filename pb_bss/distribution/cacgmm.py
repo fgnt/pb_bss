@@ -167,7 +167,7 @@ class CACGMMTrainer:
             affiliation_eps=1e-10,
             eigenvalue_floor=1e-10,
             return_affiliation=False,
-            inline_permutation_aligner: _PermutationAlignment = False
+            inline_permutation_aligner: _PermutationAlignment = None
     ):
         """
 

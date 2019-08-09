@@ -2,11 +2,12 @@ from operator import xor
 
 import numpy as np
 from dataclasses import dataclass
+from pb_bss.utils import labels_to_one_hot
 from sklearn.cluster import KMeans
 
-from pb_bss.distribution import Gaussian, GaussianTrainer
-from pb_bss.distribution.utils import _ProbabilisticModel
-from pb_bss.utils import labels_to_one_hot
+from . import Gaussian, GaussianTrainer
+from .mixture_model_utils import log_pdf_to_affiliation
+from .utils import _ProbabilisticModel
 
 
 @dataclass
@@ -15,20 +16,10 @@ class GMM(_ProbabilisticModel):
     gaussian: Gaussian
 
     def predict(self, x):
-        *independent, num_observations, _ = x.shape
-
-        affiliation = (
-            np.log(self.weight)[..., :, None]
-            + self.gaussian.log_pdf(x[..., None, :, :])
+        return log_pdf_to_affiliation(
+            self.weight[..., :, None],
+            self.gaussian.log_pdf(x[..., None, :, :]),
         )
-        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
-        np.exp(affiliation, out=affiliation)
-        denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
-            np.finfo(x.dtype).tiny,
-        )
-        affiliation /= denominator
-        return affiliation
 
 
 class GMMTrainer:

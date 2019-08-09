@@ -1,19 +1,16 @@
 from operator import xor
+
+import numpy as np
 from cached_property import cached_property
 from dataclasses import dataclass
 
-import numpy as np
 from .complex_bingham import (
     ComplexBingham,
     ComplexBinghamTrainer,
     normalize_observation,
 )
-
-from pb_bss.distribution.utils import (
-    _ProbabilisticModel,
-    estimate_mixture_weight,
-)
-from pb_bss.distribution.mixture_model_utils import log_pdf_to_affiliation
+from .mixture_model_utils import log_pdf_to_affiliation
+from .utils import _ProbabilisticModel, estimate_mixture_weight
 
 
 @dataclass
@@ -45,14 +42,12 @@ class CBMM(_ProbabilisticModel):
             affiliation_eps:
         Returns: Affiliations with shape (..., K, T).
         """
-        affiliation = log_pdf_to_affiliation(
+        return log_pdf_to_affiliation(
                 self.weight,
                 self.complex_bingham.log_pdf(y[..., None, :, :]),
                 source_activity_mask=None,
                 affiliation_eps=affiliation_eps,
         )
-
-        return affiliation
 
 
 class CBMMTrainer:

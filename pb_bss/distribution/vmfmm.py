@@ -2,9 +2,10 @@ from operator import xor
 
 import numpy as np
 from dataclasses import dataclass
-
-from .von_mises_fisher import VonMisesFisher, VonMisesFisherTrainer
 from pb_bss.distribution.utils import _ProbabilisticModel
+
+from .mixture_model_utils import log_pdf_to_affiliation
+from .von_mises_fisher import VonMisesFisher, VonMisesFisherTrainer
 
 
 @dataclass
@@ -27,17 +28,10 @@ class VMFMM(_ProbabilisticModel):
         return self._predict(y)
 
     def _predict(self, y):
-        log_pdf = self.vmf.log_pdf(y[..., None, :, :])
-
-        affiliation = np.log(self.weight)[..., :, None] + log_pdf
-        affiliation -= np.max(affiliation, axis=-2, keepdims=True)
-        np.exp(affiliation, out=affiliation)
-        denominator = np.maximum(
-            np.einsum("...kn->...n", affiliation)[..., None, :],
-            np.finfo(affiliation.dtype).tiny,
+        return log_pdf_to_affiliation(
+                self.weight[..., :, None],
+                self.vmf.log_pdf(y[..., None, :, :]),
         )
-        affiliation /= denominator
-        return affiliation
 
 
 class VMFMMTrainer:

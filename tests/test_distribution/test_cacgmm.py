@@ -67,7 +67,6 @@ class TestCACGMM(unittest.TestCase):
         # )
         # assert_allclose(np.squeeze(model.weight, axis=-1), [0.5, 0.5])
 
-
     def test_cacgmm_independent_dimension(self):
         samples = 10000
         weight = np.array([0.3, 0.7])
