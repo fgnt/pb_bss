@@ -169,7 +169,6 @@ class CWMMTrainer:
                     affiliation, quadratic_form \
                         = apply_inline_permutation_alignment(
                             affiliation=affiliation,
-                            quadratic_form=quadratic_form,
                             weight_constant_axis=weight_constant_axis,
                             aligner=inline_permutation_aligner,
                         )
