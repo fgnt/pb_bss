@@ -166,12 +166,11 @@ class CWMMTrainer:
                 affiliation = model.predict(y)
 
                 if inline_permutation_aligner is not None:
-                    affiliation, quadratic_form \
-                        = apply_inline_permutation_alignment(
-                            affiliation=affiliation,
-                            weight_constant_axis=weight_constant_axis,
-                            aligner=inline_permutation_aligner,
-                        )
+                    affiliation = apply_inline_permutation_alignment(
+                        affiliation=affiliation,
+                        weight_constant_axis=weight_constant_axis,
+                        aligner=inline_permutation_aligner,
+                    )
 
             model = self._m_step(
                 y,
