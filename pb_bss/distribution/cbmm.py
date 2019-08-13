@@ -150,6 +150,32 @@ class CBMMTrainer:
             inline_permutation_aligner=inline_permutation_aligner,
         )
 
+    def fit_predict(
+            self,
+            y,
+            initialization=None,
+            num_classes=None,
+            iterations=100,
+            *,
+            saliency=None,
+            weight_constant_axis=(-1,),
+            affiliation_eps=0,
+            return_affiliation=False,
+            inline_permutation_aligner: _PermutationAlignment = None,
+    ):
+        model = self.fit(
+            y=y,
+            initialization=initialization,
+            num_classes=num_classes,
+            iterations=iterations,
+            saliency=saliency,
+            weight_constant_axis=weight_constant_axis,
+            affiliation_eps=affiliation_eps,
+            return_affiliation=return_affiliation,
+            inline_permutation_aligner=inline_permutation_aligner,
+        )
+        return model.predict(y)
+
     def _fit(
             self,
             y,

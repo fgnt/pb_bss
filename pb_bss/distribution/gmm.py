@@ -60,8 +60,6 @@ class GMMTrainer:
                 the correct shape.
 
         Returns:
-
-        TODO: Support different weight types
         """
         assert xor(initialization is None, num_classes is None), (
             "Incompatible input combination. "
@@ -89,6 +87,31 @@ class GMMTrainer:
             fixed_covariance=fixed_covariance,
             weight_constant_axis=weight_constant_axis,
         )
+
+    def fit_predict(
+        self,
+        y,
+        initialization=None,
+        num_classes=None,
+        iterations=100,
+        *,
+        saliency=None,
+        weight_constant_axis=(-2,),
+        covariance_type="full",
+        fixed_covariance=None,
+    ):
+        """Fit a model. Then just return the posterior affiliations."""
+        model = self.fit(
+            y=y,
+            initialization=initialization,
+            num_classes=num_classes,
+            iterations=iterations,
+            saliency=saliency,
+            weight_constant_axis=weight_constant_axis,
+            covariance_type=covariance_type,
+            fixed_covariance=fixed_covariance,
+        )
+        return model.predict(y)
 
     def _fit(
             self,

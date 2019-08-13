@@ -83,7 +83,6 @@ class CWMMTrainer:
             saliency=None,
             weight_constant_axis=(-1,),
             affiliation_eps=0,
-            return_affiliation=False,
             inline_permutation_aligner: _PermutationAlignment = None,
     ) -> CWMM:
         """ EM for CWMMs with any number of independent dimensions.
@@ -98,6 +97,12 @@ class CWMMTrainer:
             num_classes: Scalar >0
             iterations: Scalar >0
             saliency: Importance weighting for each observation, shape (..., N)
+            weight_constant_axis: The axis that is used to calculate the mean
+                over the affiliations. The affiliations have the
+                shape (..., K, N), so the default value means averaging over
+                the sample dimension. Note that averaging over an independent
+                axis is supported.
+            affiliation_eps:
             inline_permutation_aligner: In rare cases you may want to run a
                 permutation alignment solver after each E-step. You can
                 instantiate a permutation alignment solver outside of the
@@ -139,7 +144,6 @@ class CWMMTrainer:
             iterations=iterations,
             saliency=saliency,
             affiliation_eps=affiliation_eps,
-            return_affiliation=return_affiliation,
             weight_constant_axis=weight_constant_axis,
             inline_permutation_aligner=inline_permutation_aligner,
         )
@@ -150,7 +154,6 @@ class CWMMTrainer:
             initialization,
             iterations,
             saliency,
-            return_affiliation,
             weight_constant_axis,
             affiliation_eps,
             inline_permutation_aligner,
@@ -178,12 +181,32 @@ class CWMMTrainer:
                 weight_constant_axis=weight_constant_axis,
             )
 
-        if return_affiliation is True:
-            return model, affiliation
-        elif return_affiliation is False:
-            return model
-        else:
-            raise ValueError(return_affiliation)
+        return model
+
+    def fit_predict(
+            self,
+            y,
+            initialization=None,
+            num_classes=None,
+            iterations=100,
+            *,
+            saliency=None,
+            weight_constant_axis=(-1,),
+            affiliation_eps=0,
+            inline_permutation_aligner: _PermutationAlignment = None,
+    ):
+        """Fit a model. Then just return the posterior affiliations."""
+        model = self.fit(
+            y=y,
+            initialization=initialization,
+            num_classes=num_classes,
+            iterations=iterations,
+            saliency=saliency,
+            weight_constant_axis=weight_constant_axis,
+            affiliation_eps=affiliation_eps,
+            inline_permutation_aligner=inline_permutation_aligner,
+        )
+        return model.predict(y)
 
     @cached_property
     def complex_watson_trainer(self):

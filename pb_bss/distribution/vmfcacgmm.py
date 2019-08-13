@@ -201,6 +201,46 @@ class VMFCACGMMTrainer:
 
         return model
 
+    def fit_predict(
+        self,
+        observation,
+        embedding,
+        initialization=None,
+        num_classes=None,
+        iterations=100,
+        saliency=None,
+        min_concentration=1e-10,
+        max_concentration=500,
+        hermitize=True,
+        covariance_norm='eigenvalue',
+        eigenvalue_floor=1e-10,
+        affiliation_eps=1e-10,
+        weight_constant_axis=(-1,),
+        spatial_weight=1.,
+        spectral_weight=1.,
+        inline_permutation_alignment=False,
+    ):
+        """Fit a model. Then just return the posterior affiliations."""
+        model = self.fit(
+            observation=observation,
+            embedding=embedding,
+            initialization=initialization,
+            num_classes=num_classes,
+            iterations=iterations,
+            saliency=saliency,
+            min_concentration=min_concentration,
+            max_concentration=max_concentration,
+            hermitize=hermitize,
+            covariance_norm=covariance_norm,
+            eigenvalue_floor=eigenvalue_floor,
+            affiliation_eps=affiliation_eps,
+            weight_constant_axis=weight_constant_axis,
+            spatial_weight=spatial_weight,
+            spectral_weight=spectral_weight,
+            inline_permutation_alignment=inline_permutation_alignment,
+        )
+        return model.predict(observation=observation, embedding=embedding)
+
     def _m_step(
         self,
         observation,

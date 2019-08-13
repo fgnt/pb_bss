@@ -152,7 +152,6 @@ class CACGMMTrainer:
             covariance_norm='eigenvalue',
             affiliation_eps=1e-10,
             eigenvalue_floor=1e-10,
-            return_affiliation=False,
             inline_permutation_aligner: _PermutationAlignment = None,
     ):
         """
@@ -179,7 +178,6 @@ class CACGMMTrainer:
             covariance_norm: 'eigenvalue', 'trace' or False
             affiliation_eps:
             eigenvalue_floor: Relative flooring of the covariance eigenvalues
-            return_affiliation:
             inline_permutation_aligner: In rare cases you may want to run a
                 permutation alignment solver after each E-step. You can
                 instantiate a permutation alignment solver outside of the
@@ -277,12 +275,40 @@ class CACGMMTrainer:
                 weight_constant_axis=weight_constant_axis,
             )
 
-        if return_affiliation is True:
-            return model, affiliation
-        elif return_affiliation is False:
-            return model
-        else:
-            raise ValueError(return_affiliation)
+        return model
+
+    def fit_predict(
+            self,
+            y,
+            initialization=None,
+            num_classes=None,
+            iterations=100,
+            *,
+            saliency=None,
+            source_activity_mask=None,
+            weight_constant_axis=(-1,),
+            hermitize=True,
+            covariance_norm='eigenvalue',
+            affiliation_eps=1e-10,
+            eigenvalue_floor=1e-10,
+            inline_permutation_aligner: _PermutationAlignment = None,
+    ):
+        """Fit a model. Then just return the posterior affiliations."""
+        model = self.fit(
+            y=y,
+            initialization=initialization,
+            num_classes=num_classes,
+            iterations=iterations,
+            saliency=saliency,
+            source_activity_mask=source_activity_mask,
+            weight_constant_axis=weight_constant_axis,
+            hermitize=hermitize,
+            covariance_norm=covariance_norm,
+            affiliation_eps=affiliation_eps,
+            eigenvalue_floor=eigenvalue_floor,
+            inline_permutation_aligner=inline_permutation_aligner,
+        )
+        return model.predict(y)
 
     def _m_step(
             self,

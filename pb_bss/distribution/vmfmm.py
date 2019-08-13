@@ -91,6 +91,28 @@ class VMFMMTrainer:
             max_concentration=max_concentration,
         )
 
+    def fit_predict(
+        self,
+        y,
+        initialization=None,
+        num_classes=None,
+        iterations=100,
+        saliency=None,
+        min_concentration=1e-10,
+        max_concentration=500,
+    ):
+        """Fit a model. Then just return the posterior affiliations."""
+        model = self.fit(
+            y=y,
+            initialization=initialization,
+            num_classes=num_classes,
+            iterations=iterations,
+            saliency=saliency,
+            min_concentration=min_concentration,
+            max_concentration=max_concentration,
+        )
+        return model.predict(y)
+
     def _fit(
         self,
         y,
