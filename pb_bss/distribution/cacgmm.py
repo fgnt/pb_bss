@@ -3,10 +3,8 @@ from operator import xor
 import numpy as np
 import scipy.special
 from dataclasses import dataclass
-from pb_bss.distribution.utils import (
-    _ProbabilisticModel,
-    estimate_mixture_weight,
-)
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.distribution.mixture_model_utils import estimate_mixture_weight
 from pb_bss.permutation_alignment import _PermutationAlignment
 from pb_bss.distribution.mixture_model_utils import (
     apply_inline_permutation_alignment
@@ -107,6 +105,7 @@ class CACGMM(_ProbabilisticModel):
             affiliation = np.clip(
                 affiliation, affiliation_eps, 1 - affiliation_eps
             )
+
         return affiliation, quadratic_form, log_pdf
 
     def log_likelihood(self, y):
@@ -240,11 +239,14 @@ class CACGMMTrainer:
             assert initialization.shape[-2:] == affiliation_shape[-2:], (
                 initialization.shape, affiliation_shape
             )
-            
+
             affiliation = np.broadcast_to(initialization, affiliation_shape)
             quadratic_form = np.ones(affiliation_shape, dtype=y.real.dtype)
         elif isinstance(initialization, CACGMM):
-            num_classes = initialization.weight.shape[-2]
+            # weight[-2] may be 1, when weight is fixed to 1/K
+            # num_classes = initialization.weight.shape[-2]
+            num_classes = initialization.cacg.covariance_eigenvectors.shape[-3]
+
             model = initialization
         else:
             raise TypeError('No sufficient initialization.')

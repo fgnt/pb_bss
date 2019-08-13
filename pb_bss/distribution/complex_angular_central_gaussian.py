@@ -86,7 +86,8 @@ class ComplexAngularCentralGaussian(_ProbabilisticModel):
             covariance_norm='eigenvalue',
     ):
         if covariance_norm == 'trace':
-            covariance /= np.einsum('...dd', covariance)[..., None, None]
+            cov_trace = np.einsum('...dd', covariance)[..., None, None]
+            covariance /= np.maximum(cov_trace, np.finfo(cov_trace.dtype).tiny)
         else:
             assert covariance_norm in ['eigenvalue', False]
 
@@ -95,11 +96,25 @@ class ComplexAngularCentralGaussian(_ProbabilisticModel):
         except np.linalg.LinAlgError:
             # ToDo: figure out when this happen and why eig may work.
             # It is likely that eig is more stable than eigh.
-            eigenvals, eigenvecs = np.linalg.eig(covariance)
+            try:
+                eigenvals, eigenvecs = np.linalg.eig(covariance)
+            except np.linalg.LinAlgError:
+                if eigenvalue_floor == 0:
+                    raise RuntimeError(
+                        'When you set the eigenvalue_floor to zero it can '
+                        'happen that the eigenvalues get zero and the '
+                        'reciprocal eigenvalue that is used in '
+                        f'{cls.__name__}._log_pdf gets infinity.'
+                    )
+                else:
+                    raise
         eigenvals = eigenvals.real
         if covariance_norm == 'eigenvalue':
             # The scale of the eigenvals does not matter.
-            eigenvals = eigenvals / np.amax(eigenvals, axis=-1, keepdims=True)
+            eigenvals = eigenvals / np.maximum(
+                np.amax(eigenvals, axis=-1, keepdims=True),
+                np.finfo(eigenvals.dtype).tiny,
+            )
             eigenvals = np.maximum(
                 eigenvals,
                 eigenvalue_floor,

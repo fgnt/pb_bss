@@ -14,7 +14,8 @@ from pb_bss.distribution.mixture_model_utils import (
     apply_inline_permutation_alignment,
 )
 from pb_bss.permutation_alignment import _PermutationAlignment
-from .utils import _ProbabilisticModel, estimate_mixture_weight
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.distribution.mixture_model_utils import estimate_mixture_weight
 
 
 @dataclass

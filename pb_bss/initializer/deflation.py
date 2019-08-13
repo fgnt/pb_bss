@@ -6,9 +6,11 @@ import paderbox as pb
 def deflationSeed(
         Y,
         sources: int,
+        saliencies=None,
         permutation_free: bool=True,
         neighbors: int=5,
-        eps=1e-2,
+        similarity_transform=None,
+        eps=0,
 ):
     """
 
@@ -23,12 +25,13 @@ def deflationSeed(
 
     """
 
-    saliencies = np.linalg.norm(Y, axis=-1)
+    if saliencies is None:
+        saliencies = np.linalg.norm(Y, axis=-1)
     # F = 257
     # neighbors = 5
 
     F, T = saliencies.shape
-    assert F == 257, F
+    assert F in [257, 513], F
 
     Z = _parameterized_vector_norm(Y, axis=-1)
 
@@ -38,7 +41,7 @@ def deflationSeed(
 
         if permutation_free:
             maxidx = np.argmax(np.mean(saliencies, axis=0), axis=-1)
-            maxidx = np.tile(maxidx, 257)
+            maxidx = np.tile(maxidx, F)
         else:
             maxidx = np.argmax(saliencies, axis=-1)
 
@@ -66,6 +69,9 @@ def deflationSeed(
             _parameterized_vector_norm(mode, axis=-1)
         )) ** 2
 
+        if similarity_transform is not None:
+            similarity = similarity_transform(similarity, saliencies)
+
         posterior.append(similarity)
 
         distance = 1 - similarity
@@ -75,7 +81,7 @@ def deflationSeed(
     posterior.append(1 - np.sum(posterior, axis=0))
 
     # The last posterior can be negative. This line fixes this
-    posterior = np.maximum(posterior, 0)
+    posterior = np.maximum(posterior, eps)
 
     # Ensure the it represents a posterior
     posterior = posterior / np.sum(posterior, axis=0, keepdims=True)

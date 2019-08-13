@@ -10,7 +10,8 @@ from .complex_watson import (
     normalize_observation,
 )
 from .mixture_model_utils import log_pdf_to_affiliation
-from .utils import _ProbabilisticModel, estimate_mixture_weight
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.distribution.mixture_model_utils import estimate_mixture_weight
 from pb_bss.permutation_alignment import _PermutationAlignment
 
 
