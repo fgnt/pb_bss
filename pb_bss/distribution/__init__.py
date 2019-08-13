@@ -33,7 +33,6 @@ from .vmfcacgmm import VMFCACGMM, VMFCACGMMTrainer
 from .gcacgmm import GCACGMM, GCACGMMTrainer
 from .cacgmm import CACGMM, CACGMMTrainer, sample_cacgmm, normalize_observation
 from .cwmm import CWMM, CWMMTrainer
-from .ccsgmm import CCSGMM, CCSGMMTrainer
 from .cbmm import CBMM, CBMMTrainer
 
 from . import utils
