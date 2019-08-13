@@ -67,6 +67,7 @@ class GCACGMM(_ProbabilisticModel):
             self,
             observation,
             embedding,
+            affiliation_eps=0.,
             inline_permutation_alignment=False,
     ):
         """
@@ -101,6 +102,7 @@ class GCACGMM(_ProbabilisticModel):
                     weight=unsqueeze(self.weight, self.weight_constant_axis),
                     spatial_log_pdf=self.spatial_weight * cacg_log_pdf,
                     spectral_log_pdf=self.spectral_weight * gaussian_log_pdf,
+                    affiliation_eps=affiliation_eps,
                 )
         else:
             affiliation = log_pdf_to_affiliation(
@@ -109,6 +111,7 @@ class GCACGMM(_ProbabilisticModel):
                     self.spatial_weight * cacg_log_pdf
                     + self.spectral_weight * gaussian_log_pdf
                 ),
+                affiliation_eps=affiliation_eps,
             )
 
         return affiliation, quadratic_form
@@ -193,14 +196,21 @@ class GCACGMMTrainer:
 
         quadratic_form = np.ones_like(initialization)
         affiliation = initialization
+        model = None
         for iteration in range(iterations):
+            if model is not None:
+                affiliation, quadratic_form = model._predict(
+                    observation=observation,
+                    embedding=embedding,
+                    inline_permutation_alignment=inline_permutation_alignment,
+                    affiliation_eps=affiliation_eps,
+                )
+
             model = self._m_step(
                 observation,
                 embedding,
                 quadratic_form,
-                affiliation=np.clip(
-                    affiliation, affiliation_eps, 1 - affiliation_eps
-                ),
+                affiliation=affiliation,
                 saliency=saliency,
                 hermitize=hermitize,
                 covariance_norm=covariance_norm,
@@ -211,13 +221,6 @@ class GCACGMMTrainer:
                 spatial_weight=spatial_weight,
                 spectral_weight=spectral_weight
             )
-
-            if iteration < iterations - 1:
-                affiliation, quadratic_form = model._predict(
-                    observation=observation,
-                    embedding=embedding,
-                    inline_permutation_alignment=inline_permutation_alignment,
-                )
 
         return model
 

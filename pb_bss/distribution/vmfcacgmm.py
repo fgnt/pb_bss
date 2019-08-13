@@ -58,6 +58,7 @@ class VMFCACGMM(_ProbabilisticModel):
             self,
             observation,
             embedding,
+            affiliation_eps=0.,
             inline_permutation_alignment=False,
     ):
         F, T, D = observation.shape
@@ -81,6 +82,7 @@ class VMFCACGMM(_ProbabilisticModel):
                     weight=unsqueeze(self.weight, self.weight_constant_axis),
                     spatial_log_pdf=self.spatial_weight * cacg_log_pdf,
                     spectral_log_pdf=self.spectral_weight * vmf_log_pdf,
+                    affiliation_eps=affiliation_eps,
                 )
         else:
             affiliation = log_pdf_to_affiliation(
@@ -89,6 +91,7 @@ class VMFCACGMM(_ProbabilisticModel):
                     self.spatial_weight * cacg_log_pdf
                     + self.spectral_weight * vmf_log_pdf
                 ),
+                affiliation_eps=affiliation_eps,
             )
 
         return affiliation, quadratic_form
@@ -162,23 +165,29 @@ class VMFCACGMMTrainer:
         if initialization is None and num_classes is not None:
             affiliation_shape = (F, num_classes, T)
             initialization = np.random.uniform(size=affiliation_shape)
-            initialization /= np.einsum("...kt->...t", initialization)[
-                ..., None, :
-            ]
+            initialization \
+                /= np.einsum("...kt->...t", initialization)[..., None, :]
 
         if saliency is None:
             saliency = np.ones_like(initialization[..., 0, :])
 
+        model = None
         quadratic_form = np.ones_like(initialization)
         affiliation = initialization
         for iteration in range(iterations):
+            if model is not None:
+                affiliation, quadratic_form = model._predict(
+                    observation=observation,
+                    embedding=embedding,
+                    inline_permutation_alignment=inline_permutation_alignment,
+                    affiliation_eps=affiliation_eps,
+                )
+
             model = self._m_step(
                 observation,
                 embedding,
                 quadratic_form,
-                affiliation=np.clip(
-                    affiliation, affiliation_eps, 1 - affiliation_eps
-                ),
+                affiliation=affiliation,
                 saliency=saliency,
                 min_concentration=min_concentration,
                 max_concentration=max_concentration,
@@ -189,13 +198,6 @@ class VMFCACGMMTrainer:
                 spatial_weight=spatial_weight,
                 spectral_weight=spectral_weight
             )
-
-            if iteration < iterations - 1:
-                affiliation, quadratic_form = model._predict(
-                    observation=observation,
-                    embedding=embedding,
-                    inline_permutation_alignment=inline_permutation_alignment,
-                )
 
         return model
 
