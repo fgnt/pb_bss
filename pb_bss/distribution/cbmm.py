@@ -86,7 +86,6 @@ class CBMMTrainer:
             saliency=None,
             weight_constant_axis=(-1,),
             affiliation_eps=0,
-            return_affiliation=False,
             inline_permutation_aligner: _PermutationAlignment = None,
     ) -> CBMM:
         """ EM for CBMMs with any number of independent dimensions.
@@ -102,8 +101,7 @@ class CBMMTrainer:
             iterations: Scalar >0
             saliency: Importance weighting for each observation, shape (..., N)
             weight_constant_axis: 
-            affiliation_eps: 
-            return_affiliation:
+            affiliation_eps:
             inline_permutation_aligner: In rare cases you may want to run a
                 permutation alignment solver after each E-step. You can
                 instantiate a permutation alignment solver outside of the
@@ -145,7 +143,6 @@ class CBMMTrainer:
             iterations=iterations,
             saliency=saliency,
             affiliation_eps=affiliation_eps,
-            return_affiliation=return_affiliation,
             weight_constant_axis=weight_constant_axis,
             inline_permutation_aligner=inline_permutation_aligner,
         )
@@ -160,7 +157,6 @@ class CBMMTrainer:
             saliency=None,
             weight_constant_axis=(-1,),
             affiliation_eps=0,
-            return_affiliation=False,
             inline_permutation_aligner: _PermutationAlignment = None,
     ):
         model = self.fit(
@@ -171,7 +167,6 @@ class CBMMTrainer:
             saliency=saliency,
             weight_constant_axis=weight_constant_axis,
             affiliation_eps=affiliation_eps,
-            return_affiliation=return_affiliation,
             inline_permutation_aligner=inline_permutation_aligner,
         )
         return model.predict(y)
@@ -182,7 +177,6 @@ class CBMMTrainer:
             initialization,
             iterations,
             saliency,
-            return_affiliation,
             weight_constant_axis,
             affiliation_eps,
             inline_permutation_aligner,
@@ -208,12 +202,7 @@ class CBMMTrainer:
                     aligner=inline_permutation_aligner,
                 )
 
-        if return_affiliation is True:
-            return model, affiliation
-        elif return_affiliation is False:
-            return model
-        else:
-            raise ValueError(return_affiliation)
+        return model
 
     @cached_property
     def complex_bingham_trainer(self):
