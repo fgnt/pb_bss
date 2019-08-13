@@ -86,7 +86,8 @@ class ComplexAngularCentralGaussian(_ProbabilisticModel):
             covariance_norm='eigenvalue',
     ):
         if covariance_norm == 'trace':
-            covariance /= np.einsum('...dd', covariance)[..., None, None]
+            cov_trace = np.einsum('...dd', covariance)[..., None, None]
+            covariance /= np.maximum(cov_trace, np.finfo(cov_trace.dtype).tiny)
         else:
             assert covariance_norm in ['eigenvalue', False]
 
