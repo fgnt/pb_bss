@@ -10,7 +10,8 @@ from pb_bss.distribution.complex_angular_central_gaussian import (
 )
 from pb_bss.distribution.mixture_model_utils import (
     apply_inline_permutation_alignment,
-    estimate_mixture_weight
+    estimate_mixture_weight,
+    log_pdf_to_affiliation,
 )
 from pb_bss.distribution.utils import _ProbabilisticModel
 from pb_bss.permutation_alignment import _PermutationAlignment
@@ -83,28 +84,12 @@ class CACGMM(_ProbabilisticModel):
 
         log_pdf, quadratic_form = self.cacg._log_pdf(y[..., None, :, :])
 
-        # The value of affiliation max exceed float64 range.
-        # Scaling (add in log domain) does not change the final affiliation.
-        affiliation = log_pdf - np.amax(log_pdf, axis=-2, keepdims=True)
-
-        np.exp(affiliation, out=affiliation)  # inplace
-
-        affiliation *= self.weight
-
-        if source_activity_mask is not None:
-            assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype  # noqa
-            affiliation *= source_activity_mask
-
-        denominator = np.maximum(
-            np.sum(affiliation, axis=-2, keepdims=True),
-            np.finfo(affiliation.dtype).tiny,
+        affiliation = log_pdf_to_affiliation(
+            self.weight[..., :, None],
+            log_pdf,
+            source_activity_mask=source_activity_mask,
+            affiliation_eps=affiliation_eps,
         )
-        affiliation /= denominator
-
-        if affiliation_eps != 0:
-            affiliation = np.clip(
-                affiliation, affiliation_eps, 1 - affiliation_eps
-            )
 
         return affiliation, quadratic_form, log_pdf
 
@@ -182,15 +167,14 @@ class CACGMMTrainer:
             saliency:
                 Importance weighting for each observation, shape (..., N)
                 Should be pre-calculated externally, not just a string.
-            source_activity_mask: Boolean mask that says for each time point for
-                each source if it is active or not.
+            source_activity_mask: Boolean mask that says for each time point
+                for each source if it is active or not.
                 Shape (..., K, N)
             weight_constant_axis: The axis that is used to calculate the mean
                 over the affiliations. The affiliations have the
                 shape (..., K, N), so the default value means averaging over
                 the sample dimension. Note that averaging over an independent
-                axis is supported. Averaging over -2 is identical to
-                dirichlet_prior_concentration == np.inf.
+                axis is supported.
             hermitize:
             covariance_norm: 'eigenvalue', 'trace' or False
             affiliation_eps:
