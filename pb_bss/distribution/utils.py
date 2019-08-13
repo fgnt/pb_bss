@@ -413,9 +413,8 @@ def _estimate_mixture_weight_with_dirichlet_prior_concentration(
     dirichlet_prior_concentration=1,
 ):
     """
-    This function is a start point for those that want to use a dirichlet
-    prior.
-
+    This function is a starting point for those that want to use a Dirichlet
+    prior with a plug-in rule (i.e. MAP estimate instead of MMSE estimate).
     """
     affiliation = np.asarray(affiliation)
 
