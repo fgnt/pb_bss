@@ -2,11 +2,14 @@ from operator import xor
 
 import numpy as np
 from dataclasses import dataclass
+from pb_bss.distribution.mixture_model_utils import (
+    estimate_mixture_weight,
+    log_pdf_to_affiliation,
+)
 from pb_bss.utils import labels_to_one_hot
 from sklearn.cluster import KMeans
 
 from . import Gaussian, GaussianTrainer
-from .mixture_model_utils import log_pdf_to_affiliation
 from .utils import _ProbabilisticModel
 
 
@@ -33,7 +36,9 @@ class GMMTrainer:
         initialization=None,
         num_classes=None,
         iterations=100,
+        *,
         saliency=None,
+        weight_constant_axis=(-2,),
         covariance_type="full",
         fixed_covariance=None,
     ):
@@ -45,6 +50,11 @@ class GMMTrainer:
             num_classes: Scalar >0
             iterations: Scalar >0
             saliency: Importance weighting for each observation, shape (..., N)
+            weight_constant_axis: The axis that is used to calculate the mean
+                over the affiliations. The affiliations have the
+                shape (..., K, N), so the default value means averaging over
+                the sample dimension. Note that averaging over an independent
+                axis is supported.
             covariance_type: Either 'full', 'diagonal', or 'spherical'
             fixed_covariance: Learned if None. Otherwise, you need to provide
                 the correct shape.
@@ -64,9 +74,8 @@ class GMMTrainer:
             *independent, num_observations, _ = y.shape
             affiliation_shape = (*independent, num_classes, num_observations)
             initialization = np.random.uniform(size=affiliation_shape)
-            initialization /= np.einsum("...kn->...n", initialization)[
-                ..., None, :
-            ]
+            initialization \
+                /= np.einsum("...kn->...n", initialization)[..., None, :]
 
         if saliency is None:
             saliency = np.ones_like(initialization[..., 0, :])
@@ -78,6 +87,7 @@ class GMMTrainer:
             saliency=saliency,
             covariance_type=covariance_type,
             fixed_covariance=fixed_covariance,
+            weight_constant_axis=weight_constant_axis,
         )
 
     def _fit(
@@ -88,6 +98,7 @@ class GMMTrainer:
             saliency,
             covariance_type,
             fixed_covariance,
+            weight_constant_axis,
     ):
         affiliation = initialization  # TODO: Do we need np.copy here?
         model = None
@@ -101,6 +112,7 @@ class GMMTrainer:
                 saliency=saliency,
                 covariance_type=covariance_type,
                 fixed_covariance=fixed_covariance,
+                weight_constant_axis=weight_constant_axis,
             )
 
         return model
@@ -112,14 +124,17 @@ class GMMTrainer:
             saliency,
             covariance_type,
             fixed_covariance,
+            weight_constant_axis,
     ):
-        masked_affiliation = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliation)
-        weight /= np.einsum("...n->...", saliency)[..., None]
+        weight = estimate_mixture_weight(
+            affiliation=affiliation,
+            saliency=saliency,
+            weight_constant_axis=weight_constant_axis,
+        )
 
         gaussian = GaussianTrainer()._fit(
             y=x[..., None, :, :],
-            saliency=masked_affiliation,
+            saliency=affiliation * saliency[..., None, :],
             covariance_type=covariance_type
         )
 

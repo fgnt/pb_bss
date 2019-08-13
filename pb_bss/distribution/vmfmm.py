@@ -2,9 +2,12 @@ from operator import xor
 
 import numpy as np
 from dataclasses import dataclass
+from pb_bss.distribution.mixture_model_utils import (
+    estimate_mixture_weight,
+    log_pdf_to_affiliation
+)
 from pb_bss.distribution.utils import _ProbabilisticModel
 
-from .mixture_model_utils import log_pdf_to_affiliation
 from .von_mises_fisher import VonMisesFisher, VonMisesFisherTrainer
 
 
@@ -116,13 +119,15 @@ class VMFMMTrainer:
     def _m_step(
         self, y, affiliation, saliency, min_concentration, max_concentration
     ):
-        masked_affiliation = affiliation * saliency[..., None, :]
-        weight = np.einsum("...kn->...k", masked_affiliation)
-        weight /= np.einsum("...n->...", saliency)[..., None]
+        weight = estimate_mixture_weight(
+            affiliation=affiliation,
+            saliency=saliency,
+            weight_constant_axis=weight_constant_axis,
+        )
 
         vmf = VonMisesFisherTrainer()._fit(
             y=y[..., None, :, :],
-            saliency=masked_affiliation,
+            saliency=affiliation * saliency[..., None, :],
             min_concentration=min_concentration,
             max_concentration=max_concentration,
         )
