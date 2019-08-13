@@ -3,16 +3,19 @@ from operator import xor
 import numpy as np
 from cached_property import cached_property
 from dataclasses import dataclass
+from pb_bss.distribution.mixture_model_utils import (
+    apply_inline_permutation_alignment,
+    estimate_mixture_weight,
+    log_pdf_to_affiliation,
+)
+from pb_bss.distribution.utils import _ProbabilisticModel
+from pb_bss.permutation_alignment import _PermutationAlignment
 
 from .complex_watson import (
     ComplexWatson,
     ComplexWatsonTrainer,
     normalize_observation,
 )
-from .mixture_model_utils import log_pdf_to_affiliation
-from pb_bss.distribution.utils import _ProbabilisticModel
-from pb_bss.distribution.mixture_model_utils import estimate_mixture_weight
-from pb_bss.permutation_alignment import _PermutationAlignment
 
 
 @dataclass
@@ -160,7 +163,13 @@ class CWMMTrainer:
                 affiliation = model.predict(y)
 
                 if inline_permutation_aligner is not None:
-                    pass
+                    affiliation, quadratic_form \
+                        = apply_inline_permutation_alignment(
+                            affiliation=affiliation,
+                            quadratic_form=quadratic_form,
+                            weight_constant_axis=weight_constant_axis,
+                            aligner=inline_permutation_aligner,
+                        )
 
             model = self._m_step(
                 y,
