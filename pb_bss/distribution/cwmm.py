@@ -11,6 +11,7 @@ from .complex_watson import (
 )
 from .mixture_model_utils import log_pdf_to_affiliation
 from .utils import _ProbabilisticModel, estimate_mixture_weight
+from pb_bss.permutation_alignment import _PermutationAlignment
 
 
 @dataclass
@@ -79,6 +80,7 @@ class CWMMTrainer:
             weight_constant_axis=(-1,),
             affiliation_eps=0,
             return_affiliation=False,
+            inline_permutation_aligner: _PermutationAlignment = None,
     ) -> CWMM:
         """ EM for CWMMs with any number of independent dimensions.
 
@@ -92,6 +94,10 @@ class CWMMTrainer:
             num_classes: Scalar >0
             iterations: Scalar >0
             saliency: Importance weighting for each observation, shape (..., N)
+            inline_permutation_aligner: In rare cases you may want to run a
+                permutation alignment solver after each E-step. You can
+                instantiate a permutation alignment solver outside of the
+                fit function and pass it to this function.
         """
         assert xor(initialization is None, num_classes is None), (
             "Incompatible input combination. "
@@ -131,6 +137,7 @@ class CWMMTrainer:
             affiliation_eps=affiliation_eps,
             return_affiliation=return_affiliation,
             weight_constant_axis=weight_constant_axis,
+            inline_permutation_aligner=inline_permutation_aligner,
         )
 
     def _fit(
@@ -142,12 +149,17 @@ class CWMMTrainer:
             return_affiliation,
             weight_constant_axis,
             affiliation_eps,
+            inline_permutation_aligner,
     ) -> CWMM:
         assert affiliation_eps == 0, affiliation_eps
         affiliation = initialization  # TODO: Do we need np.copy here?
+        model = None
         for iteration in range(iterations):
-            if iteration != 0:
+            if model is not None:
                 affiliation = model.predict(y)
+
+                if inline_permutation_aligner is not None:
+                    pass
 
             model = self._m_step(
                 y,

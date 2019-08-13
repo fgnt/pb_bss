@@ -9,7 +9,11 @@ from .complex_bingham import (
     ComplexBinghamTrainer,
     normalize_observation,
 )
-from .mixture_model_utils import log_pdf_to_affiliation
+from pb_bss.distribution.mixture_model_utils import (
+    log_pdf_to_affiliation,
+    apply_inline_permutation_alignment,
+)
+from pb_bss.permutation_alignment import _PermutationAlignment
 from .utils import _ProbabilisticModel, estimate_mixture_weight
 
 
@@ -82,6 +86,7 @@ class CBMMTrainer:
             weight_constant_axis=(-1,),
             affiliation_eps=0,
             return_affiliation=False,
+            inline_permutation_aligner: _PermutationAlignment = None,
     ) -> CBMM:
         """ EM for CBMMs with any number of independent dimensions.
 
@@ -98,6 +103,10 @@ class CBMMTrainer:
             weight_constant_axis: 
             affiliation_eps: 
             return_affiliation:
+            inline_permutation_aligner: In rare cases you may want to run a
+                permutation alignment solver after each E-step. You can
+                instantiate a permutation alignment solver outside of the
+                fit function and pass it to this function.
         """
         assert xor(initialization is None, num_classes is None), (
             "Incompatible input combination. "
@@ -137,6 +146,7 @@ class CBMMTrainer:
             affiliation_eps=affiliation_eps,
             return_affiliation=return_affiliation,
             weight_constant_axis=weight_constant_axis,
+            inline_permutation_aligner=inline_permutation_aligner,
         )
 
     def _fit(
@@ -148,11 +158,13 @@ class CBMMTrainer:
             return_affiliation,
             weight_constant_axis,
             affiliation_eps,
+            inline_permutation_aligner,
     ) -> CBMM:
         # assert affiliation_eps == 0, affiliation_eps
         affiliation = initialization  # TODO: Do we need np.copy here?
+        model = None
         for iteration in range(iterations):
-            if iteration != 0:
+            if model is not None:
                 affiliation = model.predict(y, affiliation_eps=affiliation_eps)
 
             model = self._m_step(
@@ -161,6 +173,13 @@ class CBMMTrainer:
                 saliency=saliency,
                 weight_constant_axis=weight_constant_axis,
             )
+
+            if inline_permutation_aligner is not None:
+                affiliation = apply_inline_permutation_alignment(
+                    affiliation=affiliation,
+                    weight_constant_axis=weight_constant_axis,
+                    aligner=inline_permutation_aligner,
+                )
 
         if return_affiliation is True:
             return model, affiliation

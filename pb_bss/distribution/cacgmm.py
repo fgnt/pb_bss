@@ -8,7 +8,9 @@ from pb_bss.distribution.utils import (
     estimate_mixture_weight,
 )
 from pb_bss.permutation_alignment import _PermutationAlignment
-
+from pb_bss.distribution.mixture_model_utils import (
+    apply_inline_permutation_alignment
+)
 from pb_bss.distribution.complex_angular_central_gaussian import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
@@ -167,7 +169,7 @@ class CACGMMTrainer:
             affiliation_eps=1e-10,
             eigenvalue_floor=1e-10,
             return_affiliation=False,
-            inline_permutation_aligner: _PermutationAlignment = None
+            inline_permutation_aligner: _PermutationAlignment = None,
     ):
         """
 
@@ -270,20 +272,13 @@ class CACGMMTrainer:
                 )
 
                 if inline_permutation_aligner is not None:
-                    assert affiliation.ndim == 3, affiliation.shape
-                    assert weight_constant_axis in ((-3,), (-3, -1), -3), weight_constant_axis  # noqa
-                    # F, K, T -> K, F, T
-                    mapping = inline_permutation_aligner.calculate_mapping(
-                        np.transpose(affiliation, (1, 0, 2))
-                    )
-                    affiliation = inline_permutation_aligner.apply_mapping(
-                        np.transpose(affiliation, (1, 0, 2)), mapping
-                    )
-                    affiliation = np.transpose(affiliation, (1, 0, 2))
-                    quadratic_form = inline_permutation_aligner.apply_mapping(
-                        np.transpose(quadratic_form, (1, 0, 2)), mapping
-                    )
-                    quadratic_form = np.transpose(quadratic_form, (1, 0, 2))
+                    affiliation, quadratic_form \
+                        = apply_inline_permutation_alignment(
+                            affiliation=affiliation,
+                            quadratic_form=quadratic_form,
+                            weight_constant_axis=weight_constant_axis,
+                            aligner=inline_permutation_aligner,
+                        )
 
             model = self._m_step(
                 y,

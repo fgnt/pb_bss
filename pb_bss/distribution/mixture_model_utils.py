@@ -1,5 +1,6 @@
 import itertools
 import numpy as np
+from pb_bss.permutation_alignment import _PermutationAlignment
 
 
 def log_pdf_to_affiliation(
@@ -120,3 +121,48 @@ def log_pdf_to_affiliation_for_integration_models_with_inline_pa(
         )
 
     return affiliation
+
+
+def apply_inline_permutation_alignment(
+        affiliation,
+        *,
+        quadratic_form=None,
+        weight_constant_axis,
+        aligner: _PermutationAlignment
+):
+    """
+
+    Args:
+        affiliation: Shape (F, K, T)
+        quadratic_form: Exists for cACGMMs, otherwise None. Shape (F, K, T).
+        weight_constant_axis: Scalar integer or tuple of scalar integers.
+        aligner: A permutation alignment object.
+
+    Returns:
+
+    """
+    message = (
+        f'Inline permutation alignment reduces mismatch between frequency '
+        f'independent mixtures weights and a frequency independent '
+        f'observation model. Therefore, we require `affiliation.ndim == 3` '
+        f'({affiliation.shape}) and a corresponding '
+        f'`weight_constant_axis` ({weight_constant_axis}).'
+    )
+    assert affiliation.ndim == 3, message
+    assert weight_constant_axis in ((-3,), (-3, -1), -3), message
+
+    # F, K, T -> K, F, T
+    affiliation = np.transpose(affiliation, (1, 0, 2))
+    mapping = aligner.calculate_mapping(affiliation)
+    affiliation = aligner.apply_mapping(affiliation, mapping)
+    affiliation = np.transpose(affiliation, (1, 0, 2))
+
+    if quadratic_form is not None:
+        quadratic_form = np.transpose(quadratic_form, (1, 0, 2))
+        quadratic_form = aligner.apply_mapping(quadratic_form, mapping)
+        quadratic_form = np.transpose(quadratic_form, (1, 0, 2))
+
+    if quadratic_form is None:
+        return affiliation
+    else:
+        return affiliation, quadratic_form
