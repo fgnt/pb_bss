@@ -111,7 +111,10 @@ class ComplexAngularCentralGaussian(_ProbabilisticModel):
         eigenvals = eigenvals.real
         if covariance_norm == 'eigenvalue':
             # The scale of the eigenvals does not matter.
-            eigenvals = eigenvals / np.amax(eigenvals, axis=-1, keepdims=True)
+            eigenvals = eigenvals / np.maximum(
+                np.amax(eigenvals, axis=-1, keepdims=True),
+                np.finfo(eigenvals.dtype).tiny,
+            )
             eigenvals = np.maximum(
                 eigenvals,
                 eigenvalue_floor,
