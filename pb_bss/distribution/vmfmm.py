@@ -98,7 +98,11 @@ class VMFMMTrainer:
         max_concentration,
     ):
         affiliation = initialization  # TODO: Do we need np.copy here?
+        model = None
         for iteration in range(iterations):
+            if model is not None:
+                affiliation = model.predict(y)
+
             model = self._m_step(
                 y,
                 affiliation=affiliation,
@@ -106,9 +110,6 @@ class VMFMMTrainer:
                 min_concentration=min_concentration,
                 max_concentration=max_concentration,
             )
-
-            if iteration < iterations - 1:
-                affiliation = model.predict(y)
 
         return model
 
