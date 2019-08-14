@@ -85,7 +85,7 @@ class CACGMM(_ProbabilisticModel):
         log_pdf, quadratic_form = self.cacg._log_pdf(y[..., None, :, :])
 
         affiliation = log_pdf_to_affiliation(
-            self.weight[..., :, None],
+            self.weight,
             log_pdf,
             source_activity_mask=source_activity_mask,
             affiliation_eps=affiliation_eps,
