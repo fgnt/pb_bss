@@ -214,6 +214,7 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
         with shape (bins, sensors, sensors)
     :return: Set of beamforming vectors with shape (..., bins, sensors)
     """
+    assert noise_psd_matrix is not None
 
     while atf_vector.ndim > noise_psd_matrix.ndim - 1:
         noise_psd_matrix = np.expand_dims(noise_psd_matrix, axis=0)
@@ -276,6 +277,7 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
         with shape (..., sensors, sensors)
     :return: Set of beamforming vectors with shape (..., sensors)
     """
+    assert noise_psd_matrix is not None
 
     if c_gev_available and not use_eig:
         try:
@@ -596,6 +598,8 @@ def get_mvdr_vector_souden(
     }
 
     """
+    assert noise_psd_matrix is not None
+
     phi = stable_solve(noise_psd_matrix, target_psd_matrix)
     lambda_ = np.trace(phi, axis1=-1, axis2=-2)[..., None, None]
     if eps is None:
@@ -647,6 +651,7 @@ def get_wmwf_vector(
       `Tensor` of shape (batch, frequency, channel) with filter coefficients
 
     """
+    assert noise_psd_matrix is not None
 
     phi = stable_solve(noise_psd_matrix, target_psd_matrix)
     lambda_ = np.trace(phi, axis1=-1, axis2=-2)[..., None, None]

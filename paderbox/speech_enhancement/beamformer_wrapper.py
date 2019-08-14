@@ -29,6 +29,8 @@ def _get_gev_atf_vector(
 
     [1] https://arxiv.org/pdf/1707.00201.pdf
     """
+    assert noise_covariance_matrix is not None
+
     # [1] Equation (27)
     w = get_gev_vector(
         covariance_matrix,
