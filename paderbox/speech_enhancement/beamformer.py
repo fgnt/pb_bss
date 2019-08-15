@@ -635,12 +635,12 @@ def get_wmwf_vector(
         with the covariance statistics for the target signal.
       noise_psd_matrix: `Array` of shape (..., frequency, sensor, sensor)
         with the covariance statistics for the noise signal.
-      reference_channel: Reference channel for minimization. See describtion
+      reference_channel: Reference channel for minimization. See description
         above. Has no effect if a channel selection vector is provided.
       channel_selection_vector: A vector of shape (batch, channel) to
         select a weighted "reference" channel for each batch.
       distortion_weight: `float` or -1 to trade-off distortion and
-        surpression. Passing -1 will use an frequency-dependent trade-off
+        suppression. Passing -1 will use an frequency-dependent trade-off
         factor inspired by the Max-SNR criterion.
         See https://arxiv.org/abs/1707.00201 for details.
 
