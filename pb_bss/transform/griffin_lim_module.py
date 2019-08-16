@@ -79,7 +79,7 @@ class GriffinLim:
         )
 
         # ToDo: move function get_variance_for_zero_mean_signal to this repo
-        from paderbox.speech_enhancement.noise import get_variance_for_zero_mean_signal
+        from pb_bss.evaluation.sxr_module import get_variance_for_zero_mean_signal
 
         return dict(
             mir_eval_sdr=np.mean(metrics.mir_eval['sdr']),
