@@ -33,5 +33,5 @@ jobs:
     - task: UsePythonVersion@0
       inputs:
         versionSpec: $(PYTHON_VERSION)
-    - bash: pip install pytest
+    - bash: pip install pytest numpy scipy pystoi mir_eval
     - bash: pytest
