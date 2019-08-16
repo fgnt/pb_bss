@@ -9,6 +9,9 @@ jobs:
       Linux py37:
         IMAGE_NAME: 'ubuntu-16.04'
         PYTHON_VERSION: '3.7'
+      OSX py37:
+        IMAGE_NAME: 'macos-10.13'
+        PYTHON_VERSION: '3.7'
   pool:
     vmImage: $(IMAGE_NAME)
   steps:
