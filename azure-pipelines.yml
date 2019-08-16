@@ -3,18 +3,10 @@ jobs:
 - job: test
   strategy:
     matrix:
-      Windows py36:
-        IMAGE_NAME: 'vs2017-win2016'
-        PYTHON_VERSION: '3.6'
-        TOX_CMD: 'py36'
       Windows py37:
         IMAGE_NAME: 'vs2017-win2016'
         PYTHON_VERSION: '3.7'
         TOX_CMD: 'py37'
-      OSX py36:
-        IMAGE_NAME: 'macos-10.13'
-        PYTHON_VERSION: '3.6'
-        TOX_CMD: 'py36'
       OSX py37:
         IMAGE_NAME: 'macos-10.13'
         PYTHON_VERSION: '3.7'
