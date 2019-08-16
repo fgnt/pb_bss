@@ -21,6 +21,12 @@ def log_pdf_to_affiliation(
     Returns:
 
     """
+    # Only check broadcast compatibility
+    if source_activity_mask is None:
+        _ = np.broadcast_arrays(weight, log_pdf)
+    else:
+        _ = np.broadcast_arrays(weight, log_pdf, source_activity_mask)
+
     # The value of affiliation max may exceed float64 range.
     # Scaling (add in log domain) does not change the final affiliation.
     affiliation = log_pdf - np.amax(log_pdf, axis=-2, keepdims=True)
@@ -140,7 +146,6 @@ def estimate_mixture_weight(
         affiliation: Shape: (..., K, T)
         saliency: Shape: (..., K, T)
         weight_constant_axis: int
-        dirichlet_prior_concentration: int
 
     Returns:
         mixture weight with the same shape as affiliation, except for the
@@ -224,7 +229,7 @@ def _estimate_mixture_weight_with_dirichlet_prior_concentration(
             *independent, K, T = affiliation.shape[-2:]
             weight = np.broadcast_to(1 / K, [*independent, K, 1])
         else:
-            assert dirichlet_prior_concentration >= 1, dirichlet_prior_concentration
+            assert dirichlet_prior_concentration >= 1, dirichlet_prior_concentration  # noqa
             assert weight_constant_axis == (-1,), (
                 'ToDo: implement weight_constant_axis ({}) for '
                 'dirichlet_prior_concentration ({}).'
@@ -241,7 +246,7 @@ def _estimate_mixture_weight_with_dirichlet_prior_concentration(
                 T + (dirichlet_prior_concentration - 1) * K
             )
     else:
-        assert dirichlet_prior_concentration == 1, dirichlet_prior_concentration
+        assert dirichlet_prior_concentration == 1, dirichlet_prior_concentration  # noqa
         masked_affiliation = affiliation * saliency[..., None, :]
         weight = _unit_norm(
             np.sum(
