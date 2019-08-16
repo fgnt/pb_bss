@@ -20,7 +20,7 @@ class GMM(_ProbabilisticModel):
 
     def predict(self, x):
         return log_pdf_to_affiliation(
-            self.weight[..., :, None],
+            self.weight,
             self.gaussian.log_pdf(x[..., None, :, :]),
         )
 
@@ -38,7 +38,7 @@ class GMMTrainer:
         iterations=100,
         *,
         saliency=None,
-        weight_constant_axis=(-2,),
+        weight_constant_axis=(-1,),
         covariance_type="full",
         fixed_covariance=None,
     ):
@@ -83,9 +83,9 @@ class GMMTrainer:
             initialization=initialization,
             iterations=iterations,
             saliency=saliency,
+            weight_constant_axis=weight_constant_axis,
             covariance_type=covariance_type,
             fixed_covariance=fixed_covariance,
-            weight_constant_axis=weight_constant_axis,
         )
 
     def fit_predict(
@@ -133,9 +133,9 @@ class GMMTrainer:
                 y,
                 affiliation=affiliation,
                 saliency=saliency,
+                weight_constant_axis=weight_constant_axis,
                 covariance_type=covariance_type,
                 fixed_covariance=fixed_covariance,
-                weight_constant_axis=weight_constant_axis,
             )
 
         return model
@@ -145,9 +145,9 @@ class GMMTrainer:
             x,
             affiliation,
             saliency,
+            weight_constant_axis,
             covariance_type,
             fixed_covariance,
-            weight_constant_axis,
     ):
         weight = estimate_mixture_weight(
             affiliation=affiliation,
@@ -199,14 +199,10 @@ class BinaryGMM(_ProbabilisticModel):
 
 
 class BinaryGMMTrainer:
-    """
+    """k-means trainer.
     This is a specific wrapper of sklearn's kmeans for Deep Clustering
     embeddings. This explains the variable names and also the fixed shape for
     the embeddings.
-
-
-
-    Returns:
     """
     def fit(
         self,

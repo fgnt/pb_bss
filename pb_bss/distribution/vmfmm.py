@@ -32,8 +32,8 @@ class VMFMM(_ProbabilisticModel):
 
     def _predict(self, y):
         return log_pdf_to_affiliation(
-                self.weight[..., :, None],
-                self.vmf.log_pdf(y[..., None, :, :]),
+            self.weight,
+            self.vmf.log_pdf(y[..., None, :, :]),
         )
 
 
@@ -47,6 +47,7 @@ class VMFMMTrainer:
         num_classes=None,
         iterations=100,
         saliency=None,
+        weight_constant_axis=(-1,),
         min_concentration=1e-10,
         max_concentration=500,
     ) -> VMFMM:
@@ -58,6 +59,11 @@ class VMFMMTrainer:
             num_classes: Scalar >0
             iterations: Scalar >0
             saliency: Importance weighting for each observation, shape (..., N)
+            weight_constant_axis: The axis that is used to calculate the mean
+                over the affiliations. The affiliations have the
+                shape (..., K, N), so the default value means averaging over
+                the sample dimension. Note that averaging over an independent
+                axis is supported.
             min_concentration:
             max_concentration:
         """
@@ -75,9 +81,8 @@ class VMFMMTrainer:
             *independent, num_observations, _ = y.shape
             affiliation_shape = (*independent, num_classes, num_observations)
             initialization = np.random.uniform(size=affiliation_shape)
-            initialization /= np.einsum("...kn->...n", initialization)[
-                ..., None, :
-            ]
+            initialization \
+                /= np.einsum("...kn->...n", initialization)[..., None, :]
 
         if saliency is None:
             saliency = np.ones_like(initialization[..., 0, :])
@@ -87,6 +92,7 @@ class VMFMMTrainer:
             initialization=initialization,
             iterations=iterations,
             saliency=saliency,
+            weight_constant_axis=weight_constant_axis,
             min_concentration=min_concentration,
             max_concentration=max_concentration,
         )
@@ -98,6 +104,7 @@ class VMFMMTrainer:
         num_classes=None,
         iterations=100,
         saliency=None,
+        weight_constant_axis=(-1,),
         min_concentration=1e-10,
         max_concentration=500,
     ):
@@ -110,6 +117,7 @@ class VMFMMTrainer:
             saliency=saliency,
             min_concentration=min_concentration,
             max_concentration=max_concentration,
+            weight_constant_axis=weight_constant_axis,
         )
         return model.predict(y)
 
@@ -119,6 +127,7 @@ class VMFMMTrainer:
         initialization,
         iterations,
         saliency,
+        weight_constant_axis,
         min_concentration,
         max_concentration,
     ):
@@ -132,6 +141,7 @@ class VMFMMTrainer:
                 y,
                 affiliation=affiliation,
                 saliency=saliency,
+                weight_constant_axis=weight_constant_axis,
                 min_concentration=min_concentration,
                 max_concentration=max_concentration,
             )
@@ -139,7 +149,13 @@ class VMFMMTrainer:
         return model
 
     def _m_step(
-        self, y, affiliation, saliency, min_concentration, max_concentration
+            self,
+            y,
+            affiliation,
+            saliency,
+            weight_constant_axis,
+            min_concentration,
+            max_concentration,
     ):
         weight = estimate_mixture_weight(
             affiliation=affiliation,
