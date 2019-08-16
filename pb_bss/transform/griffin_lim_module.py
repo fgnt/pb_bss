@@ -2,7 +2,6 @@ import numpy as np
 import paderbox as pb
 from functools import partial
 import pb_bss
-from paderbox.speech_enhancement.noise import get_variance_for_zero_mean_signal
 
 
 class GriffinLim:
@@ -78,6 +77,10 @@ class GriffinLim:
             speech_source=speech_source,
             enable_si_sdr=True,
         )
+
+        # ToDo: move function get_variance_for_zero_mean_signal to this repo
+        from paderbox.speech_enhancement.noise import get_variance_for_zero_mean_signal
+
         return dict(
             mir_eval_sdr=np.mean(metrics.mir_eval['sdr']),
             mir_eval_sir=np.mean(metrics.mir_eval['sir']),
