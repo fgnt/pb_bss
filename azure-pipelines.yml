@@ -1,0 +1,28 @@
+
+jobs:
+- job: test
+  strategy:
+    matrix:
+      Linux py36:
+        IMAGE_NAME: 'ubuntu-16.04'
+        PYTHON_VERSION: '3.6'
+      Linux py37:
+        IMAGE_NAME: 'ubuntu-16.04'
+        PYTHON_VERSION: '3.7'
+      OSX py37:
+        IMAGE_NAME: 'macos-10.13'
+        PYTHON_VERSION: '3.7'
+  pool:
+    vmImage: $(IMAGE_NAME)
+  steps:
+    - task: UsePythonVersion@0
+      inputs:
+        versionSpec: $(PYTHON_VERSION)
+    - bash: |
+        sudo apt-get install libsndfile1
+        pip install numpy scipy
+        pip install pytest
+        pip install nara_wpe lazy_dataset sklearn matplotlib soundfile
+        pip install pystoi mir_eval
+    - bash: pip install -e .
+    - bash: pytest
