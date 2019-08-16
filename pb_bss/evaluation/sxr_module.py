@@ -31,10 +31,14 @@ def get_snr(X, N, *, axis=None, keepdims=False):
 
     The SNR in time domain or STFT domain is almost equal.
 
-    :param X: Signal of target image.
-    :param N: Signal of noise image.
-    :return: SNR of time signals or STFT signals in dB.
+    Args:
+        X: Signal of target image.
+        N: Signal of noise image.
+        axis:
+        keepdims:
 
+    Returns:
+        SNR of time signals or STFT signals in dB.
 
     >>> get_snr([1, 2, 3], [1, 2, 3])
     0.0
@@ -55,10 +59,13 @@ def set_snr(X, N, snr, current_snr=None, *, axis=None, inplace=True):
     The single source SNR is the ratio of each source to the noise channel.
     Multi-source environments are not yet implemented.
 
-    :param X: STFT-signal of target image.
-    :param N: STFT-signal of noise image (will be modified in place).
-    :param snr: Single source SNR of STFT signals in dB.
-    :return: None
+    Args:
+        X: STFT-signal of target image.
+        N: STFT-signal of noise image (will be modified in place).
+        snr: Single source SNR of STFT signals in dB.
+        current_snr:
+        axis:
+        inplace:
     """
 
     if current_snr is None:
