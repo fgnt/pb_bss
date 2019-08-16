@@ -34,4 +34,5 @@ jobs:
       inputs:
         versionSpec: $(PYTHON_VERSION)
     - bash: pip install pytest numpy scipy pystoi mir_eval
+    - bash: pip install -e .
     - bash: pytest
