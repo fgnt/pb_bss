@@ -1,5 +1,4 @@
 import numpy as np
-import paderbox as pb
 from functools import partial
 import pb_bss
 
@@ -35,11 +34,12 @@ class GriffinLim:
             first_guess='istft',
             size=512, shift=128, fading=False,
     ):
+        from nara_wpe.utils import stft, istft
         self.stft = partial(
-            pb.transform.stft, size=size, shift=shift, fading=fading
+            stft, size=size, shift=shift, fading=fading
         )
         self.istft = partial(
-            pb.transform.istft, size=size, shift=shift, fading=fading
+            istft, size=size, shift=shift, fading=fading
         )
 
         self.X = X
