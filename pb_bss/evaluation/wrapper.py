@@ -87,7 +87,11 @@ class InputMetrics:
 
     @cached_property.cached_property
     def pesq(self):
-        import paderbox as pb
+        try:
+            import paderbox as pb
+        except ImportError:
+            return np.nan
+
         mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
         try:
             scores = pb.evaluation.pesq(
@@ -108,8 +112,8 @@ class InputMetrics:
 
     @cached_property.cached_property
     def invasive_sxr(self):
-        import paderbox as pb
-        invasive_sxr = pb.evaluation.input_sxr(
+        from pb_bss.evaluation.sxr_module import input_sxr
+        invasive_sxr = input_sxr(
             rearrange(
                 self.speech_image,
                 'sources sensors samples -> sources sensors samples'
@@ -330,7 +334,11 @@ class OutputMetrics:
 
     @cached_property.cached_property
     def pesq(self):
-        import paderbox as pb
+        try:
+            import paderbox as pb
+        except ImportError:
+            return np.nan
+
         mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
         try:
             return pb.evaluation.pesq(
@@ -344,6 +352,8 @@ class OutputMetrics:
 
     @cached_property.cached_property
     def pypesq(self):
+        # pypesq does not release the GIL. Either release our pesq code or
+        # change pypesq to release the GIL and be thread safe
         try:
             import pypesq
         except ImportError:
@@ -365,8 +375,8 @@ class OutputMetrics:
 
     @cached_property.cached_property
     def invasive_sxr(self):
-        import paderbox as pb
-        invasive_sxr = pb.evaluation.output_sxr(
+        from pb_bss.evaluation.sxr_module import output_sxr
+        invasive_sxr = output_sxr(
             rearrange(
                 self.speech_contribution,
                 'sources targets samples -> sources targets samples'
