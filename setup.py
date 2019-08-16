@@ -16,6 +16,7 @@ setuptools.setup(
         'matplotlib',
         'scikit-learn',
         'cached_property',
+        'einops',
     ],
 
     classifiers=[

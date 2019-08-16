@@ -33,6 +33,9 @@ jobs:
     - task: UsePythonVersion@0
       inputs:
         versionSpec: $(PYTHON_VERSION)
-    - bash: pip install pytest numpy scipy pystoi mir_eval
+    - bash: pip install numpy scipy
+    - bash: pip install pytest
+    - bash: pip install nara_wpe lazy_dataset sklearn matplotlib soundfile
+    - bash: pip install pystoi mir_eval
     - bash: pip install -e .
     - bash: pytest
