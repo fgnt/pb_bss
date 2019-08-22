@@ -341,6 +341,7 @@ def get_multi_source_bf_vector_from_masks(
         denominator_matrix_for_bf,
         denominator_matrix_for_ban,
         lcmv_epsilon=None,
+        wmwf_mu=None,
 ):
     """
 
@@ -352,6 +353,7 @@ def get_multi_source_bf_vector_from_masks(
         denominator_matrix_for_bf:
         denominator_matrix_for_ban:
         lcmv_epsilon: None or float scalar
+        wmwf_mu:
 
     Returns: Beamforming vector with shape (F, K, D)
 
@@ -418,6 +420,11 @@ def get_multi_source_bf_vector_from_masks(
             )
 
         beamforming_vector = list()
+
+        additional_kwargs = dict()
+        if wmwf_mu is not None:
+            additional_kwargs['distortion_weight'] = wmwf_mu
+
         for k in range(K - 1):
             if denominator_matrix_for_bf is None:
                 denominator_matrix = None
@@ -425,12 +432,15 @@ def get_multi_source_bf_vector_from_masks(
                 denominator_matrix = target_psd[:, -1, :, :]
             elif denominator_matrix_for_bf == 'interference':
                 denominator_matrix = interference_psd[:, k, :, :]
+            else:
+                raise ValueError(denominator_matrix_for_bf)
 
             beamforming_vector.append(
                 pb.speech_enhancement.get_single_source_bf_vector(
                     method,
                     target_psd_matrix=target_psd[:, k, :, :],
                     noise_psd_matrix=denominator_matrix,
+                    **additional_kwargs,
                 )
             )
 
