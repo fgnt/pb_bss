@@ -188,19 +188,19 @@ class CBMMTrainer:
             if model is not None:
                 affiliation = model.predict(y, affiliation_eps=affiliation_eps)
 
+                if inline_permutation_aligner is not None:
+                    affiliation = apply_inline_permutation_alignment(
+                        affiliation=affiliation,
+                        weight_constant_axis=weight_constant_axis,
+                        aligner=inline_permutation_aligner,
+                    )
+
             model = self._m_step(
                 y,
                 affiliation=affiliation,
                 saliency=saliency,
                 weight_constant_axis=weight_constant_axis,
             )
-
-            if inline_permutation_aligner is not None:
-                affiliation = apply_inline_permutation_alignment(
-                    affiliation=affiliation,
-                    weight_constant_axis=weight_constant_axis,
-                    aligner=inline_permutation_aligner,
-                )
 
         return model
 
