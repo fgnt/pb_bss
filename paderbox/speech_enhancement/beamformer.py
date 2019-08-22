@@ -639,9 +639,9 @@ def get_wmwf_vector(
         above. Has no effect if a channel selection vector is provided.
       channel_selection_vector: A vector of shape (batch, channel) to
         select a weighted "reference" channel for each batch.
-      distortion_weight: `float` or -1 to trade-off distortion and
-        suppression. Passing -1 will use an frequency-dependent trade-off
-        factor inspired by the Max-SNR criterion.
+      distortion_weight: `float` or 'frequency_dependent' to trade-off
+        distortion and suppression. Passing 'frequency_dependent' will use a
+        frequency-dependent trade-off factor inspired by the Max-SNR criterion.
         See https://arxiv.org/abs/1707.00201 for details.
 
     Raises:
