@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-from nose_parameterized import parameterized, param
+from parameterized import parameterized, param
 
 import numpy.testing as tc
 from pb_bss.extraction import mask_module
