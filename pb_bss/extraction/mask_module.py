@@ -32,7 +32,7 @@ All other axes are regarded as independent dimensions.
 
 import numpy as np
 from typing import Optional
-from paderbox.math.misc import abs_square
+from pb_bss.utils import abs_square
 EPS = 1e-18
 
 
