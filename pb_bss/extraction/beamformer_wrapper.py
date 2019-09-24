@@ -1,11 +1,11 @@
 import numpy as np
-from typing import Optional
 
 import paderbox as pb
 from .beamformer import *
-from paderbox.utils.numpy_utils import morph
-from paderbox.math.correlation import covariance
-from scipy.signal import lfilter
+
+__all__ = [
+    'get_bf_vector',
+]
 
 
 def get_pca_rank_one_estimate(covariance_matrix, **atf_kwargs):
@@ -111,9 +111,14 @@ def get_bf_vector(
         noise_psd_matrix=None,
         **bf_kwargs
 ):
-    """
-    # ToDo: how do we use the lcmv beamformer in this context?
-     Wrapper for all beamformer
+    """ Light wrapper to obtain a beamforming vector.
+
+    Common beamformers:
+     - 'mvdr_souden'
+     - 'mvdr_souden+ban'
+     - 'rank1_gev+mvdr_souden+ban'
+     - 'gev_ban'
+
     Args:
         beamformer: string defining the kind of beamforming vector.
             Different steps of the beamforming vector estimation have to be
