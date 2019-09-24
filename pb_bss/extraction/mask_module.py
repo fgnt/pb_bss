@@ -50,12 +50,10 @@ __all__ = [
 ]
 
 
-
-
 def voiced_unvoiced_split_characteristic(
         frequency_bins: int,
-        split_bin: Optional[int]=None,
-        width: Optional[int]=None
+        split_bin: Optional[int] = None,
+        width: Optional[int] = None
 ):
     """ Use this to define different behavior for (un)voiced speech parts.
 
@@ -89,9 +87,9 @@ def voiced_unvoiced_split_characteristic(
 
 def ideal_binary_mask(
         signal: np.ndarray,
-        source_axis: int=0,
-        sensor_axis: Optional[int]=None,
-        keepdims: bool=False
+        source_axis: int = 0,
+        sensor_axis: Optional[int] = None,
+        keepdims: bool = False
 ) -> np.ndarray:
     """
     The resulting masks are binary (Value is zero or one).
@@ -138,9 +136,9 @@ def ideal_binary_mask(
 
 def wiener_like_mask(
         signal: np.ndarray,
-        source_axis: int=0,
-        sensor_axis: Optional[int]=None,
-        eps: float=EPS,
+        source_axis: int = 0,
+        sensor_axis: Optional[int] = None,
+        eps: float = EPS,
 ) -> np.ndarray:
     """
 
@@ -180,9 +178,9 @@ def wiener_like_mask(
 
 def ideal_ratio_mask(
         signal: np.ndarray,
-        source_axis: int=0,
-        sensor_axis: Optional[int]=None,
-        eps: float=EPS,
+        source_axis: int = 0,
+        sensor_axis: Optional[int] = None,
+        eps: float = EPS,
 ) -> np.ndarray:
     """
 
@@ -232,9 +230,9 @@ But this destroys the signal, which is complex.
 
 def ideal_amplitude_mask(
         signal: np.ndarray,
-        source_axis: int=0,
-        sensor_axis: Optional[int]=None,
-        eps: float=EPS,
+        source_axis: int = 0,
+        sensor_axis: Optional[int] = None,
+        eps: float = EPS,
 ) -> np.ndarray:
     """
 
@@ -283,9 +281,9 @@ But this destroys the signal, which is complex.
 
 def phase_sensitive_mask(
         signal: np.ndarray,
-        source_axis: int=0,
-        sensor_axis: Optional[int]=None,
-        eps: float=EPS,
+        source_axis: int = 0,
+        sensor_axis: Optional[int] = None,
+        eps: float = EPS,
 ) -> np.ndarray:
     """
 
@@ -318,8 +316,8 @@ But this destroys the signal, which is complex.
 
 def ideal_complex_mask(
         signal: np.ndarray,
-        source_axis: int=0,
-        sensor_axis: Optional[int]=None,
+        source_axis: int = 0,
+        sensor_axis: Optional[int] = None,
 ) -> np.ndarray:
     """
 
@@ -346,8 +344,8 @@ def lorenz_mask(
         *,
         sensor_axis=None,
         axis=(-2, -1),
-        lorenz_fraction: float=0.98,
-        weight: float=0.999,
+        lorenz_fraction: float = 0.98,
+        weight: float = 0.999,
 ) -> np.ndarray:
     """ Calculate softened mask according to Lorenz function criterion.
 
@@ -409,7 +407,7 @@ def quantile_mask(
         *,
         sensor_axis=None,
         axis=-2,
-        weight: float=0.999,
+        weight: float = 0.999,
 ) -> np.ndarray:
     """
 
@@ -474,15 +472,15 @@ def quantile_mask(
 
 def biased_binary_mask(
         signal: np.ndarray,
-        component_axis: int=0,
-        sensor_axis: Optional[int]=None,
-        frequency_axis: int=-1,
-        threshold_unvoiced_speech: int=5,
-        threshold_voiced_speech: int=0,
-        threshold_unvoiced_noise: int=-10,
-        threshold_voiced_noise: int=-10,
-        low_cut: int=5,
-        high_cut: int=500,
+        component_axis: int = 0,
+        sensor_axis: Optional[int] = None,
+        frequency_axis: int = -1,
+        threshold_unvoiced_speech: int = 5,
+        threshold_voiced_speech: int = 0,
+        threshold_unvoiced_noise: int = -10,
+        threshold_voiced_noise: int = -10,
+        low_cut: int = 5,
+        high_cut: int = 500,
 ) -> np.ndarray:
     """
 
