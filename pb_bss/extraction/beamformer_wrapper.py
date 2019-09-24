@@ -1,6 +1,6 @@
 import numpy as np
 
-import paderbox as pb
+from pb_bss.utils import labels_to_one_hot
 from .beamformer import *
 
 __all__ = [
@@ -96,13 +96,13 @@ def _get_rank_1_approximation(
 
 
 def _get_response_vector(source_index, num_sources, epsilon=0.):
-        response_vector = pb.utils.numpy_utils.labels_to_one_hot(
-            np.array(source_index),
-            num_sources,
-            dtype=np.float64
-        )
-        response_vector = np.clip(response_vector, epsilon, 1.)
-        return response_vector
+    response_vector = labels_to_one_hot(
+        np.array(source_index),
+        num_sources,
+        dtype=np.float64
+    )
+    response_vector = np.clip(response_vector, epsilon, 1.)
+    return response_vector
 
 
 def get_bf_vector(
