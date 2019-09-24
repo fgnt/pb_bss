@@ -1,4 +1,5 @@
 import setuptools
+from Cython.Build import cythonize
 
 setuptools.setup(
     name="pb_bss",
@@ -21,5 +22,10 @@ setuptools.setup(
 
     classifiers=[
         'Programming Language :: Python :: 3.6',
-    ]
+    ],
+
+    ext_modules=cythonize([
+        'pb_bss/extraction/cythonized/get_gev_vector.pyx',
+        'pb_bss/extraction/cythonized/c_eig.pyx',
+    ]),
 )
