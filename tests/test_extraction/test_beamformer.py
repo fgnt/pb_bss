@@ -2,17 +2,23 @@ import unittest
 
 import numpy as np
 import functools
-import paderbox.testing as tc
-from paderbox.speech_enhancement.beamformer import get_gev_vector, \
+import numpy.testing as tc
+from pb_bss.extraction.beamformer import get_gev_vector, \
     _get_gev_vector, _cythonized_eig, eig
-from paderbox.speech_enhancement.beamformer import get_lcmv_vector
-from paderbox.speech_enhancement.beamformer import get_mvdr_vector
-from paderbox.speech_enhancement.beamformer import get_pca_vector
-from paderbox.speech_enhancement.beamformer import get_mvdr_vector_souden
-from paderbox.speech_enhancement.beamformer import get_wmwf_vector
-from paderbox.speech_enhancement.beamformer import blind_analytic_normalization
-from paderbox.math.vector import cos_similarity
-from paderbox.utils.random_utils import uniform, hermitian, pos_def_hermitian
+from pb_bss.extraction.beamformer import get_lcmv_vector
+from pb_bss.extraction.beamformer import get_mvdr_vector
+from pb_bss.extraction.beamformer import get_pca_vector
+from pb_bss.extraction.beamformer import get_mvdr_vector_souden
+from pb_bss.extraction.beamformer import get_wmwf_vector
+from pb_bss.extraction.beamformer import blind_analytic_normalization
+from pb_bss.testing.random_utils import uniform, hermitian, pos_def_hermitian
+
+
+def cos_similarity(A, B):
+    similarity = np.abs(np.einsum('...d,...d', A, B.conj()))
+    similarity /= np.sqrt(np.abs(np.einsum('...d,...d', A, A.conj())))
+    similarity /= np.sqrt(np.abs(np.einsum('...d,...d', B, B.conj())))
+    return similarity
 
 
 class TestBeamformerWrapper(unittest.TestCase):
@@ -113,7 +119,7 @@ class TestBeamformerWrapperWithSpeakers(TestBeamformerWrapper):
 
 class TestCythonizedGetGEV(unittest.TestCase):
     def test_import(self):
-        from paderbox.speech_enhancement.cythonized.get_gev_vector import \
+        from pb_bss.extraction.cythonized.get_gev_vector import \
             _c_get_gev_vector
 
     def test_result_equal(self):
@@ -135,7 +141,7 @@ class TestCythonizedGetGEV(unittest.TestCase):
                            1.0, atol=1e-6)
 
         # assume speedup is bigger than 5
-        tc.assert_array_greater(elapsed_time_python/elapsed_time_cython1, 5)
+        assert elapsed_time_python/elapsed_time_cython1 > 5
 
 
 class TestCythonizedEig(unittest.TestCase):
@@ -167,8 +173,8 @@ class TestCythonizedEig(unittest.TestCase):
             cos_similarity(beamforming_vector, beamforming_vector_cython),
             1.0, atol=1e-6)
 
-        # assume speedup is bigger than 5
-        tc.assert_array_greater(elapsed_time_python / elapsed_time_cython1, 4)
+        # assume speedup is bigger than 4
+        assert elapsed_time_python / elapsed_time_cython1 > 4
 
 
 class TestMvdrSouden(unittest.TestCase):

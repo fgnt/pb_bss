@@ -2,8 +2,12 @@ import unittest
 
 import numpy as np
 
-import paderbox.testing as tc
-from paderbox.speech_enhancement.beamformer import get_power_spectral_density_matrix
+import numpy.testing as tc
+from pb_bss.extraction import get_power_spectral_density_matrix
+from pb_bss.testing.module_asserts import (
+    assert_hermitian,
+    assert_positive_semidefinite,
+)
 
 
 def rand(*shape, data_type):
@@ -42,8 +46,8 @@ class TestPowerSpectralDensityMatrix(unittest.TestCase):
             psd = get_power_spectral_density_matrix(x, mask)
         if psd_shape is not None:
             tc.assert_equal(psd.shape, psd_shape)
-        tc.assert_hermitian(psd)
-        tc.assert_positive_semidefinite(psd)
+        assert_hermitian(psd)
+        assert_positive_semidefinite(psd)
 
     def test_PSD_without_mask(self):
         self.gererate_and_verify_psd((self.D, self.T), None, psd_shape=(self.D, self.D))

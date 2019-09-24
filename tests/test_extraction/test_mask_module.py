@@ -3,11 +3,15 @@ import unittest
 import numpy as np
 from nose_parameterized import parameterized, param
 
-import paderbox.testing as tc
-from paderbox.speech_enhancement import mask_module
-from paderbox.speech_enhancement.mask_module import wiener_like_mask, lorenz_mask, \
+import numpy.testing as tc
+from pb_bss.extraction import mask_module
+from pb_bss.extraction.mask_module import wiener_like_mask, lorenz_mask, \
     ideal_binary_mask
-from paderbox.utils.random_utils import randn
+from pb_bss.testing.random_utils import randn
+from pb_bss.testing.module_asserts import (
+    assert_array_less_equal,
+    assert_array_greater_equal,
+)
 
 
 def randc128(*shape):
@@ -97,7 +101,7 @@ class IdealBinaryMaskTest(unittest.TestCase):
                     self.mask_calculator(**kwargs)
                 return
         out = self.mask_calculator(**kwargs)
-        tc.assert_array_greater_equal(np.min(out), 0)
+        assert_array_greater_equal(np.min(out), 0)
 
     @parameterized.expand(params)
     def test_smaler_equal_one(self, name, kwargs, out_shape, out_source_axis):
@@ -109,7 +113,7 @@ class IdealBinaryMaskTest(unittest.TestCase):
                     self.mask_calculator(**kwargs)
                 return
         out = self.mask_calculator(**kwargs)
-        tc.assert_array_less_equal(np.max(out), 1)
+        assert_array_less_equal(np.max(out), 1)
 
     @parameterized.expand(params)
     def test_sum_to_one(self, name, kwargs, out_shape, out_source_axis):
@@ -280,8 +284,8 @@ class TestLorenzMask(unittest.TestCase):
             lorenz_fraction=lorenz_fraction,
             weight=weight
         )
-        tc.assert_array_greater_equal(mask, 0.5 * (1 - weight))
-        tc.assert_array_less_equal(mask, 0.5 * (1 + weight))
+        assert_array_greater_equal(mask, 0.5 * (1 - weight))
+        assert_array_less_equal(mask, 0.5 * (1 + weight))
 
     def test_multi_channel(self):
         signal = self.signal[0][0]
@@ -310,7 +314,6 @@ class TestLorenzMask(unittest.TestCase):
             [[0, 0, 1],
              [1, 1, 1],
              [1, 1, 1]]], dtype=np.float32))
-
 
 
 if __name__ == '__main__':
