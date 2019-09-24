@@ -140,8 +140,8 @@ class TestCythonizedGetGEV(unittest.TestCase):
         tc.assert_allclose(cos_similarity(python_gev, cython_gev),
                            1.0, atol=1e-6)
 
-        # assume speedup is bigger than 5
-        assert elapsed_time_python/elapsed_time_cython1 > 5
+        # assume speedup is bigger than 4
+        assert elapsed_time_python/elapsed_time_cython1 > 4
 
 
 class TestCythonizedEig(unittest.TestCase):
