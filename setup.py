@@ -1,4 +1,5 @@
 import setuptools
+import numpy as np
 from Cython.Build import cythonize
 
 setuptools.setup(
@@ -28,4 +29,5 @@ setuptools.setup(
         'pb_bss/extraction/cythonized/get_gev_vector.pyx',
         'pb_bss/extraction/cythonized/c_eig.pyx',
     ]),
+    include_dirs=[np.get_include()],
 )
