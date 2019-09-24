@@ -4,9 +4,6 @@ import functools
 import inspect
 import warnings
 
-# ToDo: Find, where this is needed and remove this import
-from pb_bss.extraction.beamformer import get_power_spectral_density_matrix
-
 # NOTE(kgriffs): We don't want our deprecations to be ignored by default,
 # so create our own type.
 class DeprecatedWarning(UserWarning):
