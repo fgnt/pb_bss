@@ -20,9 +20,9 @@ jobs:
         versionSpec: $(PYTHON_VERSION)
     - bash: |
         sudo apt-get install libsndfile1
-        pip install numpy scipy
+        pip install numpy scipy Cython
         pip install pytest
-        pip install nara_wpe lazy_dataset sklearn matplotlib soundfile
+        pip install nara_wpe lazy_dataset sklearn matplotlib soundfile parameterized
         pip install pystoi mir_eval
     - bash: pip install -e .
     - bash: pytest

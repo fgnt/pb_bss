@@ -10,7 +10,7 @@ import numpy as np
 from pb_bss.distribution.utils import _ProbabilisticModel
 from pb_bss.utils import is_broadcast_compatible
 
-from pb_bss.utils import get_power_spectral_density_matrix, get_pca
+from pb_bss.utils import get_pca
 
 
 def normalize_observation(observation):

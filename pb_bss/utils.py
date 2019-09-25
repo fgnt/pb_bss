@@ -4,7 +4,6 @@ import functools
 import inspect
 import warnings
 
-
 # NOTE(kgriffs): We don't want our deprecations to be ignored by default,
 # so create our own type.
 class DeprecatedWarning(UserWarning):
@@ -169,92 +168,6 @@ def get_pca(target_psd_matrix, use_scipy=False):
     return beamforming_vector, eigenvalues
 
 
-def get_power_spectral_density_matrix(
-        observation, mask=None, sensor_dim=-2, source_dim=-2, time_dim=-1
-):
-    """
-    Calculates the weighted power spectral density matrix.
-    It's also called covariance matrix.
-    With the dim parameters you can change the sort of the dims of the
-    observation and mask.
-    But not every combination is allowed.
-
-    :param observation: Complex observations with shape (..., sensors, frames)
-    :param mask: Masks with shape (bins, frames) or (..., sources, frames)
-    :param sensor_dim: change sensor dimension index (Default: -2)
-    :param source_dim: change source dimension index (Default: -2),
-        source_dim = 0 means mask shape (sources, ..., frames)
-    :param time_dim:  change time dimension index (Default: -1),
-        this index must match for mask and observation
-    :return: PSD matrix with shape (..., sensors, sensors)
-        or (..., sources, sensors, sensors) or
-        (sources, ..., sensors, sensors)
-        if source_dim % observation.ndim < -2 respectively
-        mask shape (sources, ..., frames)
-
-    Examples
-    --------
-    >>> F, T, D, K = 51, 31, 6, 2
-    >>> X = np.random.randn(F, D, T) + 1j * np.random.randn(F, D, T)
-    >>> mask = np.random.randn(F, K, T)
-    >>> mask = mask / np.sum(mask, axis=0, keepdims=True)
-    >>> get_power_spectral_density_matrix(X, mask=mask).shape
-    (51, 2, 6, 6)
-    >>> mask = np.random.randn(F, T)
-    >>> mask = mask / np.sum(mask, axis=0, keepdims=True)
-    >>> get_power_spectral_density_matrix(X, mask=mask).shape
-    (51, 6, 6)
-    """
-
-    # TODO: Can we use nt.utils.math_ops.covariance instead?
-
-    # ensure negative dim indexes
-    sensor_dim, source_dim, time_dim = (d % observation.ndim - observation.ndim
-                                        for d in
-                                        (sensor_dim, source_dim, time_dim))
-
-    # ensure observation shape (..., sensors, frames)
-    obs_transpose = [i for i in range(-observation.ndim, 0) if
-                     i not in [sensor_dim, time_dim]] + [sensor_dim, time_dim]
-    observation = observation.transpose(obs_transpose)
-
-    if mask is None:
-        psd = np.einsum('...dt,...et->...de', observation, observation.conj())
-
-        # normalize
-        psd /= observation.shape[-1]
-
-    else:
-        # Unfortunately, this function changes mask.
-        mask = np.copy(mask)
-
-        # normalize
-        if mask.dtype == np.bool:
-            mask = np.asfarray(mask)
-
-        mask /= np.maximum(np.sum(mask, axis=time_dim, keepdims=True), 1e-10)
-
-        if mask.ndim + 1 == observation.ndim:
-            mask = np.expand_dims(mask, -2)
-            psd = np.einsum('...dt,...et->...de', mask * observation,
-                            observation.conj())
-        else:
-            # ensure shape (..., sources, frames)
-            mask_transpose = [i for i in range(-observation.ndim, 0) if
-                              i not in [source_dim, time_dim]] + [source_dim,
-                                                                  time_dim]
-            mask = mask.transpose(mask_transpose)
-
-            psd = np.einsum('...kt,...dt,...et->...kde', mask, observation,
-                            observation.conj())
-
-            if source_dim < -2:
-                # assume PSD shape (sources, ..., sensors, sensors) is interested
-                psd = np.rollaxis(psd, -3, source_dim % observation.ndim)
-
-    return psd
-
-
 def get_stft_center_frequencies(size=1024, sample_rate=16000):
     """
     It is often necessary to know, which center frequency is
@@ -362,6 +275,31 @@ def labels_to_one_hot(
     zeros = np.moveaxis(zeros, 0, axis)
 
     return zeros
+
+
+def abs_square(x: np.ndarray):
+    """
+
+    https://github.com/numpy/numpy/issues/9679
+
+    Bug in numpy 1.13.1
+    >> np.ones(32768).imag ** 2
+    Traceback (most recent call last):
+    ...
+    ValueError: output array is read-only
+    >> np.ones(32767).imag ** 2
+    array([ 0.,  0.,  0., ...,  0.,  0.,  0.])
+
+    >>> abs_square(np.ones(32768)).shape
+    (32768,)
+    >>> abs_square(np.ones(32768, dtype=np.complex64)).shape
+    (32768,)
+    """
+
+    if np.iscomplexobj(x):
+        return x.real ** 2 + x.imag ** 2
+    else:
+        return x ** 2
 
 
 def unsqueeze(array, axis):
