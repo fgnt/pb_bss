@@ -210,7 +210,8 @@ def get_bf_vector(
         D = target_psd_matrix.shape[-1]
         beamforming_vector = np.zeros(D)
         beamforming_vector[int(beamformer_core[2:])] = 1
-        beamforming_vector = np.broadcast_to(beamforming_vector, target_psd_matrix.shape[:-1])
+        beamforming_vector = np.broadcast_to(
+            beamforming_vector, target_psd_matrix.shape[:-1])
     else:
         raise ValueError(
             f'Could not find implementation for {beamformer_core}.\n'
