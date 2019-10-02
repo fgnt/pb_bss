@@ -260,8 +260,7 @@ class TestLorenzMask(unittest.TestCase):
         )
         tc.assert_equal(
             mask.shape,
-            tuple([1 if sensor_axis == i else [K, D, F, T][i]
-                   for i in range(4)])
+            tuple(v for i, v in enumerate([K, D, F, T]) if i != sensor_axis)
         )
 
     @parameterized.expand(params_sensor_axis + params_lorenz_fraction)
