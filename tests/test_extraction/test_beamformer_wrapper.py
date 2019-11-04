@@ -75,10 +75,17 @@ class TestBeamformerWrapper(unittest.TestCase):
         assert gev_rank1.shape == self.output_shape, gev_rank1.shape
         gev_rank1_test_equal = get_bf_vector(
             'rank1_gev+gev', self.target_psd, self.noise_psd)
+
+        # Test if two subsequent identical calls produce same result
         np.testing.assert_equal(gev_rank1, gev_rank1_test_equal)
+
+        # Test that all magnitudes are equal
         gev = get_bf_vector('gev', self.target_psd, self.noise_psd)
         np.testing.assert_allclose(
             np.abs(gev_rank1), np.abs(gev), verbose=True)
+
+        # Test that they are equal when constraining the phases. In other
+        # they are allowed to differ with respect to the phase.
         np.testing.assert_allclose(zero_degree_normalization(gev_rank1, 0),
                                    zero_degree_normalization(gev, 0),
                                    verbose=True)
