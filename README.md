@@ -28,11 +28,13 @@ We expect that `numpy`, `scipy` and `cython` are installed (e.g. `conda install 
 
 In the `setup.py` we follow the concept of minimal dependencies.
 So depending on which part of this core you are interested,
-you need to install the following packages:
+you need to install the following extra dependencies:
 
 ```bash
-pip install mir_eval pystoi git+https://github.com/ludlows/python-pesq  # Metric dependencies
-pip install soundFile nara_wpe  # Notebook (ipynb) example dependency
-pip install nose parameterized lazy_dataset  # Test dependency
-pip install sympy  # Bingham mixture model symbolic solution
+pip install -e .[metrics]  # Metric dependencies
+pip install -e .[examples]  # Notebook (ipynb) example dependency
+pip install -e .[tests]  # Test dependency
+pip install -e .[mm]  # Bingham mixture model symbolic solution
+# Or, to install all dependencies, use
+pip install -e .[all]
 ```

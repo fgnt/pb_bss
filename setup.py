@@ -14,6 +14,17 @@ or
     'pip install numpy Cython scipy'
 """) from e
 
+# Metric dependencies
+metrics = ['mir_eval',
+           'pystoi',
+           'pypesq @ git+https://github.com/ludlows/python-pesq']
+# Notebook (ipynb) example dependencies
+examples = ['soundFile', 'nara_wpe']
+# Test dependencies
+tests = ['nose', 'parameterized', 'lazy_dataset']
+# Bingham mixture model symbolic solution dependency
+mm = ['sympy']
+
 
 setuptools.setup(
     name="pb_bss",
@@ -33,6 +44,14 @@ setuptools.setup(
         'cached_property',
         'einops',
     ],
+
+    extras_require={
+        'metrics': metrics,
+        'examples': examples,
+        'tests': tests,
+        'mix_mod': mixmod,
+        'all': metrics + examples + tests + mm,
+    },
 
     classifiers=[
         'Programming Language :: Python :: 3.6',
