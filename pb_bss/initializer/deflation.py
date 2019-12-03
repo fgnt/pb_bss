@@ -1,6 +1,6 @@
 import numpy as np
 from pb_bss.permutation_alignment import _parameterized_vector_norm
-import paderbox as pb
+import pb_bss.extraction
 
 
 def deflationSeed(
@@ -58,10 +58,10 @@ def deflationSeed(
             range(-neighbors, neighbors + 1)
         ], axis=-1)
 
-        psd = pb.speech_enhancement.beamformer.get_power_spectral_density_matrix(
+        psd = pb_bss.extraction.get_power_spectral_density_matrix(
             Y_local, mask=saliencies_local)
 
-        mode = pb.speech_enhancement.beamformer.get_pca_vector(psd)
+        mode = pb_bss.extraction.get_pca_vector(psd)
 
         similarity = np.abs(np.einsum(
             'FTD,FD->FT',
