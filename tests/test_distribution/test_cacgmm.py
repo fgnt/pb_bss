@@ -23,6 +23,7 @@ def solve_permutation(estimated_covariance, covariance):
 
 class TestCACGMM(unittest.TestCase):
     def test_cacgmm(self):
+        np.random.seed(0)
         samples = 10000
         weight = np.array([0.3, 0.7])
         covariance = np.array(
