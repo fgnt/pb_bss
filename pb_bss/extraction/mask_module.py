@@ -61,9 +61,11 @@ def voiced_unvoiced_split_characteristic(
         frequency_bins: Number of stft frequency bins, i.e. 513.
         split_bin: Depending on your stft parameters, this should be somewhere
             between voiced and unvoiced speech segments. For 16 kHz and
-            an fft window size of 1024, this happens to be approximately 513//2.
+            an fft window size of 1024, this happens to be
+            approximately 513//2.
         width: Depends on your stft parameters. For 16 kHz and
-            an fft window size of 1024, this happens to be approximately 513//5.
+            an fft window size of 1024, this happens to be
+            approximately 513//5.
 
     Returns: Tuple of voiced and unvoiced frequency mask.
 
