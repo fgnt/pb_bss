@@ -87,28 +87,30 @@ class InputMetrics:
 
     @cached_property.cached_property
     def pesq(self):
+        # pypesq does not release the GIL. Either release our pesq code or
+        # change pypesq to release the GIL and be thread safe
         try:
-            import paderbox as pb
+            import pypesq
         except ImportError:
-            return np.nan
-
+            raise AssertionError(
+                'To use this pesq implementation, install '
+                'https://github.com/ludlows/python-pesq .'
+            )
         mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
-        try:
-            scores = pb.evaluation.pesq(
-                reference=rearrange(
+
+        return np.reshape([
+            pypesq.pypesq(ref=ref, deg=deg, fs=self.sample_rate, mode=mode)
+            for ref, deg in zip(
+                rearrange(
                     [self.speech_source] * self.channels,
                     'channels sources samples -> (sources channels) samples'
                 ),
-                degraded=rearrange(
+                rearrange(
                     [self.observation] * self.K_source,
                     'sources channels samples -> (sources channels) samples'
-                ),
-                rate=self.sample_rate,
-                mode=mode,
+                )
             )
-            return np.reshape(scores, [self.K_source, self.channels])
-        except OSError:
-            return np.nan
+        ], [self.K_source, self.channels])
 
     @cached_property.cached_property
     def invasive_sxr(self):
@@ -334,24 +336,6 @@ class OutputMetrics:
 
     @cached_property.cached_property
     def pesq(self):
-        try:
-            import paderbox as pb
-        except ImportError:
-            return np.nan
-
-        mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
-        try:
-            return pb.evaluation.pesq(
-                reference=self.speech_source,
-                degraded=self.speech_prediction_selection,
-                rate=self.sample_rate,
-                mode=mode,
-            )
-        except OSError:
-            return np.nan
-
-    @cached_property.cached_property
-    def pypesq(self):
         # pypesq does not release the GIL. Either release our pesq code or
         # change pypesq to release the GIL and be thread safe
         try:
@@ -367,11 +351,11 @@ class OutputMetrics:
         assert self.speech_source.ndim == 2, (self.speech_source.shape, self.speech_prediction_selection.shape)  # NOQA
         assert self.speech_source.shape[0] < 5, (self.speech_source.shape, self.speech_prediction_selection.shape)  # NOQA
 
-        return [
+        return np.array([
             pypesq.pypesq(ref=ref, deg=deg, fs=self.sample_rate, mode=mode)
             for ref, deg in zip(
                 self.speech_source, self.speech_prediction_selection)
-        ]
+        ])
 
     @cached_property.cached_property
     def invasive_sxr(self):
