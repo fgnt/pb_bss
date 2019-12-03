@@ -23,7 +23,7 @@ examples = ['soundFile', 'nara_wpe']
 # Test dependencies
 tests = ['nose', 'parameterized', 'lazy_dataset']
 # Bingham mixture model symbolic solution dependency
-mixmod = ['sympy']
+mm = ['sympy']
 
 
 setuptools.setup(
@@ -50,7 +50,7 @@ setuptools.setup(
         'examples': examples,
         'tests': tests,
         'mix_mod': mixmod,
-        'all': metrics + examples + tests + mixmod,
+        'all': metrics + examples + tests + mm,
     },
 
     classifiers=[
