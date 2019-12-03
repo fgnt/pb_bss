@@ -6,9 +6,7 @@ move independent dimensions to the front.
 That results i.e. in the following possible shapes:
     X: Shape (F, D, T).
     mask: Shape (F, K, T).
-    PSD: Shape (F, D, D).
-
-# TODO: These shape hints do not fit together. If mask has K, PSD needs it, too.
+    PSD: Shape (F, K, D, D).
 
 The functions themselves are written more generic, though.
 """
@@ -41,9 +39,9 @@ try:
     from .cythonized.get_gev_vector import _c_get_gev_vector
 except ImportError:
     c_gev_available = False
-    warnings.warn('Could not import cythonized get_gev_vector. Falling back to '
-                  'python implementation. Maybe you need to rebuild/reinstall '
-                  'the toolbox?')
+    warnings.warn('Could not import cythonized get_gev_vector. Falling back '
+                  'to Python implementation. Maybe you need to '
+                  'rebuild/reinstall the toolbox?')
 else:
     c_gev_available = True
 
@@ -58,14 +56,19 @@ else:
     c_eig_available = True
 
 
-def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
-                                      source_dim=-2, time_dim=-1, normalize=True):
+def get_power_spectral_density_matrix(
+        observation,
+        mask=None,
+        sensor_dim=-2,
+        source_dim=-2,
+        time_dim=-1,
+        normalize=True,
+):
     """
     Calculates the weighted power spectral density matrix.
     It's also called covariance matrix.
     With the dim parameters you can change the sort of the dims of the
-    observation and mask.
-    But not every combination is allowed.
+    observation and mask, but not every combination is allowed.
 
     :param observation: Complex observations with shape (..., sensors, frames)
     :param mask: Masks with shape (bins, frames) or (..., sources, frames)
@@ -94,17 +97,17 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
     >>> get_power_spectral_density_matrix(X, mask=mask).shape
     (51, 6, 6)
     """
-
-    # TODO: Can we use paderbox.utils.math_ops.covariance instead?
-
     # ensure negative dim indexes
-    sensor_dim, source_dim, time_dim = (d % observation.ndim - observation.ndim
-                                        for d in
-                                        (sensor_dim, source_dim, time_dim))
+    sensor_dim, source_dim, time_dim = (
+        d % observation.ndim - observation.ndim
+        for d in (sensor_dim, source_dim, time_dim)
+    )
 
     # ensure observation shape (..., sensors, frames)
-    obs_transpose = [i for i in range(-observation.ndim, 0) if
-                     i not in [sensor_dim, time_dim]] + [sensor_dim, time_dim]
+    obs_transpose = [
+        i
+        for i in range(-observation.ndim, 0) if i not in [sensor_dim, time_dim]
+    ] + [sensor_dim, time_dim]
     observation = observation.transpose(obs_transpose)
 
     if mask is None:
@@ -114,7 +117,7 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
         psd /= observation.shape[-1]
 
     else:
-        # Unfortunately, this function changes mask.
+        # Unfortunately, this function changes `mask`.
         mask = np.copy(mask)
 
         # normalize
@@ -122,30 +125,51 @@ def get_power_spectral_density_matrix(observation, mask=None, sensor_dim=-2,
             mask = np.asfarray(mask)
 
         if normalize:
-            mask /= np.maximum(np.sum(mask, axis=time_dim, keepdims=True), 1e-10)
+            mask /= np.maximum(
+                np.sum(mask, axis=time_dim, keepdims=True),
+                1e-10,
+            )
 
         if mask.ndim + 1 == observation.ndim:
             mask = np.expand_dims(mask, -2)
-            psd = np.einsum('...dt,...et->...de', mask * observation,
-                            observation.conj())
+            psd = np.einsum(
+                '...dt,...et->...de',
+                mask * observation,
+                observation.conj(),
+            )
         else:
             # ensure shape (..., sources, frames)
-            mask_transpose = [i for i in range(-observation.ndim, 0) if
-                              i not in [source_dim, time_dim]] + [source_dim,
-                                                                  time_dim]
+            mask_transpose = [
+                i
+                for i in range(-observation.ndim, 0)
+                if i not in [source_dim, time_dim]
+            ] + [source_dim, time_dim]
             mask = mask.transpose(mask_transpose)
 
-            psd = np.einsum('...kt,...dt,...et->...kde', mask, observation,
-                            observation.conj())
+            psd = np.einsum(
+                '...kt,...dt,...et->...kde',
+                mask,
+                observation,
+                observation.conj()
+            )
 
             if source_dim < -2:
-                # assume PSD shape (sources, ..., sensors, sensors) is interested
+                # Assume PSD shape (sources, ..., sensors, sensors) is desired
                 psd = np.rollaxis(psd, -3, source_dim % observation.ndim)
 
     return psd
 
 
 def get_pca(target_psd_matrix, return_all_vecs=False):
+    """Calculates all principal components and corresponding eigenvalues.
+
+    Most of the time a separate wrapper picks the eigenvector corresponding to
+    the largest eigenvalue. Here, it is `get_pca_vector()`.
+
+    :param target_psd_matrix:
+    :param return_all_vecs:
+    :return:
+    """
     # Save the shape of target_psd_matrix
     shape = target_psd_matrix.shape
 
@@ -154,7 +178,8 @@ def get_pca(target_psd_matrix, return_all_vecs=False):
 
     # Calculate eigenvals/vecs
     eigenvals, eigenvecs = np.linalg.eigh(target_psd_matrix)
-    # Select eigenvec for max eigenval. Eigenvals are sorted in ascending order.
+    # Select eigenvec for max eigenval.
+    # Eigenvals are sorted in ascending order.
     if return_all_vecs:
         # Reconstruct original shape
         beamforming_vector = np.reshape(eigenvecs, shape)
@@ -264,15 +289,31 @@ def get_mvdr_vector_merl(target_psd_matrix, noise_psd_matrix):
     return h[..., h_idx]
 
 
-def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
-                   use_eig=False):
+def get_gev_vector(
+        target_psd_matrix,
+        noise_psd_matrix,
+        force_cython=False,
+        use_eig=False,
+):
     """
     Returns the GEV beamforming vector.
+
+    Warsitz, Ernst, and Reinhold Haeb-Umbach. "Blind acoustic beamforming
+    based on generalized eigenvalue decomposition." IEEE Transactions on
+    audio, speech, and language processing 15.5 (2007): 1529-1539.
 
     :param target_psd_matrix: Target PSD matrix
         with shape (..., sensors, sensors)
     :param noise_psd_matrix: Noise PSD matrix
         with shape (..., sensors, sensors)
+    :param force_cython: This code normally tries to run the Cython
+        installation. If that is not available, it tries another
+        implementation. This flag enforces Cython usage and causes an
+        exception when the Cython implementation is not available.
+    :param use_eig: Normally, using `eigh()` is more appropriate because
+        all involved matrices are assumed Hermitian. However, sometimes one
+        might want to resort to `eig()`. It crashes less often, but really
+        hides, when you have matrices which are far from Hermitian.
     :return: Set of beamforming vectors with shape (..., sensors)
     """
     assert noise_psd_matrix is not None
@@ -281,8 +322,13 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
         try:
             if target_psd_matrix.ndim == 3:
                 return _c_get_gev_vector(
-                    np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
-                    np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+                    np.asfortranarray(
+                        target_psd_matrix.astype(np.complex128).T
+                    ),
+                    np.asfortranarray(
+                        noise_psd_matrix.astype(np.complex128).T
+                    )
+                )
             else:
                 D = target_psd_matrix.shape[-1]
                 assert D == target_psd_matrix.shape[-2]
@@ -291,8 +337,12 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
                 target_psd_matrix = target_psd_matrix.reshape(-1, D, D)
                 noise_psd_matrix = noise_psd_matrix.reshape(-1, D, D)
                 ret = _c_get_gev_vector(
-                    np.asfortranarray(target_psd_matrix.astype(np.complex128).T),
-                    np.asfortranarray(noise_psd_matrix.astype(np.complex128).T))
+                    np.asfortranarray(
+                        target_psd_matrix.astype(np.complex128).T
+                    ),
+                    np.asfortranarray(
+                        noise_psd_matrix.astype(np.complex128).T)
+                )
                 return ret.reshape(*dst_shape)
         except ValueError as e:
             if not force_cython:
@@ -315,6 +365,19 @@ def get_gev_vector(target_psd_matrix, noise_psd_matrix, force_cython=False,
 
 
 def _get_gev_vector(target_psd_matrix, noise_psd_matrix, use_eig=False):
+    """Fallback variant to calculate GEV beamformer.
+
+    This fallback is rather slow and operates per frequency. It is only called
+    when all other variants failed.
+
+    :param target_psd_matrix:
+    :param noise_psd_matrix:
+    :param use_eig: Normally, using `eigh()` is more appropriate because
+        all involved matrices are assumed Hermitian. However, sometimes one
+        might want to resort to `eig()`. It crashes less often, but really
+        hides, when you have matrices which are far from Hermitian.
+    :return:
+    """
     assert target_psd_matrix.shape == noise_psd_matrix.shape
     assert target_psd_matrix.shape[-2] == target_psd_matrix.shape[-1]
 
@@ -341,15 +404,15 @@ def _get_gev_vector(target_psd_matrix, noise_psd_matrix, use_eig=False):
                 f, target_psd_matrix[f], noise_psd_matrix[f]))
         except np.linalg.LinAlgError:
             raise np.linalg.LinAlgError('Error for frequency {}\n'
-                             'phi_xx: {}\n'
-                             'phi_nn: {}'.format(
+                                        'phi_xx: {}\n'
+                                        'phi_nn: {}'.format(
                 f, target_psd_matrix[f], noise_psd_matrix[f]))
         beamforming_vector[f, :] = eigenvecs[:, np.argmax(eigenvals)]
     return beamforming_vector.reshape(original_shape[:-1])
 
 
 def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
-    """
+    """Calculates an LCMV beamforming vector.
 
     :param atf_vectors: Acoustic transfer function vectors for
         each source with shape (targets k, bins f, sensors d)
@@ -394,7 +457,14 @@ def get_lcmv_vector(atf_vectors, response_vector, noise_psd_matrix):
 
 
 def blind_analytic_normalization(vector, noise_psd_matrix):
-    """Reduces distortions in beamformed ouptput.
+    """Reduces distortions by normalizing the beamforming vectors.
+
+    See Section III.A in the following paper:
+
+    Warsitz, Ernst, and Reinhold Haeb-Umbach. "Blind acoustic beamforming
+    based on generalized eigenvalue decomposition." IEEE Transactions on
+    audio, speech, and language processing 15.5 (2007): 1529-1539.
+
     Args:
         vector: Beamforming vector with shape (..., sensors)
         noise_psd_matrix: With shape (..., sensors, sensors)
@@ -502,6 +572,9 @@ def condition_covariance(x, gamma):
 def apply_beamforming_vector(vector, mix):
     """Applies a beamforming vector such that the sensor dimension disappears.
 
+    Although this function may seem simple, it turned out that using it
+    reduced implementation errors in practice quite a bit.
+
     :param vector: Beamforming vector with dimensions ..., sensors
     :param mix: Observed signal with dimensions ..., sensors, time-frames
     :return: A beamformed signal with dimensions ..., time-frames
@@ -513,6 +586,10 @@ def apply_beamforming_vector(vector, mix):
 def apply_online_beamforming_vector(vector, mix):
     """Applies a beamforming vector such that the sensor dimension disappears.
 
+    This emulates an online system, e.g., it allows time dependent
+    beamforming vectors. However, the implementation itself needs access to
+    the entire audio block anyway.
+
     :param vector: Beamforming vector with dimensions ..., sensors
     :param mix: Observed signal with dimensions ..., sensors, time-frames
     :return: A beamformed signal with dimensions ..., time-frames
@@ -521,8 +598,12 @@ def apply_online_beamforming_vector(vector, mix):
     return np.einsum('...at,...at->...t', vector.conj(), mix)
 
 
-def get_optimal_reference_channel(w_mat, target_psd_matrix, noise_psd_matrix,
-                                  eps=None):
+def get_optimal_reference_channel(
+        w_mat,
+        target_psd_matrix,
+        noise_psd_matrix,
+        eps=None,
+):
     if w_mat.ndim != 3:
         raise ValueError(
             'Estimating the ref_channel expects currently that the input '
