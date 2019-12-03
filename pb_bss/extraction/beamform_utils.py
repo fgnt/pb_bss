@@ -39,6 +39,17 @@ def get_steering_vector(
         sample_rate=16000,
         normalize=False
 ):
+    """Calculates analytic steering vector from TDoA.
+
+    Can be used when some oracle information is available. Often, DoA
+    estimation algorithms rely on steering vectors.
+
+    :param time_difference_of_arrival:
+    :param stft_size:
+    :param sample_rate:
+    :param normalize:
+    :return:
+    """
     center_frequencies = get_stft_center_frequencies(stft_size, sample_rate)
     steering_vector = numpy.exp(
         -2j * numpy.pi *
@@ -46,7 +57,9 @@ def get_steering_vector(
         time_difference_of_arrival[..., numpy.newaxis]
     )
     if normalize:
-        steering_vector /= np.linalg.norm(steering_vector, axis=-2, keepdims=True)
+        steering_vector /= np.linalg.norm(
+            steering_vector, axis=-2, keepdims=True
+        )
     return steering_vector
 
 
@@ -144,10 +157,3 @@ def get_farfield_time_difference_of_arrival(
         )
 
     return projected_distance / sound_velocity
-
-
-def get_chime_sensor_positions():
-    return numpy.array([
-        [-10, 0, 10, -10, 0, 10],
-        [19, 19, 19, 0, 0, 0],
-        [0, 0, 0, 0, 0, 0]])/100.
