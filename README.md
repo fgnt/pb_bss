@@ -16,3 +16,23 @@ In particular, the repository contains methods to integrate Deep Clustering (a n
   Month                    = {Aug}
 }
 ```
+
+# Installation
+Install it directly from source
+```bash
+git clone https://github.com/fgnt/pb_bss.git
+cd pb_bss
+pip install --editable .
+```
+We expect that `numpy`, `scipy` and `cython` are installed (e.g. `conda install numpy scipy cython` or `pip install numpy scipy cython`).
+
+In the `setup.py` we follow the concept of minimal dependencies.
+So depending on which part of this core you are interested,
+you need to install the following packages:
+
+```bash
+pip install mir_eval pystoi git+https://github.com/ludlows/python-pesq  # Metric dependencies
+pip install soundFile nara_wpe  # Notebook (ipynb) example dependency
+pip install nose parameterized lazy_dataset  # Test dependency
+pip install sympy  # Bingham mixture model symbolic solution
+```
