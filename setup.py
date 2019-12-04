@@ -49,7 +49,7 @@ setuptools.setup(
         'metrics': metrics,
         'examples': examples,
         'tests': tests,
-        'mix_mod': mixmod,
+        'mm': mm,
         'all': metrics + examples + tests + mm,
     },
 
