@@ -2,9 +2,12 @@ import numpy as np
 import numpy.testing as nptest
 import unittest
 
-from paderbox.evaluation.sxr_module import input_sxr, output_sxr
+from pb_bss.evaluation.sxr_module import input_sxr, output_sxr
 from paderbox.utils.numpy_utils import morph
 from paderbox.testing import condition
+
+
+# ToDo: move this test to pb_bss
 
 
 class TestSXR(unittest.TestCase):
