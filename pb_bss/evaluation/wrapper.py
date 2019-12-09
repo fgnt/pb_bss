@@ -87,30 +87,14 @@ class InputMetrics:
 
     @cached_property.cached_property
     def pesq(self):
-        # pypesq does not release the GIL. Either release our pesq code or
-        # change pypesq to release the GIL and be thread safe
-        try:
-            import pypesq
-        except ImportError:
-            raise AssertionError(
-                'To use this pesq implementation, install '
-                'https://github.com/ludlows/python-pesq .'
-            )
-        mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
-
-        return np.reshape([
-            pypesq.pypesq(ref=ref, deg=deg, fs=self.sample_rate, mode=mode)
-            for ref, deg in zip(
+        return pb_bss.evaluation.pesq(
                 rearrange(
                     [self.speech_source] * self.channels,
-                    'channels sources samples -> (sources channels) samples'
+                    'channels sources samples -> sources channels samples'
                 ),
-                rearrange(
-                    [self.observation] * self.K_source,
-                    'sources channels samples -> (sources channels) samples'
-                )
-            )
-        ], [self.K_source, self.channels])
+                [self.observation] * self.K_source,
+                sample_rate=self.sample_rate,
+        )
 
     @cached_property.cached_property
     def invasive_sxr(self):
@@ -336,26 +320,11 @@ class OutputMetrics:
 
     @cached_property.cached_property
     def pesq(self):
-        # pypesq does not release the GIL. Either release our pesq code or
-        # change pypesq to release the GIL and be thread safe
-        try:
-            import pypesq
-        except ImportError:
-            raise AssertionError(
-                'To use this pesq implementation, install '
-                'https://github.com/ludlows/python-pesq .'
-            )
-        mode = {8000: 'nb', 16000: 'wb'}[self.sample_rate]
-
-        assert self.speech_source.shape == self.speech_prediction_selection.shape, (self.speech_source.shape, self.speech_prediction_selection.shape)  # NOQA
-        assert self.speech_source.ndim == 2, (self.speech_source.shape, self.speech_prediction_selection.shape)  # NOQA
-        assert self.speech_source.shape[0] < 5, (self.speech_source.shape, self.speech_prediction_selection.shape)  # NOQA
-
-        return np.array([
-            pypesq.pypesq(ref=ref, deg=deg, fs=self.sample_rate, mode=mode)
-            for ref, deg in zip(
-                self.speech_source, self.speech_prediction_selection)
-        ])
+        return pb_bss.evaluation.pesq(
+            reference=self.speech_source,
+            estimation=self.speech_prediction_selection,
+            sample_rate=self.sample_rate,
+        )
 
     @cached_property.cached_property
     def invasive_sxr(self):
