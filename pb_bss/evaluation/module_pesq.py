@@ -36,11 +36,12 @@ def pesq(reference, estimation, sample_rate, mode=None):
     # pypesq does not release the GIL. Either release our pesq code or
     # change pypesq to release the GIL and be thread safe
     try:
-        import pypesq
+        import pesq
     except ImportError:
         raise AssertionError(
-            'To use this pesq implementation, install '
-            'https://github.com/ludlows/python-pesq .'
+            'To use this pesq implementation, install pesq from\n'
+            'https://github.com/ludlows/python-pesq\n'
+            'or istall it with `pip install pesq`'
         )
 
     estimation, reference = np.broadcast_arrays(estimation, reference)
@@ -62,7 +63,7 @@ def pesq(reference, estimation, sample_rate, mode=None):
             assert reference.shape[i] < 30, (i, reference.shape, estimation.shape)  # NOQA
 
         return np.array([
-            pypesq.pypesq(
+            pesq.pesq(
                 ref=reference[i],
                 deg=estimation[i],
                 fs=sample_rate,
@@ -71,7 +72,7 @@ def pesq(reference, estimation, sample_rate, mode=None):
             for i in np.ndindex(*reference.shape[:-1])
         ]).reshape(reference.shape[:-1])
     elif reference.ndim == 1:
-        return pypesq.pypesq(
+        return pesq.pesq(
             ref=reference, deg=estimation, fs=sample_rate, mode=mode)
     else:
         raise NotImplementedError(reference.ndim)
