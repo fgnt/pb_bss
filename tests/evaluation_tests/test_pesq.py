@@ -1,7 +1,6 @@
 import unittest
 import numpy as np
 from paderbox.io.audioread import load_audio
-from paderbox.io.data_dir import testing as testing_dir
 from paderbox.testing.testfile_fetcher import get_file_path
 from pb_bss.evaluation import pesq
 
