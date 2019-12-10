@@ -17,7 +17,7 @@ or
 # Metric dependencies
 metrics = ['mir_eval',
            'pystoi',
-           'pypesq @ git+https://github.com/ludlows/python-pesq']
+           'pesq']
 # Notebook (ipynb) example dependencies
 examples = ['soundFile', 'nara_wpe']
 # Test dependencies
