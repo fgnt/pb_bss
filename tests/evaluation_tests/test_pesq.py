@@ -2,7 +2,7 @@ import unittest
 import numpy as np
 from paderbox.io.audioread import load_audio
 from paderbox.io.data_dir import testing as testing_dir
-
+from paderbox.testing.testfile_fetcher import get_file_path
 from pb_bss.evaluation import pesq
 
 
@@ -15,9 +15,8 @@ class TestProposedPESQ(unittest.TestCase):
     This is, why it fails.
     """
     def setUp(self):
-        data_dir = testing_dir / 'evaluation' / 'data'
-        self.ref_path = data_dir / 'speech.wav'
-        self.deg_path = data_dir / 'speech_bab_0dB.wav'
+        self.ref_path = get_file_path('speech.wav')
+        self.deg_path = get_file_path('speech_bab_0dB.wav')
 
         self.ref_array = load_audio(self.ref_path)
         self.deg_array = load_audio(self.deg_path)
