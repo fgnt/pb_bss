@@ -8,6 +8,7 @@ from pb_bss.evaluation import pesq
 # ToDo: move this test to pb_bss
 
 
+@unittest.skip('To be moved to pb_bss')
 class TestProposedPESQ(unittest.TestCase):
     """
     This test case was written before the code was adapted.
