@@ -21,7 +21,7 @@ metrics = ['mir_eval',
 # Notebook (ipynb) example dependencies
 examples = ['soundFile', 'nara_wpe']
 # Test dependencies
-tests = ['nose', 'parameterized', 'lazy_dataset']
+tests = ['nose', 'parameterized', 'lazy_dataset', 'pytest-rerunfailures']
 # Bingham mixture model symbolic solution dependency
 mm = ['sympy']
 

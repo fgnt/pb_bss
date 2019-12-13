@@ -10,7 +10,7 @@ import numpy as np
 from pb_bss.permutation_alignment import DHTVPermutationAlignment as FPA
 from pathlib import Path
 import itertools
-from chainer.testing import condition
+import pytest
 
 
 class TestPermutationAlignment(unittest.TestCase):
@@ -54,7 +54,7 @@ class TestPermutationAlignment(unittest.TestCase):
         estimated_inverse = FPA.get_inverse_permutation(permutation)
         np.testing.assert_equal(estimated_inverse, inverse)
 
-    @condition.retry(5)
+    @pytest.mark.flaky(reruns=5)
     def test_toy_example_embedding_based_alignment(self):
         data_dir = Path(__file__).parent
         embedding = np.load(data_dir / 'embedding.npy')
