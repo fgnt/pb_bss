@@ -13,14 +13,14 @@ trap 'echo -e "${green}$ $BASH_COMMAND ${NC}"' DEBUG
 # Force Exit 0
 # trap 'exit 0' EXIT SIGINT SIGTERM
 
-# Use a pseudo virtualenv, http://stackoverflow.com/questions/2915471/install-a-python-package-into-a-different-directory-using-pip
-mkdir -p venv
-export PYTHONUSERBASE=$(readlink -m venv)
-
 # source internal_toolbox/bash/cuda.bash
+git clone https://github.com/fgnt/paderbox
+
+# include common stuff (installation of toolbox, paths, traps, nice level...)
+source paderbox/jenkins_common.bash
 
 # pip install --user -e toolbox/
-pip install -e .[tests]
+pip install --user -e .[tests]
 
 pytest --junitxml='test_results.xml' --cov=pb_bss  \
   --doctest-modules --doctest-continue-on-failure --cov-report term -v "tests/" || true # --processes=-1
@@ -33,7 +33,7 @@ pytest --junitxml='test_results.xml' --cov=pb_bss  \
 python -m coverage xml --include="pb_bss*"
 
 # Pylint tests
-# pylint --rcfile="pylint.cfg" -f parseable pb_bss > pylint.txt || true
+pylint --rcfile="paderbox/pylint.cfg" -f parseable pb_bss > pylint.txt || true
 # --files-output=y is a bad option, because it produces hundreds of files
 
 pip freeze > pip.txt
