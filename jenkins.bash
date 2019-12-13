@@ -17,13 +17,10 @@ trap 'echo -e "${green}$ $BASH_COMMAND ${NC}"' DEBUG
 mkdir -p venv
 export PYTHONUSERBASE=$(readlink -m venv)
 
-pip install --user chainer
-
-git clone git@ntgit.upb.de:python/toolbox
 # source internal_toolbox/bash/cuda.bash
 
 # pip install --user -e toolbox/
-pip install --user -e .
+pip install -e .[tests]
 
 pytest --junitxml='test_results.xml' --cov=pb_bss  \
   --doctest-modules --doctest-continue-on-failure --cov-report term -v "tests/" || true # --processes=-1
@@ -36,7 +33,7 @@ pytest --junitxml='test_results.xml' --cov=pb_bss  \
 python -m coverage xml --include="pb_bss*"
 
 # Pylint tests
-pylint --rcfile="toolbox/pylint.cfg" -f parseable paderbox > pylint.txt || true
+# pylint --rcfile="pylint.cfg" -f parseable pb_bss > pylint.txt || true
 # --files-output=y is a bad option, because it produces hundreds of files
 
 pip freeze > pip.txt
