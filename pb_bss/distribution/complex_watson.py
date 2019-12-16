@@ -32,6 +32,8 @@ def normalize_observation(observation):
 @dataclass
 class ComplexWatson(_ProbabilisticModel):
     """
+    >>> import pytest; pytest.skip('Disable matplotlib')
+
     >>> import numpy as np
     >>> import matplotlib.pyplot as plt
     >>> scales = [
