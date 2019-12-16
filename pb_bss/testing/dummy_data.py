@@ -16,7 +16,6 @@ def _get_data():
 
     cache.mkdir(exist_ok=True)
     if not (cache / 'pb_test_data-master').exists():
-        print('Write to', cache)
         url = "https://github.com/fgnt/pb_test_data/archive/master.zip"
         resp = urlopen(url)
         zipfile = ZipFile(BytesIO(resp.read()))
@@ -61,7 +60,6 @@ def low_reverberation_data():
     >>> np.set_string_function(lambda a: f'array(shape={a.shape}, dtype={a.dtype})')
     >>> from IPython.lib.pretty import pprint
     >>> pprint(low_reverberation_data())  # doctest: +ELLIPSIS
-    ...
     {'audio_path': ...,
      'gender': ['m', 'm'],
      'kaldi_transcription': ["NOR IS MISTER QUILTER'S MANNER LESS INTERESTING THAN HIS MATTER",
