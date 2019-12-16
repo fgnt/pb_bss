@@ -125,7 +125,7 @@ def input_sxr(
 
     K, D, T = images.shape  # Number of speakers, sensors, samples
 
-    assert (D, T) == noise.shape, (images.shape, noise.shape)
+    assert (D, T) == noise.shape, ((D, T), images.shape, noise.shape)
     assert K < 10, images.shape
     assert D < 30, images.shape
 
