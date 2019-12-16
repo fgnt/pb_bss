@@ -48,7 +48,7 @@ setuptools.setup(
             'nose',
             'parameterized',
             'pytest-rerunfailures',
-            'git+https://github.com/fgnt/paderbox.git'
+            'git+https://github.com/fgnt/paderbox'
         ]
     },
 
