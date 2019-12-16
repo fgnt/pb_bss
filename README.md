@@ -1,7 +1,10 @@
 # Blind Source Separation (BSS) algorithms
 
 [![Build Status](https://dev.azure.com/fgnt/fgnt/_apis/build/status/fgnt.pb_bss?branchName=master)](https://dev.azure.com/fgnt/fgnt/_build/latest?definitionId=1&branchName=master)
+[![Azure DevOps tests](https://img.shields.io/azure-devops/tests/fgnt/fgnt/1)](https://dev.azure.com/fgnt/fgnt/_build/latest?definitionId=1&branchName=master)
+[![Azure DevOps coverage](https://img.shields.io/azure-devops/coverage/fgnt/fgnt/1)](https://dev.azure.com/fgnt/fgnt/_build/latest?definitionId=1&branchName=master)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](https://raw.githubusercontent.com/fgnt/pb_bss/master/LICENSE)
+
 
 This repository covers EM algorithms to separate speech sources in multi-channel recordings.
 
