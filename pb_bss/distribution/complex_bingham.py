@@ -82,6 +82,7 @@ class ComplexBingham(_ProbabilisticModel):
 
     def norm(self, remove_duplicate_eigenvalues=True, eps=1e-8):
         """
+        >>> import pytest; pytest.skip('Bingham is to slow')
         >>> model = ComplexBingham(None, [0.8       , 0.92679492, 1.27320508])
         >>> model.covariance_eigenvalues
         array([0.8       , 0.92679492, 1.27320508])
@@ -165,6 +166,7 @@ class ComplexBingham(_ProbabilisticModel):
     @classmethod
     def _remove_duplicate_eigenvalues(cls, covariance_eigenvalues, eps=1e-8):
         """
+        >>> import pytest; pytest.skip('Bingham is to slow')
         >>> ComplexBingham._remove_duplicate_eigenvalues(np.array([0.5, 0.5]))[-1]
         array([0.5       , 0.50000001])
 
@@ -230,6 +232,7 @@ class ComplexBinghamTrainer:
 
         ToDo: Generate the source code with python instead of MATLAB.
 
+        >>> import pytest; pytest.skip('Bingham is to slow')
         >>> ComplexBinghamTrainer.find_eigenvalues_v2([0.9, 0.1])
         array([ 0.        , -9.99544117])
         >>> ComplexBinghamTrainer.find_eigenvalues_v2([0.5, 0.5])
@@ -307,6 +310,7 @@ class ComplexBinghamTrainer:
 
         ToDo: Generate the source code with python instead of MATLAB.
 
+        >>> import pytest; pytest.skip('Bingham is to slow')
         >>> ComplexBinghamTrainer.find_eigenvalues_v3([0.9, 0.1])
         array([ 0.        , -9.99544117])
         >>> ComplexBinghamTrainer.find_eigenvalues_v3([0.5, 0.5])
@@ -430,6 +434,7 @@ class ComplexBinghamTrainer:
 
         Use find_eigenvalues_v2, that is more stable.
 
+        >>> import pytest; pytest.skip('Bingham is to slow')
         >>> import sympy
         >>> trainer = ComplexBinghamTrainer(2)
         >>> trainer.find_eigenvalues_sympy([0.9, 0.1])
@@ -479,6 +484,7 @@ class ComplexBinghamTrainer:
 
     def _doctest_grad_log_norm_symbolic(self):
         """
+        >>> import pytest; pytest.skip('Bingham is to slow')
         >>> import sympy
         >>> trainer = ComplexBinghamTrainer(2)
         >>> trainer.grad_log_norm_symbolic[0]
