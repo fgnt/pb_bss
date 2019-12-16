@@ -26,7 +26,7 @@ pip install --editable .
 ```
 We expect that `numpy`, `scipy` and `cython` are installed (e.g. `conda install numpy scipy cython` or `pip install numpy scipy cython`).
 
-The default option is to install only the nessesary dependencies.
+The default option is to install only the necessary dependencies.
 When you want to run the tests or execute the notebooks, use the one of the following commands for the installation:
 ```bash
 pip install --editable .[all]  # Without a whitespace between `.` and `[all]`
