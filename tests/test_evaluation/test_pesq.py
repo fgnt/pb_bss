@@ -1,25 +1,17 @@
 import unittest
 import numpy as np
-from paderbox.io.audioread import load_audio
+import paderbox as pb
 from paderbox.testing.testfile_fetcher import get_file_path
 from pb_bss.evaluation import pesq
 
 
-# ToDo: move this test to pb_bss
-
-
-@unittest.skip('To be moved to pb_bss')
 class TestProposedPESQ(unittest.TestCase):
-    """
-    This test case was written before the code was adapted.
-    This is, why it fails.
-    """
     def setUp(self):
         self.ref_path = get_file_path('speech.wav')
         self.deg_path = get_file_path('speech_bab_0dB.wav')
 
-        self.ref_array = load_audio(self.ref_path)
-        self.deg_array = load_audio(self.deg_path)
+        self.ref_array = pb.io.load_audio(self.ref_path)
+        self.deg_array = pb.io.load_audio(self.deg_path)
 
     def test_wb_scores_with_lists_of_paths_length_one(self):
         # ToDo: pesq does not support filesnames in the moment
