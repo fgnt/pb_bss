@@ -61,6 +61,7 @@ def low_reverberation_data():
     >>> np.set_string_function(lambda a: f'array(shape={a.shape}, dtype={a.dtype})')
     >>> from IPython.lib.pretty import pprint
     >>> pprint(low_reverberation_data())  # doctest: +ELLIPSIS
+    ...
     {'audio_path': ...,
      'gender': ['m', 'm'],
      'kaldi_transcription': ["NOR IS MISTER QUILTER'S MANNER LESS INTERESTING THAN HIS MATTER",
