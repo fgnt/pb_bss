@@ -26,15 +26,9 @@ pip install --editable .
 ```
 We expect that `numpy`, `scipy` and `cython` are installed (e.g. `conda install numpy scipy cython` or `pip install numpy scipy cython`).
 
-In the `setup.py` we follow the concept of minimal dependencies.
-So depending on which part of this core you are interested,
-you need to install the following extra dependencies:
-
+The default option is to install only the necessary dependencies.
+When you want to run the tests or execute the notebooks, use the one of the following commands for the installation:
 ```bash
-pip install -e .[metrics]  # Metric dependencies
-pip install -e .[examples]  # Notebook (ipynb) example dependency
-pip install -e .[tests]  # Test dependency
-pip install -e .[mm]  # Bingham mixture model symbolic solution
-# Or, to install all dependencies, use
-pip install -e .[all]
+pip install --editable .[all]  # Without a whitespace between `.` and `[all]`
+pip install git+https://github.com/fgnt/pb_bss.git#egg=pb_bss[all]
 ```
