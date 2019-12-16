@@ -23,4 +23,4 @@ jobs:
         pip install numpy scipy Cython
     - bash: pip install -e .[all]
     - bash: pip install pytest pytest-azurepipelines pytest-cov
-    - bash: pytest --cov=paderbox --cov-report=xml --cov-report=html
+    - bash: pytest tests pb_bss --cov=paderbox --cov-report=xml --cov-report=html
