@@ -112,10 +112,10 @@ def ideal_binary_mask(
         >>> ideal_binary_mask(rand(2, 3, 5), sensor_axis=1).shape
         (2, 5)
         >>> np.unique(ideal_binary_mask(rand(2, 3, 5), sensor_axis=1))
-        array([ 0.,  1.])
+        array([0., 1.])
         >>> np.unique(np.sum(ideal_binary_mask(rand(2, 3, 5), sensor_axis=1), \
             axis=0))
-        array([ 1.])
+        array([1.])
     """
     signal = np.asarray(signal)
     components = signal.shape[source_axis]
@@ -163,7 +163,7 @@ def wiener_like_mask(
         (2, 5)
         >>> np.unique(np.sum(wiener_like_mask(rand(2, 3, 5), sensor_axis=1), \
             axis=0))
-        array([ 1.])
+        array([1., 1.])
     """
     signal = np.asarray(signal)
     mask = abs_square(signal)
@@ -202,10 +202,14 @@ def ideal_ratio_mask(
         >>> ideal_ratio_mask(rand(2, 3, 5)).shape
         (2, 3, 5)
         >>> ideal_ratio_mask(rand(2, 3, 5), sensor_axis=1).shape
-        (2, 5)
-        >>> np.unique(np.sum(ideal_ratio_mask(rand(2, 3, 5), sensor_axis=1), \
-            axis=0))
-        array([ 1.])
+        Traceback (most recent call last):
+        ...
+        AssertionError: How to handle sensor_axis is not defined.
+        Possible ways to handle it:
+            signal = signal.abs().sum(sensor_axis)  # problem, because signal is real
+            signal = signal.sum(sensor_axis)
+            signal = (signal**2).abs().sum(sensor_axis).sqrt()  # problem, because signal is real
+        But this destroys the signal, which is complex.
     """
     signal = np.asarray(signal)
 
@@ -216,7 +220,7 @@ Possible ways to handle it:
     signal = signal.sum(sensor_axis)
     signal = (signal**2).abs().sum(sensor_axis).sqrt()  # problem, because signal is real
 But this destroys the signal, which is complex.
-"""
+""".strip()
 
     mask = np.abs(signal)
 
@@ -250,15 +254,19 @@ def ideal_amplitude_mask(
     Example:
         >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
         >>> M_x, M_n = wiener_like_mask(rand(2, 3)).shape
-        >>> ideal_ratio_mask(rand(2, 3)).shape
+        >>> ideal_amplitude_mask(rand(2, 3)).shape
         (2, 3)
-        >>> ideal_ratio_mask(rand(2, 3, 5)).shape
+        >>> ideal_amplitude_mask(rand(2, 3, 5)).shape
         (2, 3, 5)
-        >>> ideal_ratio_mask(rand(2, 3, 5), sensor_axis=1).shape
-        (2, 5)
-        >>> np.unique(np.sum(ideal_ratio_mask(rand(2, 3, 5), sensor_axis=1), \
-            axis=0))
-        array([ 1.])
+        >>> ideal_amplitude_mask(rand(2, 3, 5), sensor_axis=1).shape
+        Traceback (most recent call last):
+        ...
+        AssertionError: How to handle sensor_axis is not defined.
+        Possible ways to handle it:
+            signal = signal.abs().sum(sensor_axis)  # problem, because signal is real
+            signal = signal.sum(sensor_axis)
+            signal = (signal**2).abs().sum(sensor_axis).sqrt()  # problem, because signal is real
+        But this destroys the signal, which is complex.
     """
     signal = np.asarray(signal)
     assert sensor_axis is None, """
@@ -268,7 +276,7 @@ Possible ways to handle it:
     signal = signal.sum(sensor_axis)
     signal = (signal**2).abs().sum(sensor_axis).sqrt()  # problem, because signal is real
 But this destroys the signal, which is complex.
-"""
+""".strip()
 
     amplitude = np.abs(signal)
     amplitude_of_sum = np.abs(np.sum(signal, source_axis, keepdims=True))

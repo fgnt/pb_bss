@@ -529,11 +529,11 @@ def phase_correction(vector):
 
     >>> w = np.array([[1, 1], [-1, -1]], dtype=np.complex128)
     >>> np.around(phase_correction(w), decimals=14)
-    array([[ 1.+0.j,  1.+0.j],
-           [ 1.-0.j,  1.-0.j]])
+    array([[1.+0.j, 1.+0.j],
+           [1.-0.j, 1.-0.j]])
     >>> np.around(phase_correction([w]), decimals=14)[0]
-    array([[ 1.+0.j,  1.+0.j],
-           [ 1.-0.j,  1.-0.j]])
+    array([[1.+0.j, 1.+0.j],
+           [1.-0.j, 1.-0.j]])
     >>> w  # ensure that w is not modified
     array([[ 1.+0.j,  1.+0.j],
            [-1.+0.j, -1.+0.j]])

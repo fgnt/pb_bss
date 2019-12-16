@@ -74,17 +74,18 @@ def low_reverberation_data():
       [3.1540068920818385]],
      'sensor_position': ...,
      'snr': 29.749852569493584,
-     'sound_decay_time': 0.354,
-     'source_decay_time': 0,
+     'sound_decay_time': 0,
      'source_id': ['4k0c0301', '4k6c030t'],
      'source_position': ...,
       [1.6594772807620646, 1.6594772807620646]],
      'speaker_id': ['1272-128104', '1272-128104'],
      'example_id': 'low_reverberation',
      'dataset': 'test',
-     'audio_data': {'observation': array(shape=(6, 38520), dtype=float64),
+     'audio_data': {'noise_image': array(shape=(6, 38520), dtype=float64),
+      'observation': array(shape=(6, 38520), dtype=float64),
       'speech_image': array(shape=(2, 6, 38520), dtype=float64),
-      'speech_reverberation_direct': array(shape=(2, 6, 38520), dtype=float64),
+      'speech_reverberation_early': array(shape=(2, 6, 38520), dtype=float64),
+      'speech_reverberation_tail': array(shape=(2, 6, 38520), dtype=float64),
       'speech_source': array(shape=(2, 38520), dtype=float64)}}
     """
     return _get_data()['low_reverberation']
@@ -93,7 +94,28 @@ def low_reverberation_data():
 def reverberation_data():
     """
 
-    >>> reverberation_data()
+    >>> import numpy as np
+    >>> np.set_string_function(lambda a: f'array(shape={a.shape}, dtype={a.dtype})')
+    >>> from IPython.lib.pretty import pprint
+    >>> pprint(reverberation_data())  # doctest: +ELLIPSIS
+    {'audio_path': ...,
+     'gender': ['m', 'm'],
+     'kaldi_transcription': ["NOR IS MISTER QUILTER'S MANNER LESS INTERESTING THAN HIS MATTER",
+      'MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL'],
+     'log_weights': [1.2027951449295022, -1.2027951449295022],
+     'num_samples': {'observation': 38520, 'speech_source': [38520, 46840]},
+     'num_speakers': 2,
+     'offset': [0, 0],
+     'room_dimensions': ...,
+     'sensor_position': ...,
+     'snr': 29.749852569493584,
+     'sound_decay_time': 0.354,
+     'source_id': ['4k0c0301', '4k6c030t'],
+     'source_position': ...,
+     'speaker_id': ['1272-128104', '1272-128104'],
+     'example_id': 'reverberation',
+     'dataset': 'test',
+     'audio_data': ...
 
     """
     return _get_data()['reverberation']

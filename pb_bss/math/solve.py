@@ -53,7 +53,7 @@ def stable_solve(A, B):
     >>> C1 = np.linalg.solve(A, B)
     Traceback (most recent call last):
     ...
-    numpy.linalg.linalg.LinAlgError: Singular matrix
+    numpy.linalg.LinAlgError: Singular matrix
     >>> C2, *_ = np.linalg.lstsq(A, B)
     >>> C3 = stable_solve(A, B)
     >>> C4 = _lstsq(A, B)
@@ -66,7 +66,7 @@ def stable_solve(A, B):
     >>> C2, *_ = np.linalg.lstsq(A, B)
     Traceback (most recent call last):
     ...
-    numpy.linalg.linalg.LinAlgError: 3-dimensional array given. Array must be two-dimensional
+    numpy.linalg.LinAlgError: 3-dimensional array given. Array must be two-dimensional
     >>> C3 = stable_solve(A, B)
     >>> C4 = _lstsq(A, B)
     >>> np.testing.assert_allclose(C1, C3)
@@ -77,11 +77,11 @@ def stable_solve(A, B):
     >>> C1 = np.linalg.solve(A, B)
     Traceback (most recent call last):
     ...
-    numpy.linalg.linalg.LinAlgError: Singular matrix
+    numpy.linalg.LinAlgError: Singular matrix
     >>> C2, *_ = np.linalg.lstsq(A, B)
     Traceback (most recent call last):
     ...
-    numpy.linalg.linalg.LinAlgError: 3-dimensional array given. Array must be two-dimensional
+    numpy.linalg.LinAlgError: 3-dimensional array given. Array must be two-dimensional
     >>> C3 = stable_solve(A, B)
     >>> C4 = _lstsq(A, B)
     >>> np.testing.assert_allclose(C3, C4)
@@ -94,7 +94,7 @@ def stable_solve(A, B):
     assert A.shape[-1] == B.shape[-2], (A.shape, B.shape)
     try:
         return np.linalg.solve(A, B)
-    except np.linalg.linalg.LinAlgError:
+    except np.linalg.LinAlgError:
         shape_A, shape_B = A.shape, B.shape
         assert shape_A[:-2] == shape_A[:-2]
         working_shape_A = [functools.reduce(operator.mul, [1, *shape_A[:-2]]),
@@ -109,6 +109,6 @@ def stable_solve(A, B):
             # lstsq is much slower, use it only when necessary
             try:
                 C[i] = np.linalg.solve(A[i], B[i])
-            except np.linalg.linalg.LinAlgError:
+            except np.linalg.LinAlgError:
                 C[i], *_ = np.linalg.lstsq(A[i], B[i])
         return C.reshape(*shape_B)
