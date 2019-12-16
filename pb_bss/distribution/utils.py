@@ -3,16 +3,16 @@ import typing
 import numpy as np
 
 
-def get_model_class_from_parameter(parameter):
+def get_trainer_class_from_model(parameter):
     """
     >>> from IPython.lib.pretty import pprint
     >>> from pb_bss.distribution.cacgmm import (
-    ...     ComplexAngularCentralGaussianParameters,
+    ...     ComplexAngularCentralGaussian,
     ... )
-    >>> get_model_class_from_parameter(ComplexAngularCentralGaussianParameters).__name__
-    'ComplexAngularCentralGaussian'
-    >>> get_model_class_from_parameter(ComplexAngularCentralGaussianParameters()).__name__
-    'ComplexAngularCentralGaussian'
+    >>> get_trainer_class_from_model(ComplexAngularCentralGaussian).__name__
+    'ComplexAngularCentralGaussianTrainer'
+    >>> get_trainer_class_from_model(ComplexAngularCentralGaussian()).__name__
+    'ComplexAngularCentralGaussianTrainer'
 
     """
     from pb_bss import distribution
@@ -21,8 +21,8 @@ def get_model_class_from_parameter(parameter):
         parameter = parameter.__class__
 
     name = parameter.__name__
-    assert 'Parameters' in name, name
-    name = name.replace('Parameters', '')
+    assert 'Trainer' not in name, name
+    name = name + 'Trainer'
 
     return getattr(distribution, name)
 
@@ -85,22 +85,22 @@ def parameter_from_dict(parameter_class_or_str, d: dict):
 
     >>> from IPython.lib.pretty import pprint
     >>> from pb_bss.distribution.cacgmm import (
-    ...     ComplexAngularCentralGaussianParameters,
-    ...     ComplexAngularCentralGaussianMixtureModelParameters,
+    ...     ComplexAngularCentralGaussian,
     ... )
-    >>> model = ComplexAngularCentralGaussianParameters(covariance=1)
+    >>> model = ComplexAngularCentralGaussian.from_covariance(covariance=[[1]])
     >>> model
-    ComplexAngularCentralGaussianParameters(covariance=1, precision=None, determinant=None)
+    ComplexAngularCentralGaussian(covariance_eigenvectors=array([[1.]]), covariance_eigenvalues=array([1.]))
     >>> d = model.to_dict()
     >>> name = model.__class__.__name__
     >>> pprint(name)
-    'ComplexAngularCentralGaussianParameters'
+    'ComplexAngularCentralGaussian'
     >>> pprint(d)
-    {'covariance': 1, 'precision': None, 'determinant': None}
+    {'covariance_eigenvectors': array([[1.]]),
+     'covariance_eigenvalues': array([1.])}
     >>> parameter_from_dict(name, d)
-    ComplexAngularCentralGaussianParameters(covariance=1, precision=None, determinant=None)
-    >>> parameter_from_dict(ComplexAngularCentralGaussianParameters, d)
-    ComplexAngularCentralGaussianParameters(covariance=1, precision=None, determinant=None)
+    ComplexAngularCentralGaussian(covariance_eigenvectors=array([[1.]]), covariance_eigenvalues=array([1.]))
+    >>> parameter_from_dict(ComplexAngularCentralGaussian, d)
+    ComplexAngularCentralGaussian(covariance_eigenvectors=array([[1.]]), covariance_eigenvalues=array([1.]))
 
     """
     if isinstance(parameter_class_or_str, str):
@@ -120,41 +120,35 @@ class _ProbabilisticModel:
         """
         >>> from IPython.lib.pretty import pprint
         >>> from pb_bss.distribution.cacgmm import (
-        ...     ComplexAngularCentralGaussianParameters, 
-        ...     ComplexAngularCentralGaussianMixtureModelParameters,
+        ...     ComplexAngularCentralGaussian,
+        ...     CACGMM,
         ... )
-        >>> model = ComplexAngularCentralGaussianParameters()
+        >>> model = ComplexAngularCentralGaussian()
         >>> model
-        ComplexAngularCentralGaussianParameters(covariance=None, precision=None, determinant=None)
+        ComplexAngularCentralGaussian(covariance_eigenvectors=None, covariance_eigenvalues=None)
         >>> pprint(model.to_dict())
-        {'covariance': None, 'precision': None, 'determinant': None}
-        >>> model = ComplexAngularCentralGaussianMixtureModelParameters()
+        {'covariance_eigenvectors': None, 'covariance_eigenvalues': None}
+        >>> model = CACGMM()
         >>> model
-        ComplexAngularCentralGaussianMixtureModelParameters(cacg=ComplexAngularCentralGaussianParameters(covariance=None, precision=None, determinant=None), mixture_weight=None, affiliation=None, eps=1e-10)
+        CACGMM(weight=None, cacg=ComplexAngularCentralGaussian(covariance_eigenvectors=None, covariance_eigenvalues=None))
         >>> pprint(model.to_dict())
-        {'cacg': {'covariance': None, 'precision': None, 'determinant': None},
-         'mixture_weight': None,
-         'affiliation': None,
-         'eps': 1e-10}
+        {'weight': None,
+         'cacg': {'covariance_eigenvectors': None, 'covariance_eigenvalues': None}}
 
-         >>> import jsonpickle, json
-         >>> pprint(json.loads(jsonpickle.dumps(model)))
-         {'py/object': 'dc_integration.distribution.cacgmm.ComplexAngularCentralGaussianMixtureModelParameters',
-          'affiliation': None,
-          'cacg': {'py/object': 'dc_integration.distribution.complex_angular_central_gaussian.ComplexAngularCentralGaussianParameters',
-           'covariance': None,
-           'determinant': None,
-           'precision': None},
-          'eps': 1e-10,
-          'mixture_weight': None}
-         >>>
+        >>> import jsonpickle, json
+        >>> pprint(json.loads(jsonpickle.dumps(model)))
+        {'py/object': 'pb_bss.distribution.cacgmm.CACGMM',
+         'cacg': {'py/object': 'pb_bss.distribution.complex_angular_central_gaussian.ComplexAngularCentralGaussian',
+          'covariance_eigenvalues': None,
+          'covariance_eigenvectors': None},
+         'weight': None}
         """
         ret = {
             k: getattr(self, k)
             for k in self.__dataclass_fields__.keys()
         }
         ret = {
-            k: v.to_dict() if isinstance(v, _Parameter) else v
+            k: v.to_dict() if isinstance(v, _ProbabilisticModel) else v
             for k, v in ret.items()
         }
         return ret
@@ -165,31 +159,29 @@ class _ProbabilisticModel:
 
         >>> from IPython.lib.pretty import pprint
         >>> from pb_bss.distribution.cacgmm import (
-        ...     ComplexAngularCentralGaussianParameters,
-        ...     ComplexAngularCentralGaussianMixtureModelParameters,
+        ...     ComplexAngularCentralGaussian,
+        ...     CACGMM,
         ... )
-        >>> model = ComplexAngularCentralGaussianParameters()
-        >>> model.determinant = 2
+        >>> model = ComplexAngularCentralGaussian()
+        >>> model.covariance_eigenvectors = 2
         >>> model
-        ComplexAngularCentralGaussianParameters(covariance=None, precision=None, determinant=2)
+        ComplexAngularCentralGaussian(covariance_eigenvectors=2, covariance_eigenvalues=None)
         >>> d = model.to_dict()
         >>> pprint(d)
-        {'covariance': None, 'precision': None, 'determinant': 2}
-        >>> ComplexAngularCentralGaussianParameters.from_dict(d)
-        ComplexAngularCentralGaussianParameters(covariance=None, precision=None, determinant=2)
+        {'covariance_eigenvectors': 2, 'covariance_eigenvalues': None}
+        >>> ComplexAngularCentralGaussian.from_dict(d)
+        ComplexAngularCentralGaussian(covariance_eigenvectors=2, covariance_eigenvalues=None)
 
-        >>> model = ComplexAngularCentralGaussianMixtureModelParameters()
-        >>> model.cacg.determinant = 2
+        >>> model = CACGMM()
+        >>> model.cacg.covariance_eigenvectors = 2
         >>> model
-        ComplexAngularCentralGaussianMixtureModelParameters(cacg=ComplexAngularCentralGaussianParameters(covariance=None, precision=None, determinant=2), mixture_weight=None, affiliation=None, eps=1e-10)
+        CACGMM(weight=None, cacg=ComplexAngularCentralGaussian(covariance_eigenvectors=2, covariance_eigenvalues=None))
         >>> d = model.to_dict()
         >>> pprint(d)
-        {'cacg': {'covariance': None, 'precision': None, 'determinant': 2},
-         'mixture_weight': None,
-         'affiliation': None,
-         'eps': 1e-10}
-        >>> ComplexAngularCentralGaussianMixtureModelParameters.from_dict(d)
-        ComplexAngularCentralGaussianMixtureModelParameters(cacg={'covariance': None, 'precision': None, 'determinant': 2}, mixture_weight=None, affiliation=None, eps=1e-10)
+        {'weight': None,
+         'cacg': {'covariance_eigenvectors': 2, 'covariance_eigenvalues': None}}
+        >>> CACGMM.from_dict(d)
+        CACGMM(weight=None, cacg={'covariance_eigenvectors': 2, 'covariance_eigenvalues': None})
         """
         assert cls.__dataclass_fields__.keys() == d.keys(), (cls.__dataclass_fields__.keys(), d.keys())
         return cls(**d)
@@ -198,20 +190,20 @@ class _ProbabilisticModel:
         """
         >>> from IPython.lib.pretty import pprint
         >>> from pb_bss.distribution.cacgmm import (
-        ...     ComplexAngularCentralGaussianParameters,
-        ...     ComplexAngularCentralGaussianMixtureModelParameters,
+        ...     ComplexAngularCentralGaussian,
+        ...     CACGMM,
         ... )
-        >>> model = ComplexAngularCentralGaussianParameters()
+        >>> model = ComplexAngularCentralGaussian()
         >>> model.covariances
         Traceback (most recent call last):
         ...
-        AttributeError: 'ComplexAngularCentralGaussianParameters' object has no attribute 'covariances'.
-        Close matches: ['covariance']
+        AttributeError: 'ComplexAngularCentralGaussian' object has no attribute 'covariances'.
+        Close matches: ['covariance_eigenvalues', 'covariance_eigenvectors']
         >>> model.abc
         Traceback (most recent call last):
         ...
-        AttributeError: 'ComplexAngularCentralGaussianParameters' object has no attribute 'abc'.
-        Close matches: ['covariance', 'precision', 'determinant']
+        AttributeError: 'ComplexAngularCentralGaussian' object has no attribute 'abc'.
+        Close matches: ['covariance_eigenvectors', 'covariance_eigenvalues']
         """
 
         import difflib

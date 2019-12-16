@@ -2,7 +2,7 @@ from operator import xor
 
 import numpy as np
 import scipy.special
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pb_bss.distribution.complex_angular_central_gaussian import (
     ComplexAngularCentralGaussian,
     ComplexAngularCentralGaussianTrainer,
@@ -57,8 +57,9 @@ def sample_cacgmm(
 
 @dataclass
 class CACGMM(_ProbabilisticModel):
-    weight: np.array  # (..., K, 1) for weight_constant_axis==(-1,)
-    cacg: ComplexAngularCentralGaussian
+    weight: np.array = None  # (..., K, 1) for weight_constant_axis==(-1,)
+    cacg: ComplexAngularCentralGaussian = field(
+        default_factory=ComplexAngularCentralGaussian)
 
     def predict(self, y, return_quadratic_form=False):
         assert np.iscomplexobj(y), y.dtype
