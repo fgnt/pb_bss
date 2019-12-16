@@ -87,6 +87,7 @@ def low_reverberation_data():
       'speech_reverberation_early': array(shape=(2, 6, 38520), dtype=float64),
       'speech_reverberation_tail': array(shape=(2, 6, 38520), dtype=float64),
       'speech_source': array(shape=(2, 38520), dtype=float64)}}
+    >>> np.set_string_function(None)  # needed for pytest. np.set_string_function is not properly reseted.
     """
     return _get_data()['low_reverberation']
 
@@ -116,6 +117,7 @@ def reverberation_data():
      'example_id': 'reverberation',
      'dataset': 'test',
      'audio_data': ...
+    >>> np.set_string_function(None)  # needed for pytest. np.set_string_function is not properly reseted.
 
     """
     return _get_data()['reverberation']
