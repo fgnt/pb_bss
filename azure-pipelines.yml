@@ -21,8 +21,5 @@ jobs:
     - bash: |
         sudo apt-get install libsndfile1
         pip install numpy scipy Cython
-        pip install pytest
-        pip install nara_wpe lazy_dataset sklearn matplotlib soundfile parameterized
-        pip install pystoi mir_eval git+https://github.com/ludlows/python-pesq
-    - bash: pip install -e .
+    - bash: pip install -e .[all]
     - bash: pytest
