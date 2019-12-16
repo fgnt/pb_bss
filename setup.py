@@ -14,6 +14,7 @@ or
     'pip install numpy Cython scipy'
 """) from e
 
+<<<<<<< HEAD
 # Metric dependencies
 metrics = ['mir_eval',
            'pystoi',
@@ -25,6 +26,8 @@ tests = ['nose', 'parameterized', 'lazy_dataset', 'pytest-rerunfailures']
 # Bingham mixture model symbolic solution dependency
 mm = ['sympy']
 
+=======
+>>>>>>> simplify the installation commands: only allow all and default
 
 setuptools.setup(
     name="pb_bss",
@@ -43,14 +46,23 @@ setuptools.setup(
         'scikit-learn',
         'cached_property',
         'einops',
+        'sympy',  # Bingham mixture model symbolic solution dependency
+        # Metric dependencies
+        'mir_eval',
+        'pystoi',
+        'pesq'
     ],
 
     extras_require={
-        'metrics': metrics,
-        'examples': examples,
-        'tests': tests,
-        'mm': mm,
-        'all': metrics + examples + tests + mm,
+        'all': [
+            'soundFile',
+            'nara_wpe',
+            'lazy_dataset',
+            'pytest',
+            'nose',
+            'parameterized',
+            'git+https://github.com/fgnt/paderbox.git'
+        ]
     },
 
     classifiers=[
