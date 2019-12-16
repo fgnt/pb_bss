@@ -265,6 +265,8 @@ class ComplexWatsonTrainer:
 
         >>> t = ComplexWatsonTrainer(5)
         >>> t.hypergeometric_ratio_inverse([0, 1/5, 1/5 + 1e-4, 0.9599999, 1])
+        array([0.00000000e+00, 0.00000000e+00, 3.74879525e-03, 9.99997522e+01,
+               5.00000000e+02])
         """
 
         return self.spline(eigenvalues)
