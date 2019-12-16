@@ -143,13 +143,16 @@ class _ProbabilisticModel:
           'covariance_eigenvectors': None},
          'weight': None}
         """
+        keys = self.__dataclass_fields__.keys()
         ret = {
             k: getattr(self, k)
-            for k in self.__dataclass_fields__.keys()
+            for k in keys
         }
         ret = {
-            k: v.to_dict() if isinstance(v, _ProbabilisticModel) else v
-            for k, v in ret.items()
+            k: ret[k].to_dict()
+            if isinstance(ret[k], _ProbabilisticModel) else
+            ret[k]
+            for k in keys
         }
         return ret
 
