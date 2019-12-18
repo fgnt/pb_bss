@@ -137,10 +137,10 @@ class _ProbabilisticModel:
 
         >>> import jsonpickle, json
         >>> pprint(json.loads(jsonpickle.dumps(model)))
-        {'py/object': 'pb_bss.distribution.cacgmm.CACGMM',
-         'cacg': {'py/object': 'pb_bss.distribution.complex_angular_central_gaussian.ComplexAngularCentralGaussian',
-          'covariance_eigenvalues': None,
-          'covariance_eigenvectors': None},
+        {'cacg': {'covariance_eigenvalues': None,
+          'covariance_eigenvectors': None,
+          'py/object': 'pb_bss.distribution.complex_angular_central_gaussian.ComplexAngularCentralGaussian'},
+         'py/object': 'pb_bss.distribution.cacgmm.CACGMM',
          'weight': None}
         """
         keys = self.__dataclass_fields__.keys()
