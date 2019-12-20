@@ -1,4 +1,5 @@
 import unittest
+import pytest
 
 import numpy as np
 import functools
@@ -145,6 +146,7 @@ class TestCythonizedGetGEV(unittest.TestCase):
 
 
 class TestCythonizedEig(unittest.TestCase):
+    @pytest.mark.flaky(reruns=5)
     def test_result_equal(self):
         import time
 
