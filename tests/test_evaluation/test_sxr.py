@@ -3,7 +3,7 @@ import numpy.testing as nptest
 import unittest
 
 from pb_bss.evaluation.sxr_module import input_sxr, output_sxr
-from paderbox.utils.numpy_utils import morph
+from paderbox.array import morph
 from paderbox.testing import condition
 
 
