@@ -51,28 +51,28 @@ class TestPowerSpectralDensityMatrix(unittest.TestCase):
         assert_positive_semidefinite(psd)
 
     def test_PSD_without_mask(self):
-        self.gererate_and_verify_psd((self.D, self.T), None, psd_shape=(self.D, self.D))
+        self.generate_and_verify_psd((self.D, self.T), None, psd_shape=(self.D, self.D))
 
     def test_PSD_with_mask(self):
-        self.gererate_and_verify_psd((self.D, self.T), (self.T,), psd_shape=(self.D, self.D))
+        self.generate_and_verify_psd((self.D, self.T), (self.T,), psd_shape=(self.D, self.D))
 
     def test_PSD_with_mask_with_source(self):
-        self.gererate_and_verify_psd((self.D, self.T), (self.K, self.T,), psd_shape=(self.K, self.D, self.D))
+        self.generate_and_verify_psd((self.D, self.T), (self.K, self.T,), psd_shape=(self.K, self.D, self.D))
 
     def test_PSD_with_mask_independent_dim(self):
-        self.gererate_and_verify_psd((self.F, self.D, self.T), (self.F, self.T,), psd_shape=(self.F, self.D, self.D))
-        self.gererate_and_verify_psd((self.F, self.F, self.D, self.T), (self.F, self.F, self.T,),
+        self.generate_and_verify_psd((self.F, self.D, self.T), (self.F, self.T,), psd_shape=(self.F, self.D, self.D))
+        self.generate_and_verify_psd((self.F, self.F, self.D, self.T), (self.F, self.F, self.T,),
                                      psd_shape=(self.F, self.F, self.D, self.D))
 
     def test_PSD_with_mask_independent_dim_with_source(self):
-        self.gererate_and_verify_psd((self.F, self.D, self.T), (self.F, self.K, self.T,),
+        self.generate_and_verify_psd((self.F, self.D, self.T), (self.F, self.K, self.T,),
                                      psd_shape=(self.F, self.K, self.D, self.D))
-        self.gererate_and_verify_psd((self.F, self.F, self.D, self.T), (self.F, self.F, self.K, self.T,),
+        self.generate_and_verify_psd((self.F, self.F, self.D, self.T), (self.F, self.F, self.K, self.T,),
                                      psd_shape=(self.F, self.F, self.K, self.D, self.D))
 
     def test_PSD_without_mask_independent_dim(self):
-        self.gererate_and_verify_psd((self.F, self.D, self.T), None, psd_shape=(self.F, self.D, self.D))
-        self.gererate_and_verify_psd((self.F, self.F, self.D, self.T), (self.F, self.F, self.T,),
+        self.generate_and_verify_psd((self.F, self.D, self.T), None, psd_shape=(self.F, self.D, self.D))
+        self.generate_and_verify_psd((self.F, self.F, self.D, self.T), (self.F, self.F, self.T,),
                                      psd_shape=(self.F, self.F, self.D, self.D))
 
     def test_predict_output(self):
@@ -115,41 +115,41 @@ class TestCovariance(unittest.TestCase):
         return x, mask
 
     def test_covariance_without_mask(self):
-        x = rand(3, 4)
+        x = rand(3, 4, data_type=np.complex128)
         psd = get_power_spectral_density_matrix(x)
         tc.assert_equal(psd.shape, (3, 3))
-        tc.assert_positive_semidefinite(psd)
+        assert_positive_semidefinite(psd)
 
     def test_covariance_with_mask(self):
-        x = rand(3, 4)
+        x = rand(3, 4, data_type=np.complex128)
         mask = np.random.uniform(0, 1, (4,))
         psd = get_power_spectral_density_matrix(x, mask)
         tc.assert_equal(psd.shape, (3, 3))
-        tc.assert_positive_semidefinite(psd)
+        assert_positive_semidefinite(psd)
 
     def test_covariance_with_mask_with_source(self):
-        x = rand(3, 4)
+        x = rand(3, 4, data_type=np.complex128)
         mask = np.random.uniform(0, 1, (2, 4))
         psd = get_power_spectral_density_matrix(x[None, ...], mask)
         tc.assert_equal(psd.shape, (2, 3, 3))
-        tc.assert_positive_semidefinite(psd)
+        assert_positive_semidefinite(psd)
 
     def test_covariance_with_mask_independent_dim(self):
-        x = rand(2, 3, 4)
+        x = rand(2, 3, 4, data_type=np.complex128)
         mask = np.random.uniform(0, 1, (2, 4,))
         psd = get_power_spectral_density_matrix(x, mask)
         tc.assert_equal(psd.shape, (2, 3, 3))
-        tc.assert_positive_semidefinite(psd)
+        assert_positive_semidefinite(psd)
 
     def test_covariance_without_mask_independent_dim(self):
-        x = rand(1, 2, 3, 4)
+        x = rand(1, 2, 3, 4, data_type=np.complex128)
         psd = get_power_spectral_density_matrix(x)
         tc.assert_equal(psd.shape, (1, 2, 3, 3))
-        tc.assert_positive_semidefinite(psd)
+        assert_positive_semidefinite(psd)
 
     def test_multiple_sources_for_source_separation(self):
-        x = rand(2, 3, 4)
+        x = rand(2, 3, 4, data_type=np.complex128)
         mask = np.random.uniform(0, 1, (5, 2, 4,))
         psd = get_power_spectral_density_matrix(x[np.newaxis, ...], mask)
         tc.assert_equal(psd.shape, (5, 2, 3, 3))
-        tc.assert_positive_semidefinite(psd)
+        assert_positive_semidefinite(psd)
