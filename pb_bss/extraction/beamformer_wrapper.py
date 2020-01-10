@@ -12,11 +12,15 @@ def get_pca_rank_one_estimate(covariance_matrix, **atf_kwargs):
     """
     Estimates the matrix as the outer product of the dominant eigenvector.
     """
-    # Calculate eigenvals/vecs
+    # Wang et al. "Rank-1 Constrained [...]" Eq. 26
     a = get_pca_vector(covariance_matrix, **atf_kwargs)
+
+    # Wang et al. "Rank-1 Constrained [...]" Eq. 25 (implicit)
     cov_rank1 = np.einsum('...d,...D->...dD', a, a.conj())
-    scale = np.trace(covariance_matrix, axis1=-1, axis2=-2) / np.trace(
-        cov_rank1, axis1=-1, axis2=-2)
+
+    # Wang et al. "Rank-1 Constrained [...]" just below Eq. 25
+    scale = np.trace(covariance_matrix, axis1=-1, axis2=-2)
+    scale /= np.trace(cov_rank1, axis1=-1, axis2=-2)
     return scale[..., None, None] * cov_rank1
 
 
@@ -50,10 +54,15 @@ def get_gev_rank_one_estimate(
     """
     Estimates the matrix as the outer product of the generalized eigenvector.
     """
+    # Wang et al. "Rank-1 Constrained [...]" Eq. 26
     a = _get_gev_atf_vector(
         covariance_matrix, noise_covariance_matrix, **gev_kwargs
     )
+
+    # Wang et al. "Rank-1 Constrained [...]" Eq. 25 (implicit)
     cov_rank1 = np.einsum('...d,...D->...dD', a, a.conj())
+
+    # Wang et al. "Rank-1 Constrained [...]" just below Eq. 25
     scale = np.trace(covariance_matrix, axis1=-1, axis2=-2)
     scale /= np.trace(cov_rank1, axis1=-1, axis2=-2)
     return scale[..., None, None] * cov_rank1
