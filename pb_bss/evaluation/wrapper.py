@@ -281,12 +281,13 @@ class OutputMetrics:
             ... )
 
             # Obtain all metrics (recommended)
-            >>> pprint(metrics.as_dict())
-            {'pesq': array([4.53456783, 4.5135417 ]),
-             'stoi': array([-0.60853803, -0.62144604]),
-             'mir_eval_sdr': array([ 27.57700377, 259.71394019]),
-             'mir_eval_sir': array([ 27.57700377, 230.59979431]),
-             'mir_eval_sar': array([210.12091991, 230.58553316]),
+            >>> with np.printoptions(precision=4):
+            ...     pprint(metrics.as_dict())
+            {'pesq': array([4.5346, 4.5135]),
+             'stoi': array([-0.6085, -0.6214]),
+             'mir_eval_sdr': array([ 27.577 , 259.7139]),
+             'mir_eval_sir': array([ 27.577 , 230.5998]),
+             'mir_eval_sar': array([210.1209, 230.5855]),
              'mir_eval_selection': array([1, 0])}
 
             # Obtain particular metric (e.g. pesq)
