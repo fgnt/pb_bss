@@ -37,6 +37,16 @@ class VerboseKeyError(KeyError):
             )
             return f'{item!r}.\n' \
                    f'Close matches: {suggestions!r}'
+        elif len(self.args) == 3:
+            item, keys, msg = self.args
+            import difflib
+            # Suggestions are sorted by their similarity.
+            suggestions = difflib.get_close_matches(
+                item, keys, cutoff=0, n=100
+            )
+            return f'{item!r}.\n' \
+                   f'Close matches: {suggestions!r}\n' \
+                   f'{msg}'
         else:
             return super().__str__()
 
@@ -101,6 +111,18 @@ class InputMetrics:
         )
 
     @cached_property.cached_property
+    def mir_eval_sdr(self):
+        return self.mir_eval['sdr']
+
+    @cached_property.cached_property
+    def mir_eval_sir(self):
+        return self.mir_eval['sir']
+
+    @cached_property.cached_property
+    def mir_eval_sar(self):
+        return self.mir_eval['sar']
+
+    @cached_property.cached_property
     def pesq(self):
         return pb_bss.evaluation.pesq(
                 rearrange(
@@ -125,6 +147,18 @@ class InputMetrics:
             return_dict=True,
         )
         return invasive_sxr
+
+    @cached_property.cached_property
+    def invasive_sdr(self):
+        return self.invasive_sxr['sdr']
+
+    @cached_property.cached_property
+    def invasive_sir(self):
+        return self.invasive_sxr['sir']
+
+    @cached_property.cached_property
+    def invasive_snr(self):
+        return self.invasive_sxr['snr']
 
     @cached_property.cached_property
     def stoi(self):
@@ -157,24 +191,47 @@ class InputMetrics:
                 '`enable_si_sdr=True`.'
             )
 
-    def as_dict(self):
-        metrics = dict(
-            pesq=self.pesq,
-            stoi=self.stoi,
-            mir_eval_sxr_sdr=self.mir_eval['sdr'],
-            mir_eval_sxr_sir=self.mir_eval['sir'],
-            mir_eval_sxr_sar=self.mir_eval['sar'],
-        )
-
+    def _available_metric_names(self):
+        metric_names = [
+            'pesq',
+            'stoi',
+            'mir_eval_sdr',
+            'mir_eval_sir',
+            'mir_eval_sar',
+        ]
         if self.enable_si_sdr:
-            metrics['si_sdr'] = self.si_sdr
-
+            metric_names.append('si_sdr')
         if self._has_image_signals:
-            metrics['invasive_sxr_sdr'] = self.invasive_sxr['sdr']
-            metrics['invasive_sxr_sir'] = self.invasive_sxr['sir']
-            metrics['invasive_sxr_snr'] = self.invasive_sxr['snr']
+            metric_names.append('invasive_sdr')
+            metric_names.append('invasive_snr')
+            metric_names.append('invasive_sir')
 
-        return metrics
+        return tuple(metric_names)
+
+    def _disableded_metric_names(self):
+        disabled = []
+        if not self.enable_si_sdr:
+            disabled.append('si_sdr')
+        if not self._has_image_signals:
+            disabled.append('invasive_sdr')
+            disabled.append('invasive_snr')
+            disabled.append('invasive_sir')
+        return disabled
+
+    def as_dict(self):
+        return {name: self[name] for name in self._available_metric_names()}
+
+    def __getitem__(self, item):
+        assert isinstance(item, str), (type(item), item)
+        try:
+            return getattr(self, item)
+        except AttributeError:
+            pass
+        raise VerboseKeyError(
+            item,
+            self._available_metric_names(),
+            f'Disabled: {self._disableded_metric_names()}',
+        )
 
 
 class OutputMetrics:
@@ -340,7 +397,7 @@ class OutputMetrics:
             )
 
     @cached_property.cached_property
-    def selection(self):
+    def mir_eval_selection(self):
         return self.mir_eval['selection']
 
     @cached_property.cached_property
@@ -349,9 +406,9 @@ class OutputMetrics:
         assert self.speech_prediction.shape[0] < 10, self.speech_prediction.shape  # NOQA
         assert (
             self.speech_prediction.shape[0]
-            in (len(self.selection), len(self.selection) + 1)
+            in (len(self.mir_eval_selection), len(self.mir_eval_selection) + 1)
         ), self.speech_prediction.shape
-        return self.speech_prediction[self.selection]
+        return self.speech_prediction[self.mir_eval_selection]
 
     @cached_property.cached_property
     def mir_eval(self):
@@ -388,10 +445,10 @@ class OutputMetrics:
             rearrange(
                 self.speech_contribution,
                 'sources targets samples -> sources targets samples'
-            )[:, self.selection, :],
+            )[:, self.mir_eval_selection, :],
             rearrange(
                 self.noise_contribution, 'targets samples -> targets samples'
-            )[self.selection, :],
+            )[self.mir_eval_selection, :],
             average_sources=False,
             return_dict=True,
         )
@@ -438,6 +495,7 @@ class OutputMetrics:
             'mir_eval_sdr',
             'mir_eval_sir',
             'mir_eval_sar',
+            'mir_eval_selection',
         ]
         if self.enable_si_sdr:
             metric_names.append('si_sdr')
@@ -448,13 +506,18 @@ class OutputMetrics:
 
         return tuple(metric_names)
 
+    def _disableded_metric_names(self):
+        disabled = []
+        if not self.enable_si_sdr:
+            disabled.append('si_sdr')
+        if not self._has_contribution_signals:
+            disabled.append('invasive_sdr')
+            disabled.append('invasive_snr')
+            disabled.append('invasive_sir')
+        return disabled
+
     def as_dict(self):
-        d = {
-            name: self[name]
-            for name in self._available_metric_names()
-        }
-        d['mir_eval_selection'] = self.mir_eval['selection']
-        return d
+        return {name: self[name] for name in self._available_metric_names()}
 
     def __getitem__(self, item):
         assert isinstance(item, str), (type(item), item)
@@ -462,4 +525,8 @@ class OutputMetrics:
             return getattr(self, item)
         except AttributeError:
             pass
-        raise VerboseKeyError(item, self._available_metric_names())
+        raise VerboseKeyError(
+            item,
+            self._available_metric_names(),
+            f'Disabled: {self._disableded_metric_names()}',
+        )

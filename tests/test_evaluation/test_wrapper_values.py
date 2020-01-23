@@ -55,27 +55,27 @@ def test_input_metrics():
     assert metrics.channels == 3
 
     for k, v in metrics.as_dict().items():
-        if k == 'invasive_sxr_sdr':
+        if k == 'invasive_sdr':
             np.testing.assert_allclose(
                 v, [[ 4.634096,  1.821645,  5.012743],
                     [-4.634303, -1.821825, -5.013139]], rtol=1e-6)
-        elif k == 'invasive_sxr_sir':
+        elif k == 'invasive_sir':
             np.testing.assert_allclose(
                 v, [[ 4.63425 ,  1.821754,  5.013044],
                     [-4.63425 , -1.821754, -5.013044]], rtol=1e-6)
-        elif k == 'invasive_sxr_snr':
+        elif k == 'invasive_snr':
             np.testing.assert_allclose(
                 v, [[49.137625, 47.859369, 46.598417],
                     [44.503376, 46.037615, 41.585373]])
-        elif k == 'mir_eval_sxr_sdr':
+        elif k == 'mir_eval_sdr':
             np.testing.assert_allclose(
                 v, [[16.286314, 15.048399, 17.420134],
                     [14.386505, 14.606471, 12.842921]])
-        elif k == 'mir_eval_sxr_sir':
+        elif k == 'mir_eval_sir':
             np.testing.assert_allclose(
                 v, [[18.172265, 17.323722, 18.868235],
                     [15.523357, 16.609909, 13.310729]])
-        elif k == 'mir_eval_sxr_sar':
+        elif k == 'mir_eval_sar':
             np.testing.assert_allclose(
                 v, [[20.883413, 19.02361 , 22.949934],
                     [20.883413, 19.02361 , 22.949934]])
