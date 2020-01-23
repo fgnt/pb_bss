@@ -543,6 +543,20 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
         for f in np.ndindex(*F):
             best_score = float('-inf')
             best_permutation = None
+            # This permutation solution should be equal to
+            # `scipy.optimize.linear_sum_assignment`.
+            #
+            # An alternative to this "brute-force" calculation is known as
+            # Hungarian method, Kuhn–Munkres algorithm or Munkres assignment
+            # algorithm (https://en.wikipedia.org/wiki/Hungarian_algorithm).
+            # That algorithm has a complexity of O(sources^3).
+            #
+            # Since the number of sources is here sufficient small, we stay
+            # here for simplicity with the "brute-force" implementation.
+            # The Hungarian method has only advantages, when the number of
+            # sources is large enough. In this case we expect that the greedy
+            # algorithm instead of the optimal algorithm may yield better
+            # results.
             for permutation in itertools.permutations(range(K)):
                 score = sum(score_matrix[(*f, range(K), permutation)])
                 if score > best_score:
