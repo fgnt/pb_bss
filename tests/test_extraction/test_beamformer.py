@@ -123,6 +123,7 @@ class TestCythonizedGetGEV(unittest.TestCase):
         from pb_bss.extraction.cythonized.get_gev_vector import \
             _c_get_gev_vector
 
+    @pytest.mark.flaky(reruns=5)
     def test_result_equal(self):
         import time
 
