@@ -123,23 +123,23 @@ def test_output_metrics():
     assert metrics.K_source == 2
 
     for k, v in metrics.as_dict().items():
-        if k == 'invasive_sxr_sdr':
+        if k == 'invasive_sdr':
             np.testing.assert_allclose(v, [49.137625, 44.503376])
-        elif k == 'invasive_sxr_sir':
+        elif k == 'invasive_sir':
             np.testing.assert_allclose(v, np.inf)
-        elif k == 'invasive_sxr_snr':
+        elif k == 'invasive_snr':
             np.testing.assert_allclose(v, [49.137625, 44.503376])
-        elif k == 'mir_eval_sxr_sdr':
+        elif k == 'mir_eval_sdr':
             np.testing.assert_allclose(v, [17.071665, 24.711722])
-        elif k == 'mir_eval_sxr_sir':
+        elif k == 'mir_eval_sir':
             np.testing.assert_allclose(v, [29.423133, 37.060289])
-        elif k == 'mir_eval_sxr_sar':
+        elif k == 'mir_eval_sar':
             np.testing.assert_allclose(v, [17.336992, 24.973125])
         elif k == 'pesq':
             np.testing.assert_allclose(v, [4.37408 , 4.405752])
         elif k == 'stoi':
             np.testing.assert_allclose(v, [0.968833, 0.976151], rtol=1e-6)
-        elif k == 'mir_eval_sxr_selection':
+        elif k == 'mir_eval_selection':
             assert all(v == [0, 1])
         else:
             raise KeyError(k, v)
