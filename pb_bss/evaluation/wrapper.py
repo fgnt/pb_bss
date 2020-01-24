@@ -273,10 +273,10 @@ class OutputMetrics:
 
             >>> from IPython.lib.pretty import pprint
             >>> metrics = OutputMetrics(
-            ...     speech_prediction=np.array([[1, 2, 3, 4] * 1000,
-            ...                                 [4, 3, 2, 1] * 1000]),
-            ...     speech_source=np.array([[1, 2, 2, 3] * 1000,
-            ...                             [4, 3, 3, 2] * 1000]),
+            ...     speech_prediction=np.array([[1., 2., 3., 4.] * 1000,
+            ...                                 [4., 3., 2., 1.] * 1000]),
+            ...     speech_source=np.array([[1., 2., 2., 3.] * 1000,
+            ...                             [4., 3., 3., 2.] * 1000]),
             ...     sample_rate=8000,
             ... )
 
