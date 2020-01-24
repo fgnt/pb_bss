@@ -208,7 +208,7 @@ class InputMetrics:
 
         return tuple(metric_names)
 
-    def _disableded_metric_names(self):
+    def _disabled_metric_names(self):
         disabled = []
         if not self.enable_si_sdr:
             disabled.append('si_sdr')
@@ -230,7 +230,7 @@ class InputMetrics:
         raise VerboseKeyError(
             item,
             self._available_metric_names(),
-            f'Disabled: {self._disableded_metric_names()}',
+            f'Disabled: {self._disabled_metric_names()}',
         )
 
 
@@ -529,5 +529,5 @@ class OutputMetrics:
         raise VerboseKeyError(
             item,
             self._available_metric_names(),
-            f'Disabled: {self._disableded_metric_names()}',
+            f'Disabled: {self._disabled_metric_names()}',
         )
