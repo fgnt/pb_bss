@@ -507,7 +507,7 @@ class OutputMetrics:
 
         return tuple(metric_names)
 
-    def _disableded_metric_names(self):
+    def _disabled_metric_names(self):
         disabled = []
         if not self.enable_si_sdr:
             disabled.append('si_sdr')
