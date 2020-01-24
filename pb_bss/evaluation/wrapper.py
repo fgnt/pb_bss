@@ -275,29 +275,29 @@ class OutputMetrics:
             >>> metrics = OutputMetrics(
             ...     speech_prediction=np.array([[1., 2., 3., 4.] * 1000,
             ...                                 [4., 3., 2., 1.] * 1000]),
-            ...     speech_source=np.array([[1., 2., 2., 3.] * 1000,
-            ...                             [4., 3., 3., 2.] * 1000]),
+            ...     speech_source=np.array([[1., 2., 2., 3., 2.] * 800,
+            ...                             [4., 3., 3., 2., 3.] * 800]),
             ...     sample_rate=8000,
             ... )
 
             # Obtain all metrics (recommended)
             >>> with np.printoptions(precision=4):
             ...     pprint(metrics.as_dict())
-            {'pesq': array([4.5346, 4.5135]),
-             'stoi': array([-0.6085, -0.6214]),
-             'mir_eval_sdr': array([ 27.577 , 259.7139]),
-             'mir_eval_sir': array([ 27.577 , 230.5998]),
-             'mir_eval_sar': array([210.1209, 230.5855]),
-             'mir_eval_selection': array([1, 0])}
+            {'pesq': array([1.2235, 1.225 ]),
+             'stoi': array([0.0503, 0.0638]),
+             'mir_eval_sdr': array([7.2565, 7.3303]),
+             'mir_eval_sir': array([25.6896, 46.638 ]),
+             'mir_eval_sar': array([7.3309, 7.3309]),
+             'mir_eval_selection': array([0, 1])}
 
             # Obtain particular metric (e.g. pesq)
             >>> metrics.pesq
-            array([4.53456783, 4.5135417 ])
+            array([1.22345543, 1.2250005 ])
 
             # Obtain multiple metrics (e.g. pesq and stoi)
             >>> pprint({m: metrics[m] for m in ['pesq', 'stoi']})
-            {'pesq': array([4.53456783, 4.5135417 ]),
-             'stoi': array([-0.60853803, -0.62144604])}
+            {'pesq': array([1.22345543, 1.2250005 ]),
+             'stoi': array([0.05026565, 0.06377457])}
         """
         self.speech_prediction = speech_prediction
         self.speech_source = speech_source
