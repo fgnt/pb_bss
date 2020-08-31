@@ -132,12 +132,12 @@ class _ProbabilisticModel:
         >>> model
         CACGMM(weight=None, cacg=ComplexAngularCentralGaussian(covariance_eigenvectors=None, covariance_eigenvalues=None))
         >>> pprint(model.to_dict()) # doctest: +ELLIPSIS
-        {'weight': None,
+        {...'weight': None,
          'cacg': {...'covariance_eigenvectors': None, 'covariance_eigenvalues': None}}
 
         >>> import jsonpickle, json
         >>> pprint(json.loads(jsonpickle.dumps(model))) # doctest: +ELLIPSIS
-        {'cacg': {...'covariance_eigenvalues': None,
+        {...'cacg': {...'covariance_eigenvalues': None,
           'covariance_eigenvectors': None,
           'py/object': 'pb_bss.distribution.complex_angular_central_gaussian.ComplexAngularCentralGaussian'},
          'py/object': 'pb_bss.distribution.cacgmm.CACGMM',
