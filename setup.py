@@ -44,6 +44,7 @@ setuptools.setup(
             'soundFile',
             'nara_wpe',
             'lazy_dataset',
+            'IPython',
             'jsonpickle',
             'pytest',
             'nose',
