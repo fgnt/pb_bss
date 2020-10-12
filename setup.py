@@ -36,7 +36,7 @@ setuptools.setup(
         # Metric dependencies
         'mir_eval',
         'pystoi',
-        'pesq'
+        'pesq @ git+https://github.com/samedii/python-pesq'
     ],
 
     extras_require={
