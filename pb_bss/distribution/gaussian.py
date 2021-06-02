@@ -1,7 +1,17 @@
 from dataclasses import dataclass, field
 import numpy as np
-from sklearn.mixture.gaussian_mixture import _compute_precision_cholesky
-from sklearn.mixture.gaussian_mixture import _compute_log_det_cholesky
+try:
+    from sklearn.mixture._gaussian_mixture import _compute_precision_cholesky
+except ModuleNotFoundError:
+    # The sklearn.mixture.gaussian_mixture module is deprecated in version
+    # 0.22 and will be removed in version 0.24. The corresponding classes /
+    # functions should instead be imported from sklearn.mixture. Anything that
+    # cannot be imported from sklearn.mixture is now part of the private API.
+    from sklearn.mixture.gaussian_mixture import _compute_precision_cholesky
+try:
+    from sklearn.mixture._gaussian_mixture import _compute_log_det_cholesky
+except ModuleNotFoundError:
+    from sklearn.mixture.gaussian_mixture import _compute_log_det_cholesky
 from pb_bss.utils import is_broadcast_compatible
 from pb_bss.distribution.utils import _ProbabilisticModel
 
