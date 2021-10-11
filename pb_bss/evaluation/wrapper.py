@@ -191,6 +191,10 @@ class InputMetrics:
                 '`enable_si_sdr=True`.'
             )
 
+    @cached_property.cached_property
+    def srmr(self):
+        return pb_bss.evaluation.srmr(self.observation, self.sample_rate)
+
     def _available_metric_names(self):
         metric_names = [
             'pesq',
@@ -198,6 +202,7 @@ class InputMetrics:
             'mir_eval_sdr',
             'mir_eval_sir',
             'mir_eval_sar',
+            'srmr'
         ]
         if self.enable_si_sdr:
             metric_names.append('si_sdr')
@@ -476,6 +481,10 @@ class OutputMetrics:
         )
 
     @cached_property.cached_property
+    def srmr(self):
+        return pb_bss.evaluation.srmr(self.speech_prediction, self.sample_rate)
+
+    @cached_property.cached_property
     def si_sdr(self):
         if self.enable_si_sdr:
             return pb_bss.evaluation.si_sdr(
@@ -497,6 +506,7 @@ class OutputMetrics:
             'mir_eval_sir',
             'mir_eval_sar',
             'mir_eval_selection',
+            'srmr'
         ]
         if self.enable_si_sdr:
             metric_names.append('si_sdr')
