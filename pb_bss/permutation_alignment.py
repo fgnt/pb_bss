@@ -501,7 +501,7 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
 
     >>> from scipy.optimize import linear_sum_assignment
     >>> linear_sum_assignment(-score_matrix)[1]
-    (array([0, 1, 2]), array([1, 2, 0]))
+    array([1, 2, 0])
     """
     score_matrix = np.asanyarray(score_matrix)
 
