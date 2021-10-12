@@ -9,18 +9,7 @@ def srmr(signal, sample_rate, n_cochlear_filters=23, low_freq=125, min_cf=4, max
     However, activating the fast implementation or norm drastically changes the absolute values of the results due to
     changes in the gammatone package, is maintained. Please make sure to check the correlation bewteen the
     Matlab implementation and this implementation before activating either.
-    Args:
-        signal: Time domain signal with Shape [..., num_samples]
-        sample_rate:
-        n_cochlear_filters: number of cochlear filters per filterbank
-        low_freq: start frequency for the SRMR calculation
-        min_cf: center frequency of first modulation filter
-        max_cf: center frequency of last modulation filter
-        fast: boolean, if true uses faster version based on gammatonegram
-        norm: boolean, if true uses modulation spectrum energy normalization
 
-        Returns:
-            Signal-to-Reverberation Modulation energy ratio
         >>> import paderbox as pb
         >>> a = pb.testing.testfile_fetcher.get_file_path('speech_bab_0dB.wav')
         >>> a = pb.io.load_audio(a)
@@ -28,6 +17,7 @@ def srmr(signal, sample_rate, n_cochlear_filters=23, low_freq=125, min_cf=4, max
         1.865961007729717
         >>> srmr([a, a], 16000, fast=False)
         array([1.86596101, 1.86596101])
+
     """
 
     try:
