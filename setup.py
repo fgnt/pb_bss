@@ -36,7 +36,8 @@ setuptools.setup(
         # Metric dependencies
         'mir_eval',
         'pystoi',
-        'pesq'
+        'pesq',
+        'srmrpy @ git+https://github.com/jfsantos/SRMRpy',
     ],
 
     extras_require={

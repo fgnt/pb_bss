@@ -191,6 +191,10 @@ class InputMetrics:
                 '`enable_si_sdr=True`.'
             )
 
+    @cached_property.cached_property
+    def srmr(self):
+        return pb_bss.evaluation.srmr(self.observation, self.sample_rate)
+
     def _available_metric_names(self):
         metric_names = [
             'pesq',
@@ -198,6 +202,7 @@ class InputMetrics:
             'mir_eval_sdr',
             'mir_eval_sir',
             'mir_eval_sar',
+            'srmr'
         ]
         if self.enable_si_sdr:
             metric_names.append('si_sdr')
@@ -288,7 +293,8 @@ class OutputMetrics:
              'mir_eval_sdr': array([7.2565, 7.3303]),
              'mir_eval_sir': array([25.6896, 46.638 ]),
              'mir_eval_sar': array([7.3309, 7.3309]),
-             'mir_eval_selection': array([0, 1])}
+             'mir_eval_selection': array([0, 1]),
+             'srmr': array([125.2507, 126.1846])}
 
             # Obtain particular metric (e.g. pesq)
             >>> metrics.pesq
@@ -476,6 +482,10 @@ class OutputMetrics:
         )
 
     @cached_property.cached_property
+    def srmr(self):
+        return pb_bss.evaluation.srmr(self.speech_prediction_selection, self.sample_rate)
+
+    @cached_property.cached_property
     def si_sdr(self):
         if self.enable_si_sdr:
             return pb_bss.evaluation.si_sdr(
@@ -497,6 +507,7 @@ class OutputMetrics:
             'mir_eval_sir',
             'mir_eval_sar',
             'mir_eval_selection',
+            'srmr',
         ]
         if self.enable_si_sdr:
             metric_names.append('si_sdr')

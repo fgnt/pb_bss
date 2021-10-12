@@ -75,6 +75,10 @@ class TestMirEval(unittest.TestCase):
         metric = self.input_metrics.si_sdr
         assert metric.shape == (self.speakers, self.channels), metric.shape
 
+    def test_input_metrics_srmr(self):
+        metric = self.input_metrics.srmr
+        assert metric.shape == (self.channels,), metric.shape
+
     def test_output_metrics_mir_eval(self):
         metric = self.output_metrics.mir_eval
         for k, m in metric.items():
@@ -95,4 +99,8 @@ class TestMirEval(unittest.TestCase):
 
     def test_output_metrics_si_sdr(self):
         metric = self.output_metrics.si_sdr
+        assert metric.shape == (self.speakers,), metric.shape
+
+    def test_output_metrics_srmr(self):
+        metric = self.output_metrics.srmr
         assert metric.shape == (self.speakers,), metric.shape
