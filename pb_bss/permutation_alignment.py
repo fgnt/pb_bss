@@ -124,7 +124,7 @@ class _PermutationAlignment:
         """Applies the mapping to obtain a frequency aligned mask.
 
         Args:
-            mask: Permuted mask with shape (K, F, T).
+            mask: Permuted mask with shape (K, F, ...).
             mapping: Reverse mapping with shape (K, F).
         """
         return apply_mapping(mask, mapping)
@@ -478,12 +478,15 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
            [ 4,  5, 10],
            [ 6,  0,  5]])
     >>> permutation = _mapping_from_score_matrix(score_matrix, 'optimal')
+    >>> permutation
+    array([1, 2, 0])
     >>> score_matrix[range(3), permutation]
     array([10, 10,  6])
     >>> permutation = _mapping_from_score_matrix(score_matrix, 'greedy')
+    >>> permutation
+    array([0, 2, 1])
     >>> score_matrix[range(3), permutation]
     array([11, 10,  0])
-
 
     >>> _mapping_from_score_matrix(score_matrix, 'greedy')
     array([0, 2, 1])
@@ -496,11 +499,20 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
            [2, 2],
            [0, 0]])
 
+    >>> from scipy.optimize import linear_sum_assignment
+    >>> linear_sum_assignment(-score_matrix)[1]
+    array([1, 2, 0])
     """
     score_matrix = np.asanyarray(score_matrix)
 
     *F, K, K_ = score_matrix.shape
     assert K == K_, (score_matrix.shape, K, K_)
+
+    if score_matrix.dtype.kind == 'i':
+        # Needed in numpy >= 1.20, in numpy 1.19 float('-inf') worked
+        neg_inf = np.iinfo(score_matrix.dtype).min
+    else:
+        neg_inf = float('-inf')
 
     if algorithm in ['greedy']:
         # Example score matrix and selected permutation (#):
@@ -524,8 +536,8 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
                     np.argmax(score_matrix_flat[f], axis=-1),
                     score_matrix[f].shape,
                 )
-                score_matrix[(*f, i, slice(None))] = float('-inf')
-                score_matrix[(*f, slice(None), j)] = float('-inf')
+                score_matrix[(*f, i, slice(None))] = neg_inf
+                score_matrix[(*f, slice(None), j)] = neg_inf
 
                 reverse_permutation[(i, *f)] = j
                 # estimated_permutation[j] = i
