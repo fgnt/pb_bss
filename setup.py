@@ -37,7 +37,7 @@ setuptools.setup(
         'mir_eval',
         'pystoi',
         'pesq',
-        'srmrpy @ git+https://github.com/jfsantos/SRMRpy'
+        'srmrpy @ git+https://github.com/jfsantos/SRMRpy',
     ],
 
     extras_require={

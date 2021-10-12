@@ -507,7 +507,7 @@ class OutputMetrics:
             'mir_eval_sir',
             'mir_eval_sar',
             'mir_eval_selection',
-            'srmr'
+            'srmr',
         ]
         if self.enable_si_sdr:
             metric_names.append('si_sdr')
