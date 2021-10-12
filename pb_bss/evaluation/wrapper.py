@@ -483,6 +483,7 @@ class OutputMetrics:
 
     @cached_property.cached_property
     def srmr(self):
+        print(self.speech_prediction.shape)
         return pb_bss.evaluation.srmr(self.speech_prediction, self.sample_rate)
 
     @cached_property.cached_property

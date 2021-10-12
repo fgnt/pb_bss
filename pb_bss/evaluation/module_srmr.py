@@ -13,8 +13,8 @@ def srmr(signal, sample_rate, n_cochlear_filters=23, low_freq=125, min_cf=4, max
         >>> import paderbox as pb
         >>> a = pb.testing.testfile_fetcher.get_file_path('speech_bab_0dB.wav')
         >>> a = pb.io.load_audio(a)
-        >>> srmr(a, 16000)
-        1.865961007729717
+        >>> srmr(a, 16000)  # doctest: +ELLIPSIS
+        1.8659610077...
         >>> srmr([a, a], 16000, fast=False)
         array([1.86596101, 1.86596101])
 
