@@ -293,7 +293,8 @@ class OutputMetrics:
              'mir_eval_sdr': array([7.2565, 7.3303]),
              'mir_eval_sir': array([25.6896, 46.638 ]),
              'mir_eval_sar': array([7.3309, 7.3309]),
-             'mir_eval_selection': array([0, 1])}
+             'mir_eval_selection': array([0, 1]),
+             'srmr': array([125.2507, 126.1846])}
 
             # Obtain particular metric (e.g. pesq)
             >>> metrics.pesq
