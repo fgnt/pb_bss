@@ -7,15 +7,15 @@ def srmr(signal, sample_rate, n_cochlear_filters=23, low_freq=125, min_cf=4, max
     Note: The results of this implementation are slightly different from the Matlab implementation, but a high
     correlation between the behavior of both implementations is still present.
     However, activating the fast implementation or norm drastically changes the absolute values of the results due to
-    changes in the gammatone package, is maintained. Please make sure to check the correlation bewteen the
-    Matlab implementation and this implementation before activating either.
+    changes in the gammatone package. Please make sure to check the correlation between the
+    Matlab implementation and this implementation before activating either the normalized or fast SRMR.
 
         >>> import paderbox as pb
         >>> a = pb.testing.testfile_fetcher.get_file_path('speech_bab_0dB.wav')
         >>> a = pb.io.load_audio(a)
         >>> srmr(a, 16000)  # doctest: +ELLIPSIS
         1.8659610077...
-        >>> srmr([a, a], 16000, fast=False)
+        >>> srmr([a, a], 16000)
         array([1.86596101, 1.86596101])
 
     """
