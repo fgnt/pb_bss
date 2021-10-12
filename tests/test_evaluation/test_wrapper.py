@@ -102,5 +102,5 @@ class TestMirEval(unittest.TestCase):
         assert metric.shape == (self.speakers,), metric.shape
 
     def test_output_metrics_srmr(self):
-        metric = self.input_metrics.srmr
+        metric = self.output_metrics.srmr
         assert metric.shape == (self.speakers,), metric.shape
