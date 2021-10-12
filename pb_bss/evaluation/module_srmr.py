@@ -1,9 +1,14 @@
 import numpy as np
 
 
-def srmr(signal, sample_rate, n_cochlear_filters=23, low_freq=125, min_cf=4, max_cf=128, fast=True, norm=False,):
+def srmr(signal, sample_rate, n_cochlear_filters=23, low_freq=125, min_cf=4, max_cf=128, fast=False, norm=False,):
     """
     Wrapper around the SRMRpy package to allow an independent axis
+    Note: The results of this implementation are slightly different from the Matlab implementation, but a high
+    correlation between the behavior of both implementations is still present.
+    However, activating the fast implementation or norm drastically changes the absolute values of the results due to
+    changes in the gammatone package, is maintained. Please make sure to check the correlation bewteen the
+    Matlab implementation and this implementation before activating either.
     Args:
         signal: Time domain signal with Shape [..., num_samples]
         sample_rate:
@@ -16,13 +21,13 @@ def srmr(signal, sample_rate, n_cochlear_filters=23, low_freq=125, min_cf=4, max
 
         Returns:
             Signal-to-Reverberation Modulation energy ratio
-
-        >>> np.random.seed(0)
-        >>> a = np.random.normal(size=16_000)
+        >>> import paderbox as pb
+        >>> a = pb.testing.testfile_fetcher.get_file_path('speech_bab_0dB.wav')
+        >>> a = pb.io.load_audio(a)
         >>> srmr(a, 16000)
-        0.5799380132880388
-        >>> srmr([a, a], 16000)
-        array([0.57993801, 0.57993801])
+        1.865961007729717
+        >>> srmr([a, a], 16000, fast=False)
+        array([1.86596101, 1.86596101])
     """
 
     try:
