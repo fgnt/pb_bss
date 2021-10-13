@@ -498,6 +498,10 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
     array([[1, 1],
            [2, 2],
            [0, 0]])
+    >>> _mapping_from_score_matrix([[np.inf, 0], [1, 2]])
+    Traceback (most recent call last):
+      ...
+    ValueError: score matrix is infeasible
 
     >>> from scipy.optimize import linear_sum_assignment
     >>> linear_sum_assignment(-score_matrix)[1]
