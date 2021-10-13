@@ -498,12 +498,20 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
     array([[1, 1],
            [2, 2],
            [0, 0]])
+    >>> _mapping_from_score_matrix([[np.inf, 0], [1, 2]])
+    Traceback (most recent call last):
+      ...
+    ValueError: score matrix is infeasible
 
     >>> from scipy.optimize import linear_sum_assignment
     >>> linear_sum_assignment(-score_matrix)[1]
     array([1, 2, 0])
     """
     score_matrix = np.asanyarray(score_matrix)
+
+    if not np.all(np.isfinite(score_matrix)):
+        # Exception message copied from scipy.optimize.linear_sum_assignment
+        raise ValueError('score matrix is infeasible')
 
     *F, K, K_ = score_matrix.shape
     assert K == K_, (score_matrix.shape, K, K_)
