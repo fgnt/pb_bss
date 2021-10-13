@@ -505,6 +505,10 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
     """
     score_matrix = np.asanyarray(score_matrix)
 
+    if not np.all(np.isfinite(score_matrix)):
+        # Exception message copied from scipy.optimize.linear_sum_assignment
+        raise ValueError('score matrix is infeasible')
+
     *F, K, K_ = score_matrix.shape
     assert K == K_, (score_matrix.shape, K, K_)
 
