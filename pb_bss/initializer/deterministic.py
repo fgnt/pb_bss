@@ -12,7 +12,7 @@ def flag(
     a single speaker (i.e. the affiliations for all remaining speakers are set to 0) for initialization.
     This is a trivial idea that often yields good results [1].
     One concern is that some models could not be able to recover from the
-    zeros [1], but and in practice it still works in many cases, because the implementation
+    zeros [1], but in practice it still works in many cases, because the implementation
     uses a flooring [1].
     To overcome this drawback, this function introduces a `minimum` value
     between `0` and `1/num_classes` so that each speaker gets attributed at least this
@@ -26,6 +26,7 @@ def flag(
         Y: ..., N, D
         sources:
         permutation_free:
+        minimum: 
 
     Returns:
         ..., K, N
