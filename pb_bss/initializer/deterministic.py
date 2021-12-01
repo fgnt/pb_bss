@@ -8,18 +8,19 @@ def flag(
         minimum: float = 0,
 ):
     """
-    Split the time axis is `num_classes` segments and assign each segment to
-    one speaker. This is trivial idea that often yield good results [1].
-    One concern is, that some models shouldn't be able to recover from the
-    zeros [1] and in practice it often still works, because the implementation
-    has a flooring [1].
-    To overcome this drawback, this function introduce a `minimum` that should
-    be between `0` and `1/num_classes` so that each speaker gets at least this
+    Split the time axis into `num_classes` segments and completely assign each segment to
+    a single speaker (i.e. the affiliations for all remaining speakers are set to 0) for initialization.
+    This is a trivial idea that often yields good results [1].
+    One concern is that some models could not be able to recover from the
+    zeros [1], but and in practice it still works in many cases, because the implementation
+    uses a flooring [1].
+    To overcome this drawback, this function introduces a `minimum` value
+    between `0` and `1/num_classes` so that each speaker gets attributed at least this
     value and the assigned speaker gets the remaining probability.
     This avoids the numeric oddity, while keeping a good performance.
 
-    This initializsation is inspired by [1], but adds `minimum` and doen't
-    split one class to be at the beginning and end.
+    This initialization is inspired by [1], but adds `minimum` and doesn't
+    split one class to be active at the beginning and end.
 
     Args:
         Y: ..., N, D
