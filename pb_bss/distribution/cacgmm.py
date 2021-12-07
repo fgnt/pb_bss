@@ -223,7 +223,8 @@ class CACGMMTrainer:
                 initialization.shape, affiliation_shape
             )
 
-            affiliation = np.broadcast_to(initialization, affiliation_shape)
+            affiliation = np.broadcast_to(
+                initialization.astype(dtype=y.real.dtype), affiliation_shape)
             quadratic_form = np.ones(affiliation_shape, dtype=y.real.dtype)
         elif isinstance(initialization, CACGMM):
             # weight[-2] may be 1, when weight is fixed to 1/K
