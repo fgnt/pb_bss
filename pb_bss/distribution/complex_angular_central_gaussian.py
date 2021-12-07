@@ -124,6 +124,7 @@ class ComplexAngularCentralGaussian(_ProbabilisticModel):
                 eigenvals,
                 np.amax(eigenvals, axis=-1, keepdims=True) * eigenvalue_floor,
             )
+        assert np.isfinite(eigenvals).all(), eigenvals
 
         return cls(
             covariance_eigenvalues=eigenvals,
@@ -175,7 +176,6 @@ class ComplexAngularCentralGaussian(_ProbabilisticModel):
             with the same shape.
 
         """
-
         *independent, D, T = y.shape
 
         assert is_broadcast_compatible(
@@ -273,6 +273,21 @@ class ComplexAngularCentralGaussianTrainer:
 
         Returns:
 
+
+        # ToDo: move this code to a testcase
+        >>> D, N, K = 3, 4, 2
+        >>> y = np.array([[1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 1, 0]], dtype=np.complex128).T
+        >>> quadratic_form = np.array([[1, 0], [1, 0], [1, 0], [1, 0]], dtype=np.float64).T
+        >>> ComplexAngularCentralGaussianTrainer()._fit(y=y, saliency=None, quadratic_form=quadratic_form)
+        ComplexAngularCentralGaussian(covariance_eigenvectors=array([[[0.+0.j, 0.+0.j, 1.+0.j],
+                [0.+0.j, 1.+0.j, 0.+0.j],
+                [1.+0.j, 0.+0.j, 0.+0.j]],
+        <BLANKLINE>
+               [[0.+0.j, 0.+0.j, 1.+0.j],
+                [0.+0.j, 1.+0.j, 0.+0.j],
+                [1.+0.j, 0.+0.j, 0.+0.j]]]), covariance_eigenvalues=array([[1.e-10, 1.e+00, 1.e+00],
+               [1.e-10, 1.e+00, 1.e+00]]))
+
         """
         assert np.iscomplexobj(y), y.dtype
 
@@ -285,20 +300,37 @@ class ComplexAngularCentralGaussianTrainer:
 
         if saliency is None:
             saliency = 1
-            denominator = N
+            denominator = np.array(N, dtype=np.float64)
         else:
             assert y.ndim == saliency.ndim + 1, (y.shape, saliency.ndim)
             denominator = np.einsum('...n->...', saliency)[..., None, None]
 
+        # When the covariance matrix is zero, quadratic_form would also zero.
+        # quadratic_form have to be positive
+        quadratic_form = np.maximum(
+            quadratic_form,
+            # Use 2 * tiny, because tiny is to small
+            10 * np.finfo(quadratic_form.dtype).tiny,
+        )
+
         covariance = D * np.einsum(
-            '...n,...dn,...Dn->...dD',
-            (saliency / quadratic_form),
+            '...dn,...Dn,...n->...dD',
             y,
             y.conj(),
-            optimize='greedy',
+            (saliency / quadratic_form),
+            # optimize='greedy',
+            # Without greedy the diagonal of the  covariance matrix is real
+            # valued, otherwise only approximately real values
+            # (i.e., values of 1e-17 for the imag part)
         )
-        covariance /= denominator
-        assert covariance.shape == (*independent, D, D), covariance.shape
+        assert np.isfinite(quadratic_form).all()
+        covariance /= np.maximum(
+            denominator,
+            np.finfo(denominator.dtype).tiny,
+        )
+        assert covariance.shape == (*independent, D, D), (covariance.shape, (*independent, D, D))
+
+        assert np.isfinite(covariance).all()
 
         if hermitize:
             covariance = force_hermitian(covariance)
