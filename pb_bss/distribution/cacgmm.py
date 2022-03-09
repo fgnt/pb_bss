@@ -57,14 +57,14 @@ def sample_cacgmm(
 
 @dataclass
 class CACGMM(_ProbabilisticModel):
-    weight: np.array = None  # (..., K, 1) for weight_constant_axis==(-1,)
+    weight: np.array = None  # (..., K, 1) for weight_constant_axis==(-1,)  (..., 1, K, T) for weight_constant_axis==(-3,)
     cacg: ComplexAngularCentralGaussian = field(
         default_factory=ComplexAngularCentralGaussian)
 
-    def predict(self, y, return_quadratic_form=False):
+    def predict(self, y, return_quadratic_form=False, source_activity_mask=None):
         assert np.iscomplexobj(y), y.dtype
         y = normalize_observation(y)  # swap D and N dim
-        affiliation, quadratic_form, _ = self._predict(y)
+        affiliation, quadratic_form, _ = self._predict(y, source_activity_mask=source_activity_mask)
         if return_quadratic_form:
             return affiliation, quadratic_form
         else:
