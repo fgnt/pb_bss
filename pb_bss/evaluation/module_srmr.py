@@ -5,8 +5,7 @@ from pb_bss.transform.gammatone import gammatone_filterbank, calculate_cfs
 from paderbox.array.segment import segment_axis
 
 
-def srmr(signal, sample_rate: int = 16000, n_cochlear_filters: int = 23, low_freq: int = 125,
-         min_cf=4, max_cf=128, fast=False, norm=False):
+def srmr(signal, sample_rate: int = 16000, n_cochlear_filters: int = 23, low_freq: int = 125):
     """
     Wrapper around the SRMR Metric to allow an independent axis.
     Note: The results of this implementation are slightly different from the Matlab implementation,
