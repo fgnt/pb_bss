@@ -42,7 +42,9 @@ def srmr(signal, sample_rate: int = 16000, n_cochlear_filters: int = 23, low_fre
 def SRMR(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: int = 125) -> float:
     """Python implementation of the SRMR metric.
     Matlab reference implementation: https://github.com/MuSAELab/SRMRToolbox
-    ASL-adjustment is not implemented, so the calculated values slightly differ from the Matlab implementation.
+    Because results of other openly available SRMR python packages significantly deviate from
+    the original evaluation tool, this function reimplements the Matlab functionality.
+    An ASL-adjustment is not implemented, so that the calculated values still slightly differ from the Matlab implementation.
     For an exact reproduction of the matlab results, the usage of an ASL-adjustion is required. However the deviation of 
     this implmentation from the Matlab version typically is not larger than 1e-3.
 
