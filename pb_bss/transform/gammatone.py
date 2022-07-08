@@ -3,17 +3,22 @@ import math as math
 from scipy.signal import lfilter
 
 
-def gammatone_filterbank(signal: np.ndarray,sample_rate: int = 16000, n: int = 23, low_freq: int = 125):
+def gammatone_filterbank(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: int = 125, high_freq: int = 0):
     """
-
+    Implements a gammetone filterbank with arbitrary amount of gammatone filters and frequency range
     :param signal: input signal
     :param sample_rate: sample rate of the input signal
     :param n: number of gammatone filters
     :param low_freq: lowest center frequency (of the first gammatone filter)
+    :param high_freq: highest center frequency (for the n+1 gammatone filter, which is not constructed here!)
+           default: sample_rate/2
     :return: list with n-entries each contains the signal filtered by the corresponding gammatone filter
     """
-    cfs = calculate_cfs(low_freq,sample_rate/2,n)
-    A0,A11,A12,A13,A14,A2,B0,B1,B2,gain = calculate_coefficients(cfs,sample_rate,n);
+    if(high_freq == 0):
+        high_freq = sample_rate/2
+
+    cfs = calculate_cfs(low_freq, high_freq, n)
+    A0,A11,A12,A13,A14,A2,B0,B1,B2,gain = _calculate_coefficients(cfs,sample_rate,n);
 
     ret = []
     for i in range(n):
@@ -27,7 +32,8 @@ def gammatone_filterbank(signal: np.ndarray,sample_rate: int = 16000, n: int = 2
 
 def calculate_cfs(low_f: float, high_f: float, n: int) -> np.ndarray:
     """
-    Calculate n center frequencies that are linear distributed on the ERBS scale between low_f and high_f
+    Calculate n center frequencies that are linear distributed on the ERBS scale between low_f and high_f.
+    Important: high_f is not returned just the frequency below it
     :param low_f: low frequency in Hz
     :param high_f: high frequency in Hz
     :param n: Number of required cfs
@@ -52,7 +58,7 @@ def ERBS_2_Hz(f: float) -> float:
     return (10**(f/21.4)-1)/0.00437
 
 
-def calculate_coefficients(cfs: np.ndarray, sample_rate: int, n: int):
+def _calculate_coefficients(cfs: np.ndarray, sample_rate: int, n: int):
     """Calculation of the coefficients that are needed for the gammatone filter.
     Based on the paper: Apple TR #35 (https://engineering.purdue.edu/~malcolm/apple/tr35/PattersonsEar.pdf)
 
@@ -94,4 +100,3 @@ def calculate_coefficients(cfs: np.ndarray, sample_rate: int, n: int):
     gain = np.abs(np.divide(dividend,divisor))
     
     return A0,A11,A12,A13,A14,A2,B0,B1,B2,gain
-        

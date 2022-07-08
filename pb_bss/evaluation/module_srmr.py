@@ -50,7 +50,7 @@ def SRMR(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: in
     :return: SRMR metric for given signal
     """
     #Preprocessing of the signal (Voice activity detection)
-    signal = preprocessing_vad(signal, sample_rate)
+    signal = _preprocessing_vad(signal, sample_rate)
     signal = signal - np.mean(signal)
     signal /= np.std(signal, keepdims=True)
 
@@ -150,7 +150,7 @@ def SRMR(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: in
 
 
 
-def preprocessing_vad(signal, sample_rate=16000):
+def _preprocessing_vad(signal, sample_rate=16000):
     """Preprocessing of the signal, silence parts of the signal are removed
     :param signal: input signal
     :param sample_rate: sample rate of the signal
