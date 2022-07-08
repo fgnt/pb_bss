@@ -9,8 +9,10 @@ def srmr(signal, sample_rate: int = 16000, n_cochlear_filters: int = 23, low_fre
     """
     Wrapper around the SRMR Metric to allow an independent axis.
     Note: The results of this implementation are slightly different from the Matlab implementation,
-    because the ALS-adjustment of the signal is not implemented here, but a high
-    correlation between the behavior of both implementations is still present.
+    because the ALS-adjustment of the signal is not implemented.
+    However, the results of this implementation typically don't deviate more than 1e-3 from
+    the Matlab implementation, so that a high
+    correlation between the behavior of both implementations still is present.
 
         >>> import paderbox as pb
         >>> a = pb.testing.testfile_fetcher.get_file_path('speech_bab_0dB.wav')
@@ -40,10 +42,11 @@ def srmr(signal, sample_rate: int = 16000, n_cochlear_filters: int = 23, low_fre
 def SRMR(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: int = 125) -> float:
     """Python implementation of the SRMR metric.
     Matlab reference implementation: https://github.com/MuSAELab/SRMRToolbox
-    ASL-adjust is not implemented, so the calculated values differ a little bit from the matlab implementation,
-    for exact reproduction of the matlab results an ASL-adjustion is required.
+    ASL-adjustment is not implemented, so the calculated values slightly differ from the Matlab implementation.
+    For an exact reproduction of the matlab results, the usage of an ASL-adjustion is required. However the deviation of 
+    this implmentation from the Matlab version typically is not larger than 1e-3.
 
-    :param signal: signal for which the SRMR should be calculated
+    :param signal: signal on which the SRMR is calculated
     :param sample_rate: sample rate of signal
     :param n: number of gammatone filters used
     :param low_freq: lowest center frequency of the gammatone filterbank, highest frequency is half the sample rate
@@ -151,7 +154,7 @@ def SRMR(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: in
 
 
 def _preprocessing_vad(signal, sample_rate=16000):
-    """Preprocessing of the signal, silence parts of the signal are removed
+    """Preprocesses the signal to remove silence parts 
     :param signal: input signal
     :param sample_rate: sample rate of the signal
     :return: Preprocessed signal
