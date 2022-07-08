@@ -89,7 +89,7 @@ def test_input_metrics():
                     [0.28424 , 0.345368, 0.279996]], rtol=1e-5)
         elif k == 'srmr':
             np.testing.assert_allclose(
-                v, [0.51143847, 0.49881274, 0.48087079], rtol=1e-6)
+                v, [0.51612031, 0.50214891, 0.48237807], rtol=1e-6)
         else:
             raise KeyError(k, v)
 
@@ -145,6 +145,6 @@ def test_output_metrics():
         elif k == 'mir_eval_selection':
             assert all(v == [0, 1])
         elif k == 'srmr':
-            np.testing.assert_allclose(v, [0.5504078, 0.50442512])
+            np.testing.assert_allclose(v, [0.54593548, 0.49966431])
         else:
             raise KeyError(k, v)
