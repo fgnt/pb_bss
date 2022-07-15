@@ -268,8 +268,8 @@ class OutputMetrics:
                     8000: wide band (wb)
             enable_si_sdr: Since SI-SDR is only well defined for non-reverb
                 single-channel data, it is disabled by default.
-            compute_permutation: If True, assume the estimate is permuted
-                and use mir_eval_sir to find the permutation. If False,
+            compute_permutation: If True, assume the estimate needs to be
+                permuted and use mir_eval_sir to find the permutation. If False,
                 assume the estimate has the same permutation as speech_source.
 
         speech_contribution and noise_contribution can only be calculated for
