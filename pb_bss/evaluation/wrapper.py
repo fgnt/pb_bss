@@ -248,6 +248,7 @@ class OutputMetrics:
             noise_contribution: 'Shape(K_target, N)'=None,
             sample_rate: int = None,
             enable_si_sdr: bool = False,
+            compute_permutation: bool = True,
     ):
         """
 
@@ -267,6 +268,9 @@ class OutputMetrics:
                     8000: wide band (wb)
             enable_si_sdr: Since SI-SDR is only well defined for non-reverb
                 single-channel data, it is disabled by default.
+            compute_permutation: If True, assume the estimate needs to be
+                permuted and use mir_eval_sir to find the permutation. If False,
+                assume the estimate has the same permutation as speech_source.
 
         speech_contribution and noise_contribution can only be calculated for
         linear system and are used for the calculation of invasive_sxr.
@@ -322,6 +326,7 @@ class OutputMetrics:
         self.K_target = self.speech_prediction.shape[0]
 
         self.enable_si_sdr = enable_si_sdr
+        self.compute_permutation = compute_permutation
 
         self.check_inputs()
 
@@ -329,12 +334,12 @@ class OutputMetrics:
         assert self.speech_prediction.ndim == 2, self.speech_prediction.shape
         assert self.speech_source.ndim == 2, self.speech_source.shape
 
-        assert self.K_source <= 5, _get_err_msg(
+        assert self.K_source <= 8, _get_err_msg(
             f'Number of source speakers (K_source) of speech_source is '
             f'{self.K_source}. Expect a reasonable value of 5 or less.',
             self
         )
-        assert self.K_target <= 5, _get_err_msg(
+        assert self.K_target <= 8, _get_err_msg(
             f'Number of target speakers (K_target) of speech_prediction is '
             f'{self.K_target}. Expect a reasonable value of 5 or less.',
             self
@@ -405,7 +410,11 @@ class OutputMetrics:
 
     @cached_property.cached_property
     def mir_eval_selection(self):
-        return self.mir_eval['selection']
+        if self.compute_permutation:
+            return self.mir_eval['selection']
+        else:
+            assert self.K_target == self.K_source, (self.K_target, self.K_source, self.compute_permutation)
+            return np.arange(self.K_source)
 
     @cached_property.cached_property
     def speech_prediction_selection(self):
@@ -423,6 +432,7 @@ class OutputMetrics:
             reference=self.speech_source,
             estimation=self.speech_prediction,
             return_dict=True,
+            compute_permutation=self.compute_permutation,
         )
 
     @cached_property.cached_property
