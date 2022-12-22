@@ -72,7 +72,7 @@ def mir_eval_sources(
 
         if compute_permutation:
             sdr, sir, sar, selection = results
-            selection = selection.astype(np.int)
+            selection = selection.astype(int)
         else:
             sdr, sir, sar = results
             selection = None

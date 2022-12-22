@@ -37,7 +37,7 @@ def log_pdf_to_affiliation(
     affiliation *= weight
 
     if source_activity_mask is not None:
-        assert source_activity_mask.dtype == np.bool, source_activity_mask.dtype  # noqa
+        assert source_activity_mask.dtype == bool, source_activity_mask.dtype  # noqa
         affiliation *= source_activity_mask
 
     denominator = np.maximum(

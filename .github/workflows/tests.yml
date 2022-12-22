@@ -32,7 +32,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install numpy scipy Cython
-        pip install flake8 pytest pytest-cov codecov
+        pip install flake8 pytest pytest-cov codecov pytest-rerunfailures
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         pip install --editable .[all]
 

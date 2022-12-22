@@ -221,7 +221,7 @@ class BinaryGMMTrainer:
         """
         N, D = x.shape
         if saliency is not None:
-            assert saliency.dtype == np.bool, (
+            assert saliency.dtype == bool, (
                 'Only boolean saliency supported. '
                 f'Current dtype: {saliency.dtype}.'
             )
