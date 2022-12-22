@@ -103,7 +103,7 @@ def ideal_binary_mask(
     separation using deep recurrent neural networks." ICASSP, 2015.
 
     Example:
-        >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
+        >>> rand = lambda *x: np.random.randn(*x).astype(complex)
         >>> M_x, M_n = ideal_binary_mask(rand(2, 3)).shape
         >>> ideal_binary_mask(rand(2, 3)).shape
         (2, 3)
@@ -153,7 +153,7 @@ def wiener_like_mask(
     separation using deep recurrent neural networks." ICASSP, 2015.
 
     Example:
-        >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
+        >>> rand = lambda *x: np.random.randn(*x).astype(complex)
         >>> M_x, M_n = wiener_like_mask(rand(2, 3)).shape
         >>> wiener_like_mask(rand(2, 3)).shape
         (2, 3)
@@ -195,7 +195,7 @@ def ideal_ratio_mask(
     separation using deep recurrent neural networks." ICASSP, 2015.
 
     Example:
-        >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
+        >>> rand = lambda *x: np.random.randn(*x).astype(complex)
         >>> M_x, M_n = wiener_like_mask(rand(2, 3)).shape
         >>> ideal_ratio_mask(rand(2, 3)).shape
         (2, 3)
@@ -252,7 +252,7 @@ def ideal_amplitude_mask(
     separation using deep recurrent neural networks." ICASSP, 2015.
 
     Example:
-        >>> rand = lambda *x: np.random.randn(*x).astype(np.complex)
+        >>> rand = lambda *x: np.random.randn(*x).astype(complex)
         >>> M_x, M_n = wiener_like_mask(rand(2, 3)).shape
         >>> ideal_amplitude_mask(rand(2, 3)).shape
         (2, 3)
