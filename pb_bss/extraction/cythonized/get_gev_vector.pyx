@@ -79,7 +79,7 @@ def _c_get_gev_vector(np.ndarray[complex, ndim=3] target_psd_matrix,
     cdef complex* a_ptr = &a_view[0, 0, 0]
     cdef complex* b_ptr = &b_view[0, 0, 0]
 
-    cdef np.ndarray[complex, ndim=1] work_tmp = np.empty(2, dtype=np.complex)
+    cdef np.ndarray[complex, ndim=1] work_tmp = np.empty(2, dtype=complex)
     cdef np.ndarray[double, ndim=1] w = np.empty(N, dtype=np.float64)
     cdef np.ndarray[double, ndim=1] rwork_tmp = np.empty(2, dtype=np.float64)
     cdef np.ndarray[int, ndim=1] iwork_tmp = np.empty(2, dtype=np.int32)
@@ -98,7 +98,7 @@ def _c_get_gev_vector(np.ndarray[complex, ndim=3] target_psd_matrix,
 
     # Create workspace
     cdef np.ndarray[complex, ndim=1] work = np.empty(work_tmp_size,
-                                                     dtype=np.complex, order='F')
+                                                     dtype=complex, order='F')
     cdef np.ndarray[double, ndim=1] rwork = np.empty(rwork_tmp_size,
                                                       dtype=np.float64, order='F')
     cdef np.ndarray[int, ndim=1] iwork = np.empty(iwork_tmp_size,

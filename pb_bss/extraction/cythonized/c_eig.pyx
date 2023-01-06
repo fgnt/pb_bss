@@ -36,14 +36,14 @@ def _cythonized_eig(np.ndarray[complex, ndim=3] a, np.ndarray[complex, ndim=3] b
 
     # cdef np.ndarray[complex, ndim=3] a = a[:]
     # cdef np.ndarray[complex, ndim=3] b = b[:]
-    cdef np.ndarray[complex, ndim=1] alpha = np.empty(sensors, dtype=np.complex)
-    cdef np.ndarray[complex, ndim=1] beta = np.empty(sensors, dtype=np.complex)
-    cdef np.ndarray[complex, ndim=1] work_tmp = np.empty(2, dtype=np.complex)
+    cdef np.ndarray[complex, ndim=1] alpha = np.empty(sensors, dtype=complex)
+    cdef np.ndarray[complex, ndim=1] beta = np.empty(sensors, dtype=complex)
+    cdef np.ndarray[complex, ndim=1] work_tmp = np.empty(2, dtype=complex)
     # Not referenced since JOBVL == N
     cdef np.ndarray[complex, ndim=3] vl = np.empty((bins, sensors, sensors),
-                                                   dtype=np.complex)
+                                                   dtype=complex)
     cdef np.ndarray[complex, ndim=3] vr = np.empty((bins, sensors, sensors),
-                                                   dtype=np.complex)
+                                                   dtype=complex)
 
     cdef complex* alpha_ptr = <complex*> alpha.data
     cdef complex* beta_ptr = <complex*> beta.data
@@ -73,7 +73,7 @@ def _cythonized_eig(np.ndarray[complex, ndim=3] a, np.ndarray[complex, ndim=3] b
 
     # Create workspace
     cdef np.ndarray[complex, ndim=1] work = np.empty(work_size,
-                                                     dtype=np.complex, order='F')
+                                                     dtype=complex, order='F')
 
     work_ptr = <complex*> work.data
     rwork_ptr = <double*> rwork.data
@@ -92,7 +92,7 @@ def _cythonized_eig(np.ndarray[complex, ndim=3] a, np.ndarray[complex, ndim=3] b
     cdef int sensors_square = sensors * sensors
 
     cdef np.ndarray[complex, ndim=2] w = np.empty((bins, sensors),
-                                                      dtype=np.complex)
+                                                      dtype=complex)
 
     cdef size_t m
     for f in range(bins):

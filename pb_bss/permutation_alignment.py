@@ -528,7 +528,7 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
         #   4   5  10#
         #   6   0#  5
 
-        reverse_permutation = np.zeros((K, *F), dtype=np.int)
+        reverse_permutation = np.zeros((K, *F), dtype=int)
         # estimated_permutation = np.zeros((K,), dtype=np.int)
 
         score_matrix: np.ndarray = score_matrix.copy()
@@ -558,7 +558,7 @@ def _mapping_from_score_matrix(score_matrix, algorithm='optimal'):
         #   4   5  10#
         #   6#  0   5
 
-        mapping = np.zeros((K, *F), dtype=np.int)
+        mapping = np.zeros((K, *F), dtype=int)
 
         for f in np.ndindex(*F):
             best_score = float('-inf')

@@ -121,7 +121,7 @@ def get_power_spectral_density_matrix(
         mask = np.copy(mask)
 
         # normalize
-        if mask.dtype == np.bool:
+        if mask.dtype == bool:
             mask = np.asfarray(mask)
 
         if normalize:
