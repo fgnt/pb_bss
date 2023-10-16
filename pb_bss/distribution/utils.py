@@ -197,16 +197,16 @@ class _ProbabilisticModel:
         ...     CACGMM,
         ... )
         >>> model = ComplexAngularCentralGaussian()
-        >>> model.covariances
+        >>> model.covariances  # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
         AttributeError: 'ComplexAngularCentralGaussian' object has no attribute 'covariances'.
-        Close matches: ['covariance_eigenvalues', 'covariance_eigenvectors']
-        >>> model.abc
+        Close matches: ['covariance_eigenvalues', 'covariance_eigenvectors']...
+        >>> model.abc  # doctest: +ELLIPSIS
         Traceback (most recent call last):
         ...
         AttributeError: 'ComplexAngularCentralGaussian' object has no attribute 'abc'.
-        Close matches: ['covariance_eigenvectors', 'covariance_eigenvalues']
+        Close matches: ['covariance_eigenvectors', 'covariance_eigenvalues']...
         """
 
         import difflib
