@@ -1,3 +1,10 @@
+# Allow editable install into user site directory.
+# See https://github.com/pypa/pip/issues/7953.
+import site
+import sys
+site.ENABLE_USER_SITE = '--user' in sys.argv[1:]
+
+
 import setuptools
 try:
     import numpy as np
@@ -51,7 +58,7 @@ setuptools.setup(
             'nose',
             'parameterized',
             'pytest-rerunfailures',
-            'paderbox @ git+https://github.com/fgnt/paderbox',
+            'paderbox',
         ]
     },
 
