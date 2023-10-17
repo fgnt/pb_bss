@@ -1,5 +1,5 @@
 import numpy as np
-from numpy.testing.utils import assert_array_compare, assert_array_less
+from numpy.testing import assert_array_compare, assert_array_less
 import operator
 
 
