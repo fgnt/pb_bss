@@ -58,7 +58,7 @@ setuptools.setup(
             'nose',
             'parameterized',
             'pytest-rerunfailures',
-            'paderbox',
+            'paderbox'
         ]
     },
 

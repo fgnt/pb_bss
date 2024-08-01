@@ -96,7 +96,7 @@ def SRMR(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: in
             temp = segment_axis(E[j][k], int(sample_rate/1000)*256, int(sample_rate/1000)*64)
 
             #Multiplication of a hamming window with each segment and summation of the result
-            hamm_window = sp.signal.hamming(int(sample_rate/1000)*256, sym=True)
+            hamm_window = sp.signal.windows.hamming(int(sample_rate/1000)*256, sym=True)
             for window in temp:
                 energy[j][k].append(np.sum(np.square(hamm_window*window)))
 
