@@ -41,7 +41,7 @@ def get_snr(X, N, *, axis=None, keepdims=False):
         SNR of time signals or STFT signals in dB.
 
     >>> get_snr([1, 2, 3], [1, 2, 3])
-    0.0
+    np.float64(0.0)
     """
     power_X = get_variance_for_zero_mean_signal(X, axis=axis, keepdims=keepdims)
     power_N = get_variance_for_zero_mean_signal(N, axis=axis, keepdims=keepdims)

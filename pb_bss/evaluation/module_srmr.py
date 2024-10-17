@@ -18,7 +18,7 @@ def srmr(signal, sample_rate: int = 16000, n_cochlear_filters: int = 23, low_fre
         >>> a = pb.testing.testfile_fetcher.get_file_path('speech_bab_0dB.wav')
         >>> a = pb.io.load_audio(a)
         >>> srmr(a, 16000)  # doctest: +ELLIPSIS
-        1.8561615800...
+        np.float64(1.8561615800...)
         >>> srmr([a, a], 16000)
         array([1.85616158, 1.85616158])
     """
