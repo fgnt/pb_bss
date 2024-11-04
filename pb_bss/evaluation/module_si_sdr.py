@@ -17,20 +17,20 @@ def si_sdr(reference, estimation):
 
     >>> np.random.seed(0)
     >>> reference = np.random.randn(100)
-    >>> si_sdr(reference, reference)
-    np.float64(inf)
-    >>> si_sdr(reference, reference * 2)
-    np.float64(inf)
-    >>> si_sdr(reference, np.flip(reference))
-    np.float64(-25.127672346460717)
-    >>> si_sdr(reference, reference + np.flip(reference))
-    np.float64(0.481070445785553)
-    >>> si_sdr(reference, reference + 0.5)
-    np.float64(6.3704606032577304)
-    >>> si_sdr(reference, reference * 2 + 1)
-    np.float64(6.3704606032577304)
-    >>> si_sdr([1., 0], [0., 0])  # never predict only zeros
-    np.float64(nan)
+    >>> print(si_sdr(reference, reference))
+    inf
+    >>> print(si_sdr(reference, reference * 2))
+    inf
+    >>> print(si_sdr(reference, np.flip(reference)))
+    -25.127672346460717
+    >>> print(si_sdr(reference, reference + np.flip(reference)))
+    0.481070445785553
+    >>> print(si_sdr(reference, reference + 0.5))
+    6.3704606032577304
+    >>> print(si_sdr(reference, reference * 2 + 1))
+    6.3704606032577304
+    >>> print(si_sdr([1., 0], [0., 0]))  # never predict only zeros
+    nan
     >>> si_sdr([reference, reference], [reference * 2 + 1, reference * 1 + 0.5])
     array([6.3704606, 6.3704606])
 
