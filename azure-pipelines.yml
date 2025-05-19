@@ -3,18 +3,9 @@ jobs:
 - job: test
   strategy:
     matrix:
-      Linux py37:
-        IMAGE_NAME: 'ubuntu-latest'
-        PYTHON_VERSION: '3.7'
-      OSX py37:
-        IMAGE_NAME: 'macos-latest'
-        PYTHON_VERSION: '3.7'
-      Linux py38:
-        IMAGE_NAME: 'ubuntu-latest'
-        PYTHON_VERSION: '3.8'
       Linux py39:
         IMAGE_NAME: 'ubuntu-latest'
-        PYTHON_VERSION: '3.9'
+        PYTHON_VERSION: '3.12'
   pool:
     vmImage: $(IMAGE_NAME)
   steps:
