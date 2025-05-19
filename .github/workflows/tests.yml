@@ -9,11 +9,13 @@ on:
 jobs:
   build:
 
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
     strategy:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12']
-
+        include:
+          - python-version: '3.12'
+            os: macos-latest
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
