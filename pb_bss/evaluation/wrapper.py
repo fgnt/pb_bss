@@ -290,9 +290,9 @@ class OutputMetrics:
             ... )
 
             # Obtain all metrics (recommended)
-            >>> with np.printoptions(precision=4):
+            >>> with np.printoptions(precision=4):  # doctest: +ELLIPSIS  # macOS doesn't yield the same as Ubuntu
             ...     pprint(metrics.as_dict())
-            {'pesq': array([1.2235, 1.225 ]),
+            {'pesq': array([1.22..., 1.225 ]),
              'stoi': array([0.0503, 0.0638]),
              'mir_eval_sdr': array([7.2565, 7.3303]),
              'mir_eval_sir': array([25.6896, 46.638 ]),
@@ -301,12 +301,12 @@ class OutputMetrics:
              'srmr': array([203.3988, 203.3988])}
 
             # Obtain particular metric (e.g. pesq)
-            >>> metrics.pesq
-            array([1.22345543, 1.2250005 ])
+            >>> metrics.pesq  # doctest: +ELLIPSIS  # macOS doesn't yield the same as Ubuntu
+            array([1.22..., 1.225000...])
 
             # Obtain multiple metrics (e.g. pesq and stoi)
             >>> pprint({m: metrics[m] for m in ['pesq', 'stoi']})
-            {'pesq': array([1.22345543, 1.2250005 ]),
+            {'pesq': array([1.22..., 1.225000...]),
              'stoi': array([0.05026565, 0.06377457])}
         """
         self.speech_prediction = speech_prediction
