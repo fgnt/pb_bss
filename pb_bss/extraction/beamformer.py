@@ -247,7 +247,7 @@ def get_mvdr_vector(atf_vector, noise_psd_matrix):
         noise_psd_matrix + np.conj(noise_psd_matrix.swapaxes(-1, -2))
     )
     try:
-        numerator = solve(noise_psd_matrix, atf_vector)
+        numerator = np.squeeze(solve(noise_psd_matrix, atf_vector[..., None]), axis=-1)
     except np.linalg.LinAlgError:
         bins = noise_psd_matrix.shape[0]
         numerator = np.empty_like(atf_vector)

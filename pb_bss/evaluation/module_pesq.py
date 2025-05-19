@@ -14,18 +14,18 @@ def pesq(reference, estimation, sample_rate, mode=None):
         >>> np.random.seed(0)
         >>> a = np.random.normal(size=16_000)
         >>> b = a + np.random.normal(size=16_000)
-        >>> pesq(a, b, sample_rate=16000)
-        2.2297563552856445
+        >>> pesq(a, b, sample_rate=16000)  # doctest: +ELLIPSIS  # macOS doesn't yield the same as Ubuntu
+        2.22975...
         >>> pesq(a, b, sample_rate=8000)
         1.0334522724151611
-        >>> pesq(a, b, sample_rate=16000, mode='nb')
-        3.200247049331665
+        >>> pesq(a, b, sample_rate=16000, mode='nb')  # doctest: +ELLIPSIS  # macOS doesn't yield the same as Ubuntu
+        3.20024...
 
-        >>> pesq([a, a], [b, b], sample_rate=16000)
-        array([2.22975636, 2.22975636])
-        >>> pesq([[a, a], [b, a]], [[b, b], [b, b]], sample_rate=16000)
-        array([[2.22975636, 2.22975636],
-               [4.64388847, 2.22975636]])
+        >>> pesq([a, a], [b, b], sample_rate=16000)    # doctest: +ELLIPSIS  # macOS doesn't yield the same as Ubuntu
+        array([2.22975..., 2.22975...])
+        >>> pesq([[a, a], [b, a]], [[b, b], [b, b]], sample_rate=16000)    # doctest: +ELLIPSIS  # macOS doesn't yield the same as Ubuntu
+        array([[2.22975..., 2.22975...],
+               [4.64388847, 2.22975...]])
 
         >>> pesq(a, b, sample_rate=8000, mode='wb')
         Traceback (most recent call last):

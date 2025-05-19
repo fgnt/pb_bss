@@ -78,7 +78,7 @@ class TestProposedPESQ(unittest.TestCase):
             sample_rate=16000,
             mode='nb',
         )
-        np.testing.assert_allclose(scores, np.asarray([1.607208]))
+        np.testing.assert_allclose(scores, np.asarray([1.607208]), atol=1e-6)
 
     def test_nb_scores_with_lists_of_arrays_length_two(self):
         scores = pesq(
@@ -87,7 +87,7 @@ class TestProposedPESQ(unittest.TestCase):
             sample_rate=16000,
             mode='nb',
         )
-        np.testing.assert_allclose(scores, np.asarray([1.607208, 4.548638]))
+        np.testing.assert_allclose(scores, np.asarray([1.607208, 4.548638]), atol=1e-6)
 
     def test_wb_scores_with_paths_directly(self):
         # ToDo: pesq does not support filenames in the moment

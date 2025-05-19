@@ -17,7 +17,7 @@ def srmr(signal, sample_rate: int = 16000, n_cochlear_filters: int = 23, low_fre
         >>> import paderbox as pb
         >>> a = pb.testing.testfile_fetcher.get_file_path('speech_bab_0dB.wav')
         >>> a = pb.io.load_audio(a)
-        >>> srmr(a, 16000)  # doctest: +ELLIPSIS
+        >>> print(srmr(a, 16000))  # doctest: +ELLIPSIS
         1.8561615800...
         >>> srmr([a, a], 16000)
         array([1.85616158, 1.85616158])
@@ -96,7 +96,7 @@ def SRMR(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: in
             temp = segment_axis(E[j][k], int(sample_rate/1000)*256, int(sample_rate/1000)*64)
 
             #Multiplication of a hamming window with each segment and summation of the result
-            hamm_window = sp.signal.hamming(int(sample_rate/1000)*256, sym=True)
+            hamm_window = sp.signal.windows.hamming(int(sample_rate/1000)*256, sym=True)
             for window in temp:
                 energy[j][k].append(np.sum(np.square(hamm_window*window)))
 
