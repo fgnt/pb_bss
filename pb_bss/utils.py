@@ -137,8 +137,9 @@ def get_pca(target_psd_matrix, use_scipy=False):
         beamforming_vector = []
         eigenvalues = []
         for f in range(target_psd_matrix.shape[0]):
+            # https://github.com/scipy/scipy/pull/20560/files removed support for "eigvals=(D-1, D-1)""
             eigenvals, eigenvecs = scipy.linalg.eigh(
-                target_psd_matrix[-1], eigvals=(D-1, D-1)
+                target_psd_matrix[-1], subset_by_index=(D-1, D-1)
             )
             eigenval, = eigenvals
             eigenvec, = eigenvecs.T
