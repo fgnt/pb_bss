@@ -13,9 +13,10 @@ jobs:
     strategy:
       matrix:
         python-version: ['3.9', '3.10', '3.11', '3.12']
+        os: ['ubuntu-latest']
         include:
           - python-version: '3.12'
-            os: macos-latest
+            os: 'macos-latest'
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -28,6 +29,7 @@ jobs:
         trap 'echo -e "$ $BASH_COMMAND"' DEBUG
         sudo apt-get update
         sudo apt-get install libsndfile1 sox
+      if: matrix.os != 'macos-latest'
 
     - name: Install python dependencies
       run: |
@@ -53,3 +55,4 @@ jobs:
     - name: Codecov
       run: |
         codecov
+      if: matrix.os != 'macos-latest'
