@@ -24,16 +24,21 @@ or
 
 setuptools.setup(
     name="pb_bss",
+    version="0.0.0",
 
     author="Lukas Drude",
     author_email="mail@lukas-drude.de",
 
     description="EM algorithms for integrated spatial and spectral models.",
     long_description=open('README.md', encoding='utf-8').read(),
+    long_description_content_type="text/markdown",
 
     packages=setuptools.find_packages(),
+    package_data={'pb_bss.extraction.cythonized': ['*.pyx']},
 
     install_requires=[
+        'numpy',
+        'scipy',
         'dataclasses',
         'matplotlib',
         'scikit-learn',
@@ -44,7 +49,6 @@ setuptools.setup(
         'mir_eval',
         'pystoi',
         'pesq',
-        'srmrpy @ git+https://github.com/jfsantos/SRMRpy',
     ],
 
     extras_require={

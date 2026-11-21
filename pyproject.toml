@@ -1,2 +1,10 @@
 [build-system]
 requires = ["setuptools", "wheel", "Cython", "numpy", "scipy"]
+
+[tool.bumpversion]
+current_version = "0.0.0"
+
+[[tool.bumpversion.files]]
+filename = "setup.py"
+search = 'version="{current_version}"'
+replace = 'version="{new_version}"'

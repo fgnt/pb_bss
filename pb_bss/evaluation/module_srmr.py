@@ -2,7 +2,6 @@ import numpy as np
 import scipy as sp
 import math
 from pb_bss.transform.gammatone import gammatone_filterbank, calculate_cfs
-from paderbox.array.segment import segment_axis
 
 
 def srmr(signal, sample_rate: int = 16000, n_cochlear_filters: int = 23, low_freq: int = 125):
@@ -54,6 +53,8 @@ def SRMR(signal: np.ndarray, sample_rate: int = 16000, n: int = 23, low_freq: in
     :param low_freq: lowest center frequency of the gammatone filterbank, highest frequency is half the sample rate
     :return: SRMR metric for given signal
     """
+    from paderbox.array.segment import segment_axis
+
     #Preprocessing of the signal (Voice activity detection)
     signal = _preprocessing_vad(signal, sample_rate)
     signal = signal - np.mean(signal)
