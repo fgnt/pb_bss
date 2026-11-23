@@ -16,5 +16,5 @@ jobs:
         sudo apt-get install libsndfile1
         pip install numpy scipy Cython
     - bash: pip install -e .[all]
-    - bash: pip install pytest pytest-azurepipelines pytest-cov pytest-rerunfailures
+    - bash: pip install pytest pytest-azurepipelines pytest-cov pytest-rerunfailures six
     - bash: pytest

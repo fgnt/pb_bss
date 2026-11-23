@@ -9,12 +9,14 @@ on:
 jobs:
   build:
 
-    runs-on: ${{ matrix.os || 'ubuntu-latest' }}
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ['3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.15']
         os: ['ubuntu-latest']
         include:
+          - python-version: '3.9'
+            os: 'ubuntu-24.04'
           - python-version: '3.12'
             os: 'macos-latest'
     steps:
@@ -35,7 +37,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install numpy scipy Cython
-        pip install flake8 pytest pytest-cov codecov pytest-rerunfailures
+        pip install flake8 pytest pytest-cov codecov pytest-rerunfailures six
         # https://github.com/pypa/pip/issues/12030#issuecomment-1546344047
         python -m pip install wheel
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
